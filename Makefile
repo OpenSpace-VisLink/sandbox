@@ -29,10 +29,8 @@ gen:
    ifeq ($(ARCH), linux)
 	mkdir -p ./build/Release
 	mkdir -p ./build/Debug
-	mkdir -p ../$(DIRNAME)_eclipse
 	cd ./build/Release; cmake -DCMAKE_BUILD_TYPE=Release ../../
 	cd ./build/Debug; cmake -DCMAKE_BUILD_TYPE=Debug -DCMAKE_DEBUG_POSTFIX="d" ../../
-	cd ../$(DIRNAME)_eclipse; cmake -DCMAKE_BUILD_TYPE=Debug -DCMAKE_DEBUG_POSTFIX="d" $(CURDIR) -G "Eclipse CDT4 - Unix Makefiles" -DCMAKE_ECLIPSE_VERSION=4.3
     else ifeq ($(ARCH), WIN32)
 	cd ./build; cmake ../ -DCMAKE_DEBUG_POSTFIX="d" -G "Visual Studio 12 Win64"
     else ifeq ($(ARCH), OSX)
@@ -72,6 +70,4 @@ clean:
 clobber:
 	rm -rf ./build
 	rm -rf ./install
-	rm -rf ../$(DIRNAME)_eclipse
-	rm -rf ./contrib/plugins/build
 	rm -rf cmake/framework
