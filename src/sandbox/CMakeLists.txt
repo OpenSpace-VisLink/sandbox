@@ -8,6 +8,7 @@ include_directories(${CMAKE_CURRENT_SOURCE_DIR}/..)
 
 set (SOURCEFILES
   SceneNode.cpp
+  base/TransformComponent.cpp
 )
 
 set (HEADERFILES
@@ -15,6 +16,7 @@ set (HEADERFILES
   SceneContext.h
   SceneNode.h
   SceneComponent.h
+  base/TransformComponent.h
 )
 
 # --------------------- Executable -----------------------

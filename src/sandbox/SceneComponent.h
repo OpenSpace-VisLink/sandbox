@@ -2,6 +2,7 @@
 #define SANDBOX_SCENE_COMPONENT_H_
 
 #include <typeinfo>
+#include <vector>
 #include "sandbox/SceneNode.h"
 
 namespace sandbox {
@@ -25,7 +26,7 @@ public:
 
 private:
 	SceneNode* node;
-	const std::vector<const std::type_info*> types;
+	std::vector<const std::type_info*> types;
 };
 
 }

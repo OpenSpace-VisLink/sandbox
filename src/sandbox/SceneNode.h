@@ -4,6 +4,7 @@
 #include <typeinfo>
 #include <map>
 #include <vector>
+#include "sandbox/SceneContext.h"
 
 namespace sandbox {
 
