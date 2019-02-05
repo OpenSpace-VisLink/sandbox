@@ -8,7 +8,11 @@ include_directories(${CMAKE_CURRENT_SOURCE_DIR}/..)
 
 set (SOURCEFILES
   SceneNode.cpp
-  base/TransformComponent.cpp
+  base/Transform.cpp
+  geometry/Mesh.cpp
+  geometry/Material.cpp
+  geometry/MeshLoader.cpp
+  graphics/MeshRenderer.cpp
 )
 
 set (HEADERFILES
@@ -16,8 +20,22 @@ set (HEADERFILES
   SceneContext.h
   SceneNode.h
   SceneComponent.h
-  base/TransformComponent.h
+  base/Transform.h
+  geometry/Mesh.h
+  geometry/Material.h
+  geometry/MeshLoader.h
+  graphics/MeshRenderer.h
 )
+
+# --------------------- Dependencies -----------------------
+
+add_external(glm 
+	GIT_REPOSITORY https://github.com/g-truc/glm.git
+)
+add_definitions(-DGLM_FORCE_INLINE)
+
+include(${external_dir}/Assimp/Assimp.cmake)
+useAssimp()
 
 # --------------------- Executable -----------------------
 

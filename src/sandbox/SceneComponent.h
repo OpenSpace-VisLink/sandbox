@@ -24,6 +24,9 @@ public:
 	}
 	const std::vector<const std::type_info*> getTypes() { return types; }
 
+protected:
+	const SceneNode& getSceneNode() const { return *node; }
+
 private:
 	SceneNode* node;
 	std::vector<const std::type_info*> types;
