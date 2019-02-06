@@ -23,8 +23,10 @@ void ShaderProgram::updateContext(const SceneContext& sceneContext) {
 			            "layout(location = 1) in vec3 normal; "
 						"layout(location = 2) in vec2 coord; "
 			            ""
+			            "out vec2 pos; "
+			            ""
 			            "void main() { "
-			            "   vec2 pos = position.xy; "
+			            "   pos = position.xy; "
 			            "   gl_Position = vec4(pos, 0.0, 1.0); "
 			            "}";
 
@@ -32,9 +34,12 @@ void ShaderProgram::updateContext(const SceneContext& sceneContext) {
 
 	    std::string fragmentShader =
 	            "#version 330 \n"
+			    ""
+			    "in vec2 pos; "
+			    ""
 	            "layout (location = 0) out vec4 colorOut;  "
 	            ""
-	            "void main() { colorOut = vec4(1,0,0,1); }";
+	            "void main() { colorOut = vec4(pos,0,1); }";
 	    state.addShader(compileShader(fragmentShader, GL_FRAGMENT_SHADER));
         // finish create
 
