@@ -14,6 +14,7 @@ set (SOURCEFILES
   geometry/MeshLoader.cpp
   geometry/shapes/Quad.cpp
   graphics/MeshRenderer.cpp
+  graphics/ShaderProgram.cpp
 )
 
 set (HEADERFILES
@@ -27,6 +28,7 @@ set (HEADERFILES
   geometry/MeshLoader.h
   geometry/shapes/Quad.h
   graphics/MeshRenderer.h
+  graphics/ShaderProgram.h
 )
 
 # --------------------- Dependencies -----------------------

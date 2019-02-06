@@ -1,5 +1,6 @@
 #include "sandbox/SceneNode.h"
 #include "sandbox/SceneComponent.h"
+#include <iostream>
 
 namespace sandbox {
 
@@ -22,6 +23,7 @@ void SceneNode::addNode(SceneNode* node) {
 }
 
 void SceneNode::addComponent(SceneComponent* component) {
+	component->setSceneNode(this);
 	for (int f = 0; f < component->getTypes().size(); f++) {
 		typed_components[component->getTypes()[f]] = component;
 	}
@@ -84,7 +86,12 @@ void SceneNode::render(const SceneContext& sceneContext) {
 }
 
 SceneComponent* SceneNode::getComponentByType(const std::type_info& type) const {
+	std::map<const std::type_info*, SceneComponent*, type_compare>::const_iterator it = typed_components.find(&type);
+	if (it == typed_components.end()) {
+		return NULL;
+	}
 
+	return it->second;
 }
 
 }

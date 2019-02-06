@@ -43,7 +43,12 @@ protected:
 	SceneComponent* getComponentByType(const std::type_info& type) const;
 
 private:
-	std::map<const std::type_info*,SceneComponent*> typed_components;
+	struct type_compare {
+	    bool operator ()(const std::type_info* a, const std::type_info* b) const {
+	        return a->before(*b);
+	    }
+	};
+	std::map<const std::type_info*, SceneComponent*, type_compare> typed_components;
 	std::vector<SceneComponent*> components;
 	std::vector<SceneNode*> nodes;
 };

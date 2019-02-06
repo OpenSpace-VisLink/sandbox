@@ -3,7 +3,9 @@
 
 namespace sandbox {
 
-MeshRenderer::MeshRenderer() : mesh(nullptr) {}
+MeshRenderer::MeshRenderer() : mesh(nullptr) {
+	addType<MeshRenderer>();
+}
 
 void MeshRenderer::updateModel() {
 	if (!mesh) {
@@ -15,7 +17,7 @@ void MeshRenderer::updateSharedContext(const SceneContext& sceneContext) {
 	MeshSharedState& state = *contextHandler.getSharedState(sceneContext);
 
 	if (mesh && !state.initialized) {
-	    std::cout << "INitialize mesh shared context" << std::endl;
+	    std::cout << "INitialize mesh shared context " << std::endl;
 	    glGenBuffers(1, &state.elementBuffer);
 	    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, state.elementBuffer);
 	    glBufferData(GL_ELEMENT_ARRAY_BUFFER, mesh->getIndices().size() * sizeof(unsigned int), &mesh->getIndices()[0], GL_STATIC_DRAW);
@@ -85,9 +87,10 @@ void MeshRenderer::render(const SceneContext& sceneContext) {
 	MeshState& state = *contextHandler.getState(sceneContext);
 
 	if (state.initialized) {
+		//std::cout << "Render Mesh" << state.vao << " " << mesh->getIndices().size() << std::endl;
 	    glBindVertexArray(state.vao);
 	    //glDrawElements(GL_PATCHES, mesh.indices.size(), GL_UNSIGNED_INT, (void*)0);
-	    //glDrawElements(GL_POINTS, app.indices.size(), GL_UNSIGNED_INT, (void*)0);
+	    //glDrawElements(GL_TRIANGLES, mesh->getIndices().size(), GL_UNSIGNED_INT, (void*)0);
 		glDrawElementsInstancedBaseVertex(GL_TRIANGLES,
 				mesh->getIndices().size(),
 				GL_UNSIGNED_INT,

@@ -13,6 +13,7 @@
 #include "sandbox/graphics/RenderCallback.h"
 #include "sandbox/geometry/shapes/Quad.h"
 #include "sandbox/graphics/MeshRenderer.h"
+#include "sandbox/graphics/ShaderProgram.h"
 
 using namespace sandbox;
 
@@ -32,16 +33,17 @@ public:
 		addVariableSlider(panel, g, "Green");
 		addVariableSlider(panel, b, "Blue");
 
+		SceneNode* graphicsNode = new SceneNode();
+		scene.addNode(graphicsNode);
+		graphicsNode->addComponent((new OpenGLCallback())->init(this));
+		graphicsNode->addComponent(new ShaderProgram());
+
 		SceneNode* geometryNode = new SceneNode();
-		scene.addNode(geometryNode);
+		graphicsNode->addNode(geometryNode);
 		SceneNode* quad = new SceneNode();
 		geometryNode->addNode(quad);
 		quad->addComponent(new Quad());
 		quad->addComponent(new MeshRenderer());
-
-		SceneNode* graphicsNode = new SceneNode();
-		scene.addNode(graphicsNode);
-		graphicsNode->addComponent((new OpenGLCallback())->init(this));
 	}
 
 	void drawContents() {
@@ -54,8 +56,15 @@ public:
 private:
 	class OpenGLCallback : public RenderCallback<TestApp> {
 		void renderCallback(const SceneContext& sceneContext, TestApp* app) {
+			//std::cout << "Clear screen" << std::endl;
 			glClearColor(app->r,app->g,app->b,1);
 			glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
+			glEnable(GL_DEPTH_TEST);
+            glClearDepth(1.0f);
+            glDepthFunc(GL_LEQUAL);
+            glPatchParameteri(GL_PATCH_VERTICES, 3);
+            glEnable(GL_CULL_FACE);
+            glCullFace(GL_BACK);
 		}
 	};
 
