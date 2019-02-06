@@ -12,6 +12,7 @@ set (SOURCEFILES
   geometry/Mesh.cpp
   geometry/Material.cpp
   geometry/MeshLoader.cpp
+  geometry/shapes/Quad.cpp
   graphics/MeshRenderer.cpp
 )
 
@@ -24,6 +25,7 @@ set (HEADERFILES
   geometry/Mesh.h
   geometry/Material.h
   geometry/MeshLoader.h
+  geometry/shapes/Quad.h
   graphics/MeshRenderer.h
 )
 
@@ -36,6 +38,9 @@ add_definitions(-DGLM_FORCE_INLINE)
 
 include(${external_dir}/Assimp/Assimp.cmake)
 useAssimp()
+
+include(${external_dir}/OpenGL/OpenGL.cmake)
+useOpenGL()
 
 # --------------------- Executable -----------------------
 

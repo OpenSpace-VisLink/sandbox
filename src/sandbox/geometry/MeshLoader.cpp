@@ -6,7 +6,7 @@
 
 namespace sandbox {
 
-MeshLoader::MeshLoader(const std::string& fileName) : fileName(fileName), isLoaded(false) {
+MeshLoader::MeshLoader(const std::string& path) : path(path), isLoaded(false) {
 	addType<MeshLoader>();
 }
 
@@ -14,16 +14,16 @@ void MeshLoader::updateModel() {
 	if (!isLoaded) {
 		Mesh* mesh = getSceneNode().getComponent<Mesh>();
 		if (mesh) {
-			load(fileName, mesh);
+			load(path, mesh);
 			isLoaded = true;
 		}
 	}
 }
 
-void MeshLoader::load(const std::string& fileName, Mesh* mesh) {
+void MeshLoader::load(const std::string& path, Mesh* mesh) {
 	Assimp::Importer importer;
 	unsigned int flags = aiProcess_Triangulate | aiProcess_FlipUVs | aiProcess_GenSmoothNormals;
-	const aiScene *scene = importer.ReadFile(fileName, flags);
+	const aiScene *scene = importer.ReadFile(path, flags);
 
 	if(!scene || scene->mFlags == AI_SCENE_FLAGS_INCOMPLETE || !scene->mRootNode)
 	{

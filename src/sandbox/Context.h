@@ -7,7 +7,9 @@ namespace sandbox {
 
 class ContextState {
 public: 
+	ContextState() : initialized(false) {}
 	virtual ~ContextState() {}
+	bool initialized;
 };
 
 class Context {

@@ -7,6 +7,7 @@ namespace sandbox {
 
 class SceneContext {
 public:
+	SceneContext() : sharedContext(new Context()), context(new Context()) {}
 	SceneContext(Context* sharedContext, Context* contex) : sharedContext(sharedContext), context(context) {}
 	virtual ~SceneContext() {
 		delete sharedContext;

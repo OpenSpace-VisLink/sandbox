@@ -2,7 +2,7 @@
 
 namespace sandbox {
 
-Mesh::Mesh() {
+Mesh::Mesh() : readOnly(false) {
 	addType<Mesh>();
 }
 

@@ -9,14 +9,14 @@ namespace sandbox {
 
 class MeshLoader : public SceneComponent {
 public:
-	MeshLoader(const std::string& fileName);
+	MeshLoader(const std::string& path);
 	virtual ~MeshLoader() {}
 
 	void updateModel();
-	virtual void load(const std::string& fileName, Mesh* mesh);
+	virtual void load(const std::string& path, Mesh* mesh);
 
 private:
-	std::string fileName;
+	std::string path;
 	bool isLoaded;
 };
 

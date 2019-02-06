@@ -17,16 +17,17 @@ public:
 	const std::vector<glm::vec3>& getNormals() const { return normals; }
 	const std::vector<glm::vec2>& getCoords() const { return coords; }
 
-	void setIndices(const std::vector<unsigned int>& indices) { this->indices = indices; }
-	void setNodes(const std::vector<glm::vec3>& nodes) { this->nodes = nodes; }
-	void setNormals(const std::vector<glm::vec3>& normals) { this->normals = normals; }
-	void setCoords(const std::vector<glm::vec2>& coords) { this->coords = coords; }
+	virtual void setIndices(const std::vector<unsigned int>& indices) { if (!readOnly) { this->indices = indices;} }
+	virtual void setNodes(const std::vector<glm::vec3>& nodes) { if (!readOnly) {this->nodes = nodes; } }
+	virtual void setNormals(const std::vector<glm::vec3>& normals) { if (!readOnly) {this->normals = normals;} }
+	virtual void setCoords(const std::vector<glm::vec2>& coords) { if (!readOnly) {this->coords = coords;} }
 
-private:
+protected:
 	std::vector<unsigned int> indices;
     std::vector<glm::vec3> nodes;
     std::vector<glm::vec3> normals;
     std::vector<glm::vec2> coords;
+	bool readOnly;
 };
 
 }

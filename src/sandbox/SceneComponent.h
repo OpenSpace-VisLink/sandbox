@@ -16,6 +16,7 @@ public:
 	virtual void updateSharedContext(const SceneContext& sceneContext) {}
 	virtual void updateContext(const SceneContext& sceneContext) {}
 	virtual void use(const SceneContext& sceneContext) {}
+	virtual void render(const SceneContext& sceneContext) {}
 
 	template<typename T>
 	void addType() {

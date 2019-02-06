@@ -26,11 +26,17 @@ public:
 	void updateSharedContext(const SceneContext& sceneContext);
 	void updateContext(const SceneContext& sceneContext);
 	void use(const SceneContext& sceneContext);
+	void render(const SceneContext& sceneContext);
 
 	template<typename T>
 	T* getComponent() const {
 		static const std::type_info& type = typeid(T);
-		return static_cast<T*>(getComponentByType(type));
+		SceneComponent* component = getComponentByType(type);
+		if (component) {
+			return static_cast<T*>(component);
+		}
+
+		return NULL;
 	}
 
 protected:
