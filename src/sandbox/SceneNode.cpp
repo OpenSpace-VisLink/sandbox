@@ -4,7 +4,7 @@
 
 namespace sandbox {
 
-SceneNode::SceneNode() {
+SceneNode::SceneNode() : parent(NULL) {
 
 }
 
@@ -19,6 +19,7 @@ SceneNode::~SceneNode() {
 }
 
 void SceneNode::addNode(SceneNode* node) {
+	node->parent = this;
 	nodes.push_back(node);
 }
 
@@ -82,6 +83,10 @@ void SceneNode::render(const SceneContext& sceneContext) {
 	
 	for (int f = 0; f < nodes.size(); f++) {
 		nodes[f]->render(sceneContext);
+	}
+
+	for (int f = 0; f < components.size(); f++) {
+		components[f]->finishRender(sceneContext);
 	}
 }
 

@@ -17,6 +17,7 @@ public:
 
 	void addNode(SceneNode* node);
 	const std::vector<SceneNode*>& getChildren() const { return nodes; }
+	SceneNode* getParent() { return parent; }
 
 	void addComponent(SceneComponent* component);
 	void deleteComponent(SceneComponent* component);
@@ -51,6 +52,7 @@ private:
 	std::map<const std::type_info*, SceneComponent*, type_compare> typed_components;
 	std::vector<SceneComponent*> components;
 	std::vector<SceneNode*> nodes;
+	SceneNode* parent;
 };
 
 }

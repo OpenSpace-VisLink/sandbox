@@ -13,6 +13,11 @@ set (HEADERFILES
 
 # --------------------- Dependencies -----------------------
 
+add_external(glm 
+	GIT_REPOSITORY https://github.com/g-truc/glm.git
+)
+add_definitions(-DGLM_FORCE_INLINE)
+
 set(NanoGUIArgs -DNANOGUI_BUILD_SHARED=OFF -DNANOGUI_BUILD_PYTHON=OFF -DNANOGUI_BUILD_EXAMPLE=OFF -DCMAKE_C_FLAGS=-fPIC -DCMAKE_CXX_FLAGS=-fPIC  -DCMAKE_DEBUG_POSTFIX=d -DCMAKE_CONFIGURATION_TYPES='Debug Release MinSizeRel RelWithDebInfo')
 add_external(NanoGUI 
 	GIT_REPOSITORY https://github.com/wjakob/nanogui.git

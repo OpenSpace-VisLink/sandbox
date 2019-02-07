@@ -2,6 +2,7 @@
 #define SANDBOX_SCENE_CONTEXT_H_
 
 #include "sandbox/Context.h"
+#include "sandbox/SceneState.h"
 
 namespace sandbox {
 
@@ -16,10 +17,12 @@ public:
 
 	Context* getSharedContext() const { return sharedContext; }
 	Context* getContext() const { return context; }
+	SceneState getRenderState() const { return renderState; }
 
 private:
 	Context* sharedContext;
 	Context* context;
+	SceneState renderState;
 };
 
 template<typename SharedStateType, typename StateType>

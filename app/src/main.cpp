@@ -14,6 +14,9 @@
 #include "sandbox/geometry/shapes/Quad.h"
 #include "sandbox/graphics/MeshRenderer.h"
 #include "sandbox/graphics/ShaderProgram.h"
+#include "sandbox/graphics/NodeRenderer.h"
+#include "sandbox/base/Transform.h"
+#include "glm/glm.hpp"
 
 using namespace sandbox;
 
@@ -33,24 +36,27 @@ public:
 		addVariableSlider(panel, g, "Green");
 		addVariableSlider(panel, b, "Blue");
 
-		SceneNode* graphicsNode = new SceneNode();
+		SceneNode* geometryNode = new SceneNode();
+		scene.addNode(geometryNode);
+		SceneNode* quad = new SceneNode();
+		geometryNode->addNode(quad);
+		quad->addComponent(new Transform(glm::mat4(1.0f)));
+		quad->addComponent(new Quad());
+		quad->addComponent(new MeshRenderer());
+
+		graphicsNode = new SceneNode();
 		scene.addNode(graphicsNode);
 		graphicsNode->addComponent((new OpenGLCallback())->init(this));
 		graphicsNode->addComponent(new ShaderProgram());
+		graphicsNode->addComponent(new NodeRenderer(quad));
 
-		SceneNode* geometryNode = new SceneNode();
-		graphicsNode->addNode(geometryNode);
-		SceneNode* quad = new SceneNode();
-		geometryNode->addNode(quad);
-		quad->addComponent(new Quad());
-		quad->addComponent(new MeshRenderer());
 	}
 
 	void drawContents() {
 		scene.updateModel();
 		scene.updateSharedContext(context);
 		scene.updateContext(context);
-		scene.render(context);
+		graphicsNode->render(context);
 	}
 
 private:
@@ -84,6 +90,7 @@ private:
 
 	SceneContext context;
 	SceneNode scene;
+	SceneNode* graphicsNode;
 };
 
 int main(int argc, char**argv) {
