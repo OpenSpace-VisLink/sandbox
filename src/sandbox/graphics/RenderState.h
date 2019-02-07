@@ -21,7 +21,7 @@ public:
 	StateItemStack<glm::mat4>& getViewMatrix() { return viewMatrix; }
 	StateItemStack<glm::mat4>& getModelMatrix() { return modelMatrix; }
 
-	static RenderState& get(const SceneContext& sceneContext) { return sceneContext.getRenderState().getItem<RenderState>(); }
+	static RenderState& get(const SceneContext& sceneContext) { return sceneContext.getRenderState()->getItem<RenderState>(); }
 
 private:
 	StateItemStack<glm::mat4> projectionMatrix;

@@ -8,21 +8,22 @@ namespace sandbox {
 
 class SceneContext {
 public:
-	SceneContext() : sharedContext(new Context()), context(new Context()) {}
-	SceneContext(Context* sharedContext, Context* contex) : sharedContext(sharedContext), context(context) {}
+	SceneContext() : sharedContext(new Context()), context(new Context()), renderState(new SceneState()) {}
+	SceneContext(Context* sharedContext, Context* contex) : sharedContext(sharedContext), context(context), renderState(new SceneState()) {}
 	virtual ~SceneContext() {
 		delete sharedContext;
-		delete context; 
+		delete context;
+		delete renderState;
 	}
 
 	Context* getSharedContext() const { return sharedContext; }
 	Context* getContext() const { return context; }
-	SceneState getRenderState() const { return renderState; }
+	SceneState* getRenderState() const { return renderState; }
 
 private:
 	Context* sharedContext;
 	Context* context;
-	SceneState renderState;
+	SceneState* renderState;
 };
 
 template<typename SharedStateType, typename StateType>

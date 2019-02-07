@@ -25,7 +25,7 @@ public:
 		static const std::type_info& type = typeid(T);
 		std::map<const std::type_info*, SceneStateItem*, type_compare>::iterator it = typed_items.find(&type);
 		T* item = NULL;
-		if (it == typed_items.end()) {
+		if (it != typed_items.end()) {
 			item = static_cast<T*>(it->second);
 		}
 		else {
