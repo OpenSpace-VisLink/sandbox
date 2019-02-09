@@ -31,35 +31,43 @@ void MeshLoader::load(const std::string& path, Mesh* mesh) {
 		exit(0);
 	}
 
-	/*for (int f = 0; f < scene->mNumMeshes; f++) {
+	std::vector<glm::vec3> nodes;
+	std::vector<glm::vec3> normals;
+	std::vector<unsigned int> indices;
+
+	for (int f = 0; f < scene->mNumMeshes; f++) {
 		for (int i = 0; i < scene->mMeshes[f]->mNumVertices; i++) {
-			mesh.nodes.push_back(glm::vec3(scene->mMeshes[f]->mVertices[i].x, scene->mMeshes[f]->mVertices[i].y, scene->mMeshes[f]->mVertices[i].z));
+			nodes.push_back(glm::vec3(scene->mMeshes[f]->mVertices[i].x, scene->mMeshes[f]->mVertices[i].y, scene->mMeshes[f]->mVertices[i].z));
 		}
 
 		if (scene->mMeshes[f]->HasNormals()) {
 			for (int i = 0; i < scene->mMeshes[f]->mNumVertices; i++) {
-				mesh.normals.push_back(glm::vec3(scene->mMeshes[f]->mNormals[i].x, scene->mMeshes[f]->mNormals[i].y, scene->mMeshes[f]->mNormals[i].z));
+				normals.push_back(glm::vec3(scene->mMeshes[f]->mNormals[i].x, scene->mMeshes[f]->mNormals[i].y, scene->mMeshes[f]->mNormals[i].z));
 			}
 		}
 
 		if (scene->mMeshes[f]->HasFaces()) {
 			for (int i = 0; i < scene->mMeshes[f]->mNumFaces; i++) {
-				mesh.indices.push_back(scene->mMeshes[f]->mFaces[i].mIndices[0]);
-				mesh.indices.push_back(scene->mMeshes[f]->mFaces[i].mIndices[1]);
-				mesh.indices.push_back(scene->mMeshes[f]->mFaces[i].mIndices[2]);
+				indices.push_back(scene->mMeshes[f]->mFaces[i].mIndices[0]);
+				indices.push_back(scene->mMeshes[f]->mFaces[i].mIndices[1]);
+				indices.push_back(scene->mMeshes[f]->mFaces[i].mIndices[2]);
 			}
 		}
 	}
 
-	mesh.min = mesh.nodes[0];
-	mesh.max = mesh.min;
-	for (int f = 1; f < mesh.nodes.size(); f++) {
-		mesh.min = glm::min(mesh.min, mesh.nodes[f]);
-		mesh.max = glm::max(mesh.max, mesh.nodes[f]);
+	mesh->setIndices(indices);
+	mesh->setNodes(nodes);
+	mesh->setNormals(normals);
+
+	/*mesh->min = nodes[0];
+	mesh->max = mesh->min;
+	for (int f = 1; f < nodes.size(); f++) {
+		mesh->min = glm::min(mesh->min, nodes[f]);
+		mesh->max = glm::max(mesh->max, nodes[f]);
 	}
 
-	glm::vec3 diag = mesh.max-mesh.min;
-	mesh.scale = 2.0f/glm::max(diag.x, glm::max(diag.y, diag.z));*/
+	glm::vec3 diag = mesh->max-mesh->min;
+	mesh->scale = 2.0f/glm::max(diag.x, glm::max(diag.y, diag.z));*/
 }
 
 }

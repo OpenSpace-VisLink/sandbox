@@ -12,6 +12,7 @@
 #include "sandbox/SceneNode.h"
 #include "sandbox/base/RenderCallback.h"
 #include "sandbox/geometry/shapes/Quad.h"
+#include "sandbox/geometry/MeshLoader.h"
 #include "sandbox/graphics/MeshRenderer.h"
 #include "sandbox/graphics/shaders/MaterialShader.h"
 #include "sandbox/graphics/shaders/Shader2D.h"
@@ -50,6 +51,13 @@ public:
 		quad->addComponent(new Transform(glm::rotate(glm::mat4(1.0f),0.0f,glm::vec3(1.0f,0.0f,0.0f))));
 		quad->addComponent(new Quad());
 		quad->addComponent(new MeshRenderer());
+
+		SceneNode* obj = new SceneNode();
+		geometryNode->addNode(obj);
+		obj->addComponent(new Mesh());
+		obj->addComponent(new MeshLoader("data/monkey-head.obj"));
+		obj->addComponent(new MeshRenderer());
+
 
 		graphicsNode = new SceneNode();
 		scene.addNode(graphicsNode);
