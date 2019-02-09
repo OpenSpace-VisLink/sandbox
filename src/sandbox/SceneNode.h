@@ -5,6 +5,7 @@
 #include <map>
 #include <vector>
 #include "sandbox/SceneContext.h"
+#include "glm/glm.hpp"
 
 namespace sandbox {
 
@@ -28,6 +29,8 @@ public:
 	void updateContext(const SceneContext& sceneContext);
 	void use(const SceneContext& sceneContext);
 	void render(const SceneContext& sceneContext);
+
+	glm::vec3 getWorldPosition() const;
 
 	template<typename T>
 	T* getComponent() const {

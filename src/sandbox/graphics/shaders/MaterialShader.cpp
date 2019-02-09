@@ -25,6 +25,8 @@ void MaterialShader::create(const SceneContext& sceneContext, ShaderProgramState
 					"layout(location = 2) in vec2 coord; "
 		            ""
 		            "uniform float scale; "
+		            "uniform mat4 ProjectionMatrix; "
+		            "uniform mat4 ViewMatrix; "
 		            "uniform mat4 ModelMatrix; "
 		            "out vec3 pos; "
 		            "out vec3 norm; "
@@ -32,7 +34,7 @@ void MaterialShader::create(const SceneContext& sceneContext, ShaderProgramState
 		            "void main() { "
 		            "   pos = position.xyz; "
 		            "   norm = normal.xyz; "
-		            "   gl_Position = ModelMatrix*vec4(pos, 1.0); "
+		            "   gl_Position = ProjectionMatrix*ViewMatrix*ModelMatrix*vec4(pos, 1.0); "
 		            "}";
 
 	state.addShader(compileShader(vertexShader, GL_VERTEX_SHADER));
@@ -51,8 +53,11 @@ void MaterialShader::create(const SceneContext& sceneContext, ShaderProgramState
 
 void MaterialShader::setShaderParameters(const SceneContext& sceneContext, ShaderProgramState& state) {
 	RenderState& renderState = RenderState::get(sceneContext);
-	GLint loc = glGetUniformLocation(state.shaderProgram, "ModelMatrix");
-	//glUniformMatrix4fv(loc, 1, GL_FALSE, glm::value_ptr(glm::scale(glm::mat4(1.0f),glm::vec3(0.5f))));
+	GLint loc = glGetUniformLocation(state.shaderProgram, "ProjectionMatrix");
+	glUniformMatrix4fv(loc, 1, GL_FALSE, glm::value_ptr(renderState.getProjectionMatrix().get()));
+	loc = glGetUniformLocation(state.shaderProgram, "ViewMatrix");
+	glUniformMatrix4fv(loc, 1, GL_FALSE, glm::value_ptr(renderState.getViewMatrix().get()));
+	loc = glGetUniformLocation(state.shaderProgram, "ModelMatrix");
 	glUniformMatrix4fv(loc, 1, GL_FALSE, glm::value_ptr(renderState.getModelMatrix().get()));
 	//GLint loc = glGetUniformLocation(state.shaderProgram, "scale");
     //glUniform1f(loc, 0.5);

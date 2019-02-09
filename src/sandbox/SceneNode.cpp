@@ -90,6 +90,10 @@ void SceneNode::render(const SceneContext& sceneContext) {
 	}
 }
 
+glm::vec3 SceneNode::getWorldPosition() const {
+	return glm::vec3(0.0f);
+}
+
 SceneComponent* SceneNode::getComponentByType(const std::type_info& type) const {
 	std::map<const std::type_info*, SceneComponent*, type_compare>::const_iterator it = typed_components.find(&type);
 	if (it == typed_components.end()) {
