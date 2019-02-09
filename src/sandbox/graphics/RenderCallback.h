@@ -8,7 +8,9 @@ namespace sandbox {
 template<typename T>
 class RenderCallback : public SceneComponent {
 public:
-	RenderCallback() : parameter(nullptr) {}
+	RenderCallback() : parameter(nullptr) {
+		addType< RenderCallback<T> >();
+	}
 	virtual ~RenderCallback() {}
 
 	void render(const SceneContext& sceneContext) {

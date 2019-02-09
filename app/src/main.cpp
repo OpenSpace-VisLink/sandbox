@@ -13,7 +13,7 @@
 #include "sandbox/graphics/RenderCallback.h"
 #include "sandbox/geometry/shapes/Quad.h"
 #include "sandbox/graphics/MeshRenderer.h"
-#include "sandbox/graphics/ShaderProgram.h"
+#include "sandbox/graphics/shaders/Shader2D.h"
 #include "sandbox/graphics/NodeRenderer.h"
 #include "sandbox/base/Transform.h"
 #include "glm/glm.hpp"
@@ -51,7 +51,7 @@ public:
 		graphicsNode = new SceneNode();
 		scene.addNode(graphicsNode);
 		graphicsNode->addComponent((new OpenGLCallback())->init(this));
-		graphicsNode->addComponent(new ShaderProgram());
+		graphicsNode->addComponent(new Shader2D());
 		graphicsNode->addComponent(new NodeRenderer(geometryNode));
 
 	}

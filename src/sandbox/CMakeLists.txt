@@ -15,6 +15,7 @@ set (SOURCEFILES
   geometry/shapes/Quad.cpp
   graphics/MeshRenderer.cpp
   graphics/ShaderProgram.cpp
+  graphics/shaders/Shader2D.cpp
 )
 
 set (HEADERFILES
@@ -29,6 +30,7 @@ set (HEADERFILES
   geometry/shapes/Quad.h
   graphics/MeshRenderer.h
   graphics/ShaderProgram.h
+  graphics/shaders/Shader2D.h
 )
 
 # --------------------- Dependencies -----------------------

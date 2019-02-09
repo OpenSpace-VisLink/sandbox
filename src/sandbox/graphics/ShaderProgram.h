@@ -17,13 +17,9 @@ public:
 	void release(const SceneContext& sceneContext);
 	void render(const SceneContext& sceneContext);
 	void finishRender(const SceneContext& sceneContext);
-	void setShaderParameters(const SceneContext& sceneContext);
 
 protected:
-	GLuint compileShader(const std::string& shaderText, GLuint shaderType) const;
-	void linkShaderProgram(GLuint shaderProgram) const;
 
-private:
 	class ShaderProgramState : public ContextState {
 	public:
 	    virtual ~ShaderProgramState() {
@@ -52,6 +48,12 @@ private:
 	    std::vector<GLuint> shaders;
 	};
 
+	virtual void setShaderParameters(const SceneContext& sceneContext, ShaderProgramState& state) = 0;
+	virtual void create(const SceneContext& sceneContext, ShaderProgramState& state) = 0;
+	GLuint compileShader(const std::string& shaderText, GLuint shaderType) const;
+	void linkShaderProgram(GLuint shaderProgram) const;
+
+private:
 	SceneContextHandler<ContextState,ShaderProgramState> contextHandler;
 };
 
