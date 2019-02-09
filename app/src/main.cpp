@@ -55,10 +55,14 @@ public:
 		scene.addNode(graphicsNode);
 		graphicsNode->addComponent((new OpenGLCallback())->init(this));
 
+		graphicsNode->addComponent(new Transform(glm::translate(glm::mat4(1.0f),glm::vec3(4,3,3))));
 		graphicsNode->addComponent(new Camera());
 		//graphicsNode->addComponent(new Transform(glm::scale(glm::mat4(1.0f),glm::vec3(0.5f))));
 		graphicsNode->addComponent(new MaterialShader());
 		graphicsNode->addComponent(new NodeRenderer(geometryNode));
+
+		glm::vec3 pos = quad->getWorldPosition();
+		std::cout << pos.x << " " << pos.y << " " << pos.z << std::endl;
 
 	}
 

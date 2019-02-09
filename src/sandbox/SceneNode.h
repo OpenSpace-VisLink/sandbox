@@ -18,7 +18,7 @@ public:
 
 	void addNode(SceneNode* node);
 	const std::vector<SceneNode*>& getChildren() const { return nodes; }
-	SceneNode* getParent() { return parent; }
+	const SceneNode* getParent() const { return parent; }
 
 	void addComponent(SceneComponent* component);
 	void deleteComponent(SceneComponent* component);

@@ -1,5 +1,6 @@
 #include "sandbox/SceneNode.h"
 #include "sandbox/SceneComponent.h"
+#include "sandbox/base/Transform.h"
 #include <iostream>
 
 namespace sandbox {
@@ -91,7 +92,14 @@ void SceneNode::render(const SceneContext& sceneContext) {
 }
 
 glm::vec3 SceneNode::getWorldPosition() const {
-	return glm::vec3(0.0f);
+	glm::vec4 position(0.0f, 0.0f, 0.0f, 1.0f);
+	for (const SceneNode* node = this; node != NULL; node = node->getParent() ) {
+		Transform* transform = node->getComponent<Transform>();
+		if (transform) {
+			position = transform->getTransform()*position;
+		}
+	}
+	return position;
 }
 
 SceneComponent* SceneNode::getComponentByType(const std::type_info& type) const {
