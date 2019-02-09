@@ -17,6 +17,9 @@
 #include "sandbox/graphics/NodeRenderer.h"
 #include "sandbox/base/Transform.h"
 #include "glm/glm.hpp"
+#include <glm/gtc/matrix_access.hpp>
+#include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtc/type_ptr.hpp>
 
 using namespace sandbox;
 
@@ -37,10 +40,11 @@ public:
 		addVariableSlider(panel, b, "Blue");
 
 		SceneNode* geometryNode = new SceneNode();
+		geometryNode->addComponent(new Transform(glm::scale(glm::mat4(1.0f),glm::vec3(0.5f))));
 		scene.addNode(geometryNode);
 		SceneNode* quad = new SceneNode();
 		geometryNode->addNode(quad);
-		quad->addComponent(new Transform(glm::mat4(1.0f)));
+		quad->addComponent(new Transform(glm::scale(glm::mat4(1.0f),glm::vec3(0.5f))));
 		quad->addComponent(new Quad());
 		quad->addComponent(new MeshRenderer());
 
@@ -48,7 +52,7 @@ public:
 		scene.addNode(graphicsNode);
 		graphicsNode->addComponent((new OpenGLCallback())->init(this));
 		graphicsNode->addComponent(new ShaderProgram());
-		graphicsNode->addComponent(new NodeRenderer(quad));
+		graphicsNode->addComponent(new NodeRenderer(geometryNode));
 
 	}
 

@@ -1,5 +1,6 @@
 #include "sandbox/graphics/MeshRenderer.h"
 #include <iostream>
+#include "sandbox/graphics/RenderState.h"
 
 namespace sandbox {
 
@@ -89,6 +90,13 @@ void MeshRenderer::render(const SceneContext& sceneContext) {
 	if (state.initialized) {
 		//std::cout << "Render Mesh" << state.vao << " " << mesh->getIndices().size() << std::endl;
 	    glBindVertexArray(state.vao);
+
+	    RenderState& renderState = RenderState::get(sceneContext);
+	    ShaderProgram* shader = renderState.getShaderProgram().get();
+	    if (shader) {
+	    	shader->use(sceneContext);
+	    }
+
 	    //glDrawElements(GL_PATCHES, mesh.indices.size(), GL_UNSIGNED_INT, (void*)0);
 	    //glDrawElements(GL_TRIANGLES, mesh->getIndices().size(), GL_UNSIGNED_INT, (void*)0);
 		glDrawElementsInstancedBaseVertex(GL_TRIANGLES,
@@ -98,6 +106,10 @@ void MeshRenderer::render(const SceneContext& sceneContext) {
 				1, //numInstances,
 				0);
 	    glBindVertexArray(0);
+
+	    if (shader) {
+	    	shader->release(sceneContext);
+	    }
 	}
 }
 

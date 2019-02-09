@@ -16,6 +16,7 @@ public:
 	virtual void updateSharedContext(const SceneContext& sceneContext) {}
 	virtual void updateContext(const SceneContext& sceneContext) {}
 	virtual void use(const SceneContext& sceneContext) {}
+	virtual void release(const SceneContext& sceneContext) {}
 	virtual void render(const SceneContext& sceneContext) {}
 	virtual void finishRender(const SceneContext& sceneContext) {}
 
