@@ -5,7 +5,7 @@
 
 namespace sandbox {
 
-ShaderProgram::ShaderProgram() {
+ShaderProgram::ShaderProgram() : forceShader(false) {
 	addType<ShaderProgram>();
 }
 
@@ -46,7 +46,7 @@ void ShaderProgram::render(const SceneContext& sceneContext) {
 
 	if (state.initialized) {
 		RenderState& renderState = RenderState::get(sceneContext);
-		renderState.getShaderProgram().push(this);
+		renderState.getShaderProgram().push(this, forceShader);
 	}
 }
 

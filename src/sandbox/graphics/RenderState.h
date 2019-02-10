@@ -15,6 +15,7 @@ public:
 		viewMatrix.set(glm::mat4(1.0));
 		modelMatrix.set(glm::mat4(1.0));
 		shaderProgram.set(NULL);
+		sceneNode.set(NULL);
 	}
 
 	virtual ~RenderState() {}
@@ -23,6 +24,7 @@ public:
 	StateItemStack<glm::mat4>& getViewMatrix() { return viewMatrix; }
 	StateItemStack<glm::mat4>& getModelMatrix() { return modelMatrix; }
 	StateItemStack<ShaderProgram*>& getShaderProgram() { return shaderProgram; }
+	StateItemStack<const SceneNode*>& getSceneNode() { return sceneNode; }
 
 	static RenderState& get(const SceneContext& sceneContext) { return sceneContext.getRenderState()->getItem<RenderState>(); }
 
@@ -31,6 +33,7 @@ private:
 	StateItemStack<glm::mat4> viewMatrix;
 	StateItemStack<glm::mat4> modelMatrix;
 	StateItemStack<ShaderProgram*> shaderProgram;
+	StateItemStack<const SceneNode*> sceneNode;
 };
 
 }

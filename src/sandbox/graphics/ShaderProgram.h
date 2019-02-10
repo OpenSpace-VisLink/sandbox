@@ -17,6 +17,7 @@ public:
 	void release(const SceneContext& sceneContext);
 	void render(const SceneContext& sceneContext);
 	void finishRender(const SceneContext& sceneContext);
+	bool setForceShader(bool forceShader) { this->forceShader = forceShader; }
 
 protected:
 
@@ -55,6 +56,7 @@ protected:
 
 private:
 	SceneContextHandler<ContextState,ShaderProgramState> contextHandler;
+	bool forceShader;
 };
 
 }

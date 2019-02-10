@@ -2,6 +2,7 @@
 #include "sandbox/SceneComponent.h"
 #include "sandbox/base/Transform.h"
 #include <iostream>
+#include "sandbox/graphics/RenderState.h"
 
 namespace sandbox {
 
@@ -78,6 +79,8 @@ void SceneNode::use(const SceneContext& sceneContext) {
 }
 
 void SceneNode::render(const SceneContext& sceneContext) {
+	RenderState::get(sceneContext).getSceneNode().push(this);
+
 	for (int f = 0; f < components.size(); f++) {
 		components[f]->render(sceneContext);
 	}
@@ -89,6 +92,8 @@ void SceneNode::render(const SceneContext& sceneContext) {
 	for (int f = 0; f < components.size(); f++) {
 		components[f]->finishRender(sceneContext);
 	}
+
+	RenderState::get(sceneContext).getSceneNode().pop();
 }
 
 glm::vec3 SceneNode::getWorldPosition() const {

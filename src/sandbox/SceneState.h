@@ -50,7 +50,7 @@ private:
 template<typename T>
 class StateItemStack {
 public:
-	StateItemStack() {
+	StateItemStack() : finalIndex(-1) {
 		items.push_back(T());
 	}
 
@@ -61,10 +61,18 @@ public:
 	}
 
 	const T& get() {
+		if (finalIndex >= 0) {
+			return items[finalIndex];
+		}
+
 		return items[items.size() - 1];
 	}
 
-	void push(const T& item) {
+	void push(const T& item, bool final = false) {
+		if (final) {
+			finalIndex = items.size();
+		}
+
 		items.push_back(item);
 	}
 
@@ -72,10 +80,15 @@ public:
 		if (items.size() > 1) {
 			items.pop_back();
 		}
+
+		if (finalIndex = items.size()) {
+			finalIndex = -1;	
+		}
 	}
 
 private:
 	std::vector<T> items;
+	int finalIndex;
 };
 
 }
