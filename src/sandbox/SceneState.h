@@ -81,7 +81,7 @@ public:
 			items.pop_back();
 		}
 
-		if (finalIndex = items.size()) {
+		if (finalIndex == items.size()) {
 			finalIndex = -1;	
 		}
 	}

@@ -5,6 +5,8 @@
 #include <glm/gtc/type_ptr.hpp>
 
 #include "sandbox/graphics/RenderState.h"
+#include "sandbox/geometry/Material.h"
+#include <iostream>
 
 
 namespace sandbox {
@@ -24,16 +26,17 @@ void MaterialShader::create(const SceneContext& sceneContext, ShaderProgramState
 		            "layout(location = 1) in vec3 normal; "
 					"layout(location = 2) in vec2 coord; "
 		            ""
-		            "uniform float scale; "
 		            "uniform mat4 ProjectionMatrix; "
 		            "uniform mat4 ViewMatrix; "
 		            "uniform mat4 ModelMatrix; "
+		            "uniform mat3 NormalMatrix; "
+		            ""
 		            "out vec3 pos; "
 		            "out vec3 norm; "
 		            ""
 		            "void main() { "
-		            "   pos = position.xyz; "
-		            "   norm = normal.xyz; "
+		            "   pos = (ModelMatrix*vec4(position,1.0)).xyz; "
+		            "   norm = NormalMatrix*normal.xyz; "
 		            "   gl_Position = ProjectionMatrix*ViewMatrix*ModelMatrix*vec4(pos, 1.0); "
 		            "}";
 
@@ -41,13 +44,42 @@ void MaterialShader::create(const SceneContext& sceneContext, ShaderProgramState
 
     std::string fragmentShader =
             "#version 330 \n"
+            ""
+		    "uniform bool hasColor; "
+		    "uniform bool hasMaterial; "
+		    "uniform vec4 color; "
+		    "uniform vec3 eyePosition; "
+		    "uniform vec3 ambient; "
+            "uniform vec3 diffuse; "
+            "uniform vec3 specular; "
+            "uniform float shininess; "
 		    ""
 		    "in vec3 pos; "
 		    "in vec3 norm; "
 		    ""
             "layout (location = 0) out vec4 colorOut;  "
             ""
-            "void main() { colorOut = vec4(norm,1); }";
+            "void main() { "
+            "  if (!hasMaterial) { colorOut = vec4(norm,1); return; } "
+            "  vec4 lightPos = vec4(-1,-0.5,1.0,0); "
+            ""
+            "  vec3 lightDir = lightPos.xyz; "
+            "  if (lightPos.w > 0.001) { lightDir = lightPos.xyz - pos; } "
+            "  lightDir = normalize(lightDir); "
+            "  float intensity = max(dot(norm,lightDir), 0.0); "
+            "  vec3 spec = vec3(0.0); "
+            "  if (intensity > 0.0) { "
+            "    vec3 h = normalize(lightDir + normalize(eyePosition/1.0-pos.xyz)); "
+            "    float intSpec = max(dot(h,norm), 0.0); "
+            "    float powTerm = pow(intSpec, shininess); "
+            "    spec = specular*powTerm; "
+            "  } "
+            "  colorOut = vec4(max(intensity*diffuse + spec, ambient).xyz, 1.0);"
+            ""
+            //"  colorOut = vec4(norm,1); "
+            "  if (hasColor) { colorOut = vec4(colorOut.xyz*color.xyz,1.0); }"
+            "}";
+
     state.addShader(compileShader(fragmentShader, GL_FRAGMENT_SHADER));
 }
 
@@ -59,6 +91,49 @@ void MaterialShader::setShaderParameters(const SceneContext& sceneContext, Shade
 	glUniformMatrix4fv(loc, 1, GL_FALSE, glm::value_ptr(renderState.getViewMatrix().get()));
 	loc = glGetUniformLocation(state.shaderProgram, "ModelMatrix");
 	glUniformMatrix4fv(loc, 1, GL_FALSE, glm::value_ptr(renderState.getModelMatrix().get()));
+
+	glm::mat3 normalMatrix = glm::mat3(glm::transpose(glm::inverse(renderState.getViewMatrix().get()*renderState.getModelMatrix().get())));
+	loc = glGetUniformLocation(state.shaderProgram, "NormalMatrix");
+	glUniformMatrix3fv(loc, 1, GL_FALSE, glm::value_ptr(normalMatrix));
+
+	glm::vec3 eyePosition = glm::column(renderState.getViewMatrix().get(), 3);
+    loc = glGetUniformLocation(state.shaderProgram, "eyePosition");
+    glUniform3f(loc, eyePosition.x, eyePosition.y, eyePosition.z);
+
+	bool hasMaterial = false;
+	bool hasColor = false;
+	glm::vec4 color;
+	const SceneNode* node = renderState.getSceneNode().get();
+	Material* material = node->getComponent<Material>();
+	if (material) {
+		hasColor = material->hasColor();
+		color = material->getColor();
+
+		glm::vec3 ambient = material->getAmbient();
+		loc = glGetUniformLocation(state.shaderProgram, "ambient");
+		glUniform3f(loc, ambient.r, ambient.g, ambient.b);
+
+		glm::vec3 diffuse = material->getDiffuse();
+		loc = glGetUniformLocation(state.shaderProgram, "diffuse");
+		glUniform3f(loc, diffuse.r, diffuse.g, diffuse.b);
+
+		glm::vec3 specular = material->getSpecular();
+		loc = glGetUniformLocation(state.shaderProgram, "specular");
+		glUniform3f(loc, specular.r, specular.g, specular.b);
+
+		loc = glGetUniformLocation(state.shaderProgram, "shininess");
+		glUniform1f(loc, material->getShininess());
+
+		hasMaterial = true;
+	}
+
+
+	loc = glGetUniformLocation(state.shaderProgram, "hasColor");
+	glUniform1i(loc, hasColor);
+	loc = glGetUniformLocation(state.shaderProgram, "hasMaterial");
+	glUniform1i(loc, hasMaterial);
+	loc = glGetUniformLocation(state.shaderProgram, "color");
+	glUniform4f(loc, color.r, color.g, color.b, color.a);
 	//GLint loc = glGetUniformLocation(state.shaderProgram, "scale");
     //glUniform1f(loc, 0.5);
 }
