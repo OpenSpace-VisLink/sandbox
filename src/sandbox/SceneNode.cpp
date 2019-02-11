@@ -89,7 +89,7 @@ void SceneNode::render(const SceneContext& sceneContext) {
 		nodes[f]->render(sceneContext);
 	}
 
-	for (int f = 0; f < components.size(); f++) {
+	for (int f = components.size()-1; f >= 0; f--) {
 		components[f]->finishRender(sceneContext);
 	}
 

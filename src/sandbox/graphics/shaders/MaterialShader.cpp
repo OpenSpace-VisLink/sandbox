@@ -61,7 +61,7 @@ void MaterialShader::create(const SceneContext& sceneContext, ShaderProgramState
             ""
             "void main() { "
             "  if (!hasMaterial) { colorOut = vec4(norm,1); return; } "
-            "  vec4 lightPos = vec4(-1,-0.5,1.0,0); "
+            "  vec4 lightPos = vec4(-1,1,2.0,0); "
             ""
             "  vec3 lightDir = lightPos.xyz; "
             "  if (lightPos.w > 0.001) { lightDir = lightPos.xyz - pos; } "

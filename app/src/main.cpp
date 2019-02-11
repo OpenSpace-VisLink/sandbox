@@ -64,7 +64,7 @@ public:
 		geometryNode->addNode(obj);
 		obj->addComponent(new Mesh());
 		//obj->addComponent(new MeshLoader("data/bunny.obj"));
-		//obj->addComponent(new MeshLoader("data/monkey-head.obj"));
+		obj->addComponent(new MeshLoader("data/monkey-head.obj"));
 		obj->addComponent(new MeshRenderer());
 		obj->addComponent(new Material());
 
