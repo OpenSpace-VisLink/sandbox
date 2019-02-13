@@ -23,14 +23,15 @@ void PointShader::create(const SceneContext& sceneContext, ShaderProgramState& s
 		            "layout(location = 0) in vec4 data[16]; "
 		            ""
 		            "uniform float scale; "
-		            "uniform int dataIndex; "
+		            "uniform int xDataIndex; "
+		            "uniform int yDataIndex; "
 		            "uniform int xDim; "
 		            "uniform int yDim; "
 		            "uniform mat4 ModelMatrix; "
 		            "out vec2 pos; "
 		            ""
 		            "void main() { "
-		            "   pos = vec2(data[dataIndex][xDim], data[dataIndex][yDim]); "
+		            "   pos = vec2(data[xDataIndex][xDim], data[yDataIndex][yDim]); "
 		            "   gl_Position = ModelMatrix*vec4(pos, 0.0, 1.0); "
 		            "}";
 
@@ -43,7 +44,10 @@ void PointShader::create(const SceneContext& sceneContext, ShaderProgramState& s
 		    ""
             "layout (location = 0) out vec4 colorOut;  "
             ""
-            "void main() { colorOut = vec4(pos,0,1); }";
+            ""
+            "void main() { "
+            "	colorOut = vec4(pos,0,1); "
+            "}";
     state.addShader(compileShader(fragmentShader, GL_FRAGMENT_SHADER));
 }
 
@@ -51,12 +55,14 @@ void PointShader::setShaderParameters(const SceneContext& sceneContext, ShaderPr
 	RenderState& renderState = RenderState::get(sceneContext);
 	GLint loc = glGetUniformLocation(state.shaderProgram, "ModelMatrix");
 	glUniformMatrix4fv(loc, 1, GL_FALSE, glm::value_ptr(renderState.getModelMatrix().get()));
-	loc = glGetUniformLocation(state.shaderProgram, "dataIndex");
-    glUniform1i(loc, 0);
+	loc = glGetUniformLocation(state.shaderProgram, "xDataIndex");
+    glUniform1i(loc, xDim / 4);
 	loc = glGetUniformLocation(state.shaderProgram, "xDim");
-    glUniform1i(loc, xDim);
+    glUniform1i(loc, xDim % 4);
+	loc = glGetUniformLocation(state.shaderProgram, "yDataIndex");
+    glUniform1i(loc, yDim / 4);
 	loc = glGetUniformLocation(state.shaderProgram, "yDim");
-    glUniform1i(loc, yDim);
+    glUniform1i(loc, yDim % 4);
 }
 
 }

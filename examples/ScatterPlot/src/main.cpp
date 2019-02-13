@@ -90,6 +90,7 @@ public:
 		graphicsNode->addComponent((new OpenGLCallback())->init(this));
 		//graphicsNode->addComponent(new Shader2D());
 		pointShader = new PointShader();
+		//graphicsNode->addComponent(new Transform(glm::translate(glm::scale(glm::mat4(1.0), glm::vec3(0.5)), glm::vec3(1.0,0,0))));
 		graphicsNode->addComponent(pointShader);
 		graphicsNode->addComponent(new NodeRenderer(dataNode));
 		scene.addNode(graphicsNode);
