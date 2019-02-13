@@ -23,6 +23,7 @@
 #include "sandbox/base/NodeRenderer.h"
 #include "sandbox/base/Transform.h"
 #include "sandbox/base/Camera.h"
+#include "sandbox/data/CSVLoader.h"
 #include "sandbox/data/FloatDataSet.h"
 #include "sandbox/geometry/Material.h"
 #include "glm/glm.hpp"
@@ -34,48 +35,26 @@ using namespace sandbox;
 
 class TestApp : public nanogui::Screen {
 public:
-	TestApp() : nanogui::Screen(Eigen::Vector2i(1024, 768), "Test App"), pointSize(4.0f) {
+	TestApp() : nanogui::Screen(Eigen::Vector2i(1024, 768), "Test App"), pointSize(3.0f) {
 		using namespace nanogui;
 		Window* window = new Window(this);
-		window->setTitle("Window");
+		window->setTitle("");
+		//window->setDrag(false);
 		window->setLayout(new GroupLayout());
-		window->setPosition(Vector2i(15, 15));
+		//window->setLayout(new BoxLayout(Orientation::Vertical, Alignment::Minimum, 0, 0));
+		window->setPosition(Vector2i(1, 1));
 
 		//Widget* panel = new Widget(window);
 		//panel->setLayout(new BoxLayout(Orientation::Vertical, Alignment::Minimum, 0, 0));
 
 		FloatDataSet* data = new FloatDataSet();
-		data->addVariable("x");
-		data->addVariable("y");
-		data->addVariable("z");
-		data->addVariable("force");
-
-		data->addData(createPoint(-0.2,0.5,0.9,1));
-		data->addData(createPoint(-0.3,0.2,-0.9,0.4));
-		data->addData(createPoint(-0.1,0.1,-0.1,-0.4));
-		data->addData(createPoint(0,0,0,1));
-
-		new Label(window, "x-axis", "sans-bold");
-		ComboBox* comboBox = new ComboBox(window, data->getVariables());
-		comboBox->setFixedWidth(100);
-		comboBox->setCallback([this](int index) {
-			pointShader->setXDim(index);
-    	});
-
-		new Label(window, "y-axis", "sans-bold");
-		comboBox = new ComboBox(window, data->getVariables());
-		comboBox->setFixedWidth(100);
-		comboBox->setSelectedIndex(1);
-		comboBox->setCallback([this](int index) {
-			pointShader->setYDim(index);
-    	});
-
-		Slider* slider = addVariableSlider(window, pointSize, "Point Size", [this](float value) { std::cout << value << std::endl; });
-		slider->setRange(std::pair<float, float>(1,50));
 
 		SceneNode* dataNode = new SceneNode();
 		dataNode->addComponent(data);
 		dataNode->addComponent(new FloatDataRenderer());
+		//dataNode->addComponent(new CSVLoader("examples/ScatterPlot/data/cars.csv"));
+		dataNode->addComponent(new CSVLoader("/home/dan/src/cinema_quest_jay/data/full_5000.cdb/data.csv"));
+		dataNode->updateModel();
 		scene.addNode(dataNode);
 
 		SceneNode* geometryNode = new SceneNode();
@@ -88,11 +67,12 @@ public:
 
 		graphicsNode = new SceneNode();
 		graphicsNode->addComponent((new OpenGLCallback())->init(this));
-		//graphicsNode->addComponent(new Shader2D());
 		scene.addNode(graphicsNode);
 
-		SceneNode* pointNode = new SceneNode();
 		pointShader = new PointShader();
+		SceneNode* pointNode = new SceneNode();
+		glm::mat4 scatterPlotTransform = glm::translate(glm::mat4(1.0), glm::vec3(0.15f, 0.10f, 0.0));
+		pointNode->addComponent(new Transform(glm::scale(scatterPlotTransform, glm::vec3(0.85f, 0.80, 0.0))));
 		pointNode->addComponent(pointShader);
 		pointNode->addComponent(new NodeRenderer(dataNode));
 		graphicsNode->addNode(pointNode);
@@ -110,6 +90,37 @@ public:
 		glm::vec3 pos = graphicsNode->getWorldPosition();
 		std::cout << pos.x << " " << pos.y << " " << pos.z << std::endl;
 
+		pointShader->setXRange(glm::vec2(data->getMin(0), data->getMax(0)));
+		pointShader->setYRange(glm::vec2(data->getMin(1), data->getMax(1)));
+
+
+		//new Label(window, "x-axis", "sans-bold");
+		Window* xAxisWindow = new Window(this);
+		xAxisWindow->setTitle("");
+		xAxisWindow->setLayout(new BoxLayout(Orientation::Vertical, Alignment::Minimum, 0, 0));
+		xAxisWindow->setPosition(Vector2i(500, 10));
+		ComboBox* comboBox = new ComboBox(xAxisWindow, data->getVariables());
+		comboBox->setFixedWidth(100);
+		comboBox->setCallback([this, data](int index) {
+			pointShader->setXDim(index);
+			pointShader->setXRange(glm::vec2(data->getMin(index), data->getMax(index)));
+    	});
+
+		//new Label(window, "y-axis", "sans-bold");
+		Window* yAxisWindow = new Window(this);
+		yAxisWindow->setTitle("");
+		yAxisWindow->setLayout(new BoxLayout(Orientation::Vertical, Alignment::Minimum, 0, 0));
+		yAxisWindow->setPosition(Vector2i(1, 300));
+		comboBox = new ComboBox(yAxisWindow, data->getVariables());
+		comboBox->setFixedWidth(100);
+		comboBox->setSelectedIndex(1);
+		comboBox->setCallback([this, data](int index) {
+			pointShader->setYDim(index);
+			pointShader->setYRange(glm::vec2(data->getMin(index), data->getMax(index)));
+    	});
+
+		Slider* slider = addVariableSlider(window, pointSize, "Point Size", [this](float value) { std::cout << value << std::endl; });
+		slider->setRange(std::pair<float, float>(1,50));
 	}
 
 	void drawContents() {

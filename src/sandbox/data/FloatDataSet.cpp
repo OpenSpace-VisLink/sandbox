@@ -19,7 +19,22 @@ void FloatDataSet::addData(const std::vector<float>& dataPoint) {
 		return;
 	}
 
-	array.insert(array.end(), dataPoint.begin(), dataPoint.end()); 
+	array.insert(array.end(), dataPoint.begin(), dataPoint.end());
+
+	for (int f = 0; f < dataPoint.size(); f++) {
+		
+		if (numPoints == 0) {
+			stats var;
+			var.max = dataPoint[f];
+			var.min = dataPoint[f];
+			statistics.push_back(var);
+		}
+		else {
+			if (statistics[f].max < dataPoint[f]) { statistics[f].max = dataPoint[f]; } 
+			if (statistics[f].min > dataPoint[f]) { statistics[f].min = dataPoint[f]; } 
+		}
+	}
+
 	numPoints++;
 }
 

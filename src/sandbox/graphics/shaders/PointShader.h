@@ -2,6 +2,7 @@
 #define SANDBOX_GRAPHICS_SHADERS_POINTSHADER_H_
 
 #include "sandbox/graphics/ShaderProgram.h"
+#include "glm/glm.hpp"
 
 namespace sandbox {
 
@@ -14,6 +15,8 @@ public:
 
 	void setXDim(int dim) { xDim = dim; }
 	void setYDim(int dim) { yDim = dim; }
+	void setXRange(const glm::vec2& range ) { xRange = range; }
+	void setYRange(const glm::vec2& range ) { yRange = range; }
 
 protected:
 	void create(const SceneContext& sceneContext, ShaderProgramState& state);
@@ -21,6 +24,8 @@ protected:
 private:
 	int xDim;
 	int yDim;
+	glm::vec2 xRange;
+	glm::vec2 yRange;
 };
 
 }

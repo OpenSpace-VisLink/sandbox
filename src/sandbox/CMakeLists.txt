@@ -10,6 +10,7 @@ set (SOURCEFILES
   SceneNode.cpp
   base/Camera.cpp
   base/Transform.cpp
+  data/CSVLoader.cpp
   data/FloatDataSet.cpp
   geometry/Mesh.cpp
   geometry/Material.cpp
@@ -31,6 +32,7 @@ set (HEADERFILES
   SceneComponent.h
   base/Camera.h
   base/Transform.h
+  data/CSVLoader.h
   data/FloatDataSet.h
   geometry/Mesh.h
   geometry/Material.h

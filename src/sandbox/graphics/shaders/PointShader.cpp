@@ -9,7 +9,7 @@
 
 namespace sandbox {
 
-PointShader::PointShader() : xDim(0), yDim(1) {
+PointShader::PointShader() : xDim(0), yDim(1), xRange(-1.0,1.0), yRange(-1.0,1.0) {
 	addType<PointShader>();
 }
 
@@ -27,11 +27,16 @@ void PointShader::create(const SceneContext& sceneContext, ShaderProgramState& s
 		            "uniform int yDataIndex; "
 		            "uniform int xDim; "
 		            "uniform int yDim; "
+		            "uniform vec2 xRange; "
+		            "uniform vec2 yRange; "
 		            "uniform mat4 ModelMatrix; "
 		            "out vec2 pos; "
 		            ""
 		            "void main() { "
 		            "   pos = vec2(data[xDataIndex][xDim], data[yDataIndex][yDim]); "
+		            "   vec2 min = vec2(xRange[0], yRange[0]); "
+		            "   vec2 max = vec2(xRange[1], yRange[1]); "
+		            "   pos = 2.0*(pos - min)/(max - min)-1.0; "
 		            "   gl_Position = ModelMatrix*vec4(pos, 0.0, 1.0); "
 		            "}";
 
@@ -63,6 +68,10 @@ void PointShader::setShaderParameters(const SceneContext& sceneContext, ShaderPr
     glUniform1i(loc, yDim / 4);
 	loc = glGetUniformLocation(state.shaderProgram, "yDim");
     glUniform1i(loc, yDim % 4);
+	loc = glGetUniformLocation(state.shaderProgram, "xRange");
+    glUniform2f(loc, xRange.x, xRange.y);
+	loc = glGetUniformLocation(state.shaderProgram, "yRange");
+    glUniform2f(loc, yRange.x, yRange.y);
 }
 
 }

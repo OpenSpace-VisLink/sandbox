@@ -21,8 +21,17 @@ public:
 	const std::vector<float>& getArray() const { return array; }
 	unsigned int getNumPoints() const { return numPoints; }
 
+	float getMin(int index) const { return statistics[index].min; }
+	float getMax(int index) const { return statistics[index].max; }
+
 private:
+	struct stats {
+		float min;
+		float max;
+	};
+	
 	std::vector<std::string> variables;
+	std::vector<stats> statistics;
 	std::vector<float> array;
 	unsigned int numPoints;
 };
