@@ -42,7 +42,7 @@ void Shader2D::create(const SceneContext& sceneContext, ShaderProgramState& stat
 		    ""
             "layout (location = 0) out vec4 colorOut;  "
             ""
-            "void main() { colorOut = vec4(pos,0,1); }";
+            "void main() { colorOut = vec4(pos,0,0.5); }";
     state.addShader(compileShader(fragmentShader, GL_FRAGMENT_SHADER));
 }
 

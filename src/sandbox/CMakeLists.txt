@@ -15,6 +15,7 @@ set (SOURCEFILES
   geometry/Material.cpp
   geometry/MeshLoader.cpp
   geometry/shapes/Quad.cpp
+  graphics/Blend.cpp
   graphics/FloatDataRenderer.cpp
   graphics/MeshRenderer.cpp
   graphics/ShaderProgram.cpp
@@ -35,6 +36,7 @@ set (HEADERFILES
   geometry/Material.h
   geometry/MeshLoader.h
   geometry/shapes/Quad.h
+  graphics/Blend.h
   graphics/FloatDataRenderer.h
   graphics/MeshRenderer.h
   graphics/ShaderProgram.h

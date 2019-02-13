@@ -14,6 +14,7 @@
 #include "sandbox/base/RenderCallback.h"
 #include "sandbox/geometry/shapes/Quad.h"
 #include "sandbox/geometry/MeshLoader.h"
+#include "sandbox/graphics/Blend.h"
 #include "sandbox/graphics/MeshRenderer.h"
 #include "sandbox/graphics/FloatDataRenderer.h"
 #include "sandbox/graphics/shaders/MaterialShader.h"
@@ -80,20 +81,31 @@ public:
 		SceneNode* geometryNode = new SceneNode();
 		scene.addNode(geometryNode);
 
-		obj = new SceneNode();
-		obj->addComponent(new Mesh());
-		obj->addComponent(new MeshLoader("data/monkey-head.obj"));
-		obj->addComponent(new MeshRenderer());
-		geometryNode->addNode(obj);
+		SceneNode* quad = new SceneNode();
+		quad->addComponent(new Quad());
+		quad->addComponent(new MeshRenderer());
+		geometryNode->addNode(quad);
 
 		graphicsNode = new SceneNode();
 		graphicsNode->addComponent((new OpenGLCallback())->init(this));
 		//graphicsNode->addComponent(new Shader2D());
-		pointShader = new PointShader();
-		//graphicsNode->addComponent(new Transform(glm::translate(glm::scale(glm::mat4(1.0), glm::vec3(0.5)), glm::vec3(1.0,0,0))));
-		graphicsNode->addComponent(pointShader);
-		graphicsNode->addComponent(new NodeRenderer(dataNode));
 		scene.addNode(graphicsNode);
+
+		SceneNode* pointNode = new SceneNode();
+		pointShader = new PointShader();
+		pointNode->addComponent(pointShader);
+		pointNode->addComponent(new NodeRenderer(dataNode));
+		graphicsNode->addNode(pointNode);
+
+		SceneNode* selectNode = new SceneNode();
+		selectNode->addComponent(new Shader2D());
+		graphicsNode->addNode(selectNode);
+
+		selectQuad = new SceneNode();
+		selectQuad->addComponent(new Blend());
+		selectQuad->addComponent(new Transform(glm::scale(glm::mat4(1.0f), glm::vec3(0.0f))));
+		selectQuad->addComponent(new NodeRenderer(quad));
+		selectNode->addNode(selectQuad);
 
 		glm::vec3 pos = graphicsNode->getWorldPosition();
 		std::cout << pos.x << " " << pos.y << " " << pos.z << std::endl;
@@ -101,6 +113,7 @@ public:
 	}
 
 	void drawContents() {
+		handleSelect();
 		scene.updateModel();
 		scene.updateSharedContext(context);
 		scene.updateContext(context);
@@ -120,6 +133,7 @@ private:
             glDepthFunc(GL_LEQUAL);
             glPatchParameteri(GL_PATCH_VERTICES, 3);
             glEnable(GL_CULL_FACE);
+            glDisable(GL_BLEND);
             glCullFace(GL_BACK);
 		}
 	};
@@ -131,6 +145,23 @@ private:
 		v.push_back(c);
 		v.push_back(d);
 		return v;
+	}
+
+	void handleSelect() {
+		Transform* transform = selectQuad->getComponent<Transform>();
+		if (transform) {
+			if (mMouseState && !mDragActive) {
+				std::cout << 1.0f*mousePos()[0]/1024.0 << " " << 1.0f*mousePos()[1]/768.0 << std::endl;
+				float x = 2.0f*mousePos()[0]/1024.0-1.0;
+				float y = 1.0-2.0f*mousePos()[1]/768.0;
+				glm::mat4 trans = glm::translate(glm::mat4(1.0f), glm::vec3(x, y, 0.0f));//glm::scale(glm::mat4(1.0f), glm::vec3(0.25));
+				//glm::mat4 scale = glm::scale(glm::mat4(1.0f), glm::vec3(0.25));
+				transform->setTransform(glm::scale(trans, glm::vec3(0.25)));
+			}
+			else {
+				transform->setTransform(glm::scale(glm::mat4(1.0f), glm::vec3(0.0f)));
+			}
+		}
 	}
 
 	nanogui::Slider* addVariableSlider(Widget* parent, float& var, const std::string& fieldName, const std::function<void(float)>& lambda = [](float value) {}) {
@@ -148,11 +179,11 @@ private:
 
 	float pointSize;
 	PointShader* pointShader;
+	SceneNode* selectQuad;
 
 	SceneContext context;
 	SceneNode scene;
 	SceneNode* graphicsNode;
-	SceneNode* obj;
 };
 
 int main(int argc, char**argv) {
