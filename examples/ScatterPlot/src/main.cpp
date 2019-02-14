@@ -41,9 +41,9 @@ public:
 		window->setTitle("");
 		//window->setDrag(false);
 		window->setLayout(new GroupLayout());
-		//window->setLayout(new BoxLayout(Orientation::Vertical, Alignment::Minimum, 0, 0));
+		//window->setLayout(new BoxLayout(Orientation::Horizontal, Alignment::Middle, 0, 0));
 		window->setPosition(Vector2i(1, 1));
-		window->setFixedWidth(175);
+		//window->setFixedWidth(175);
 
 		//Widget* panel = new Widget(window);
 		//panel->setLayout(new BoxLayout(Orientation::Vertical, Alignment::Minimum, 0, 0));
@@ -108,19 +108,25 @@ public:
 		Window* xAxisWindow = new Window(this);
 		xAxisWindow->setTitle("");
 		xAxisWindow->setLayout(new BoxLayout(Orientation::Vertical, Alignment::Minimum, 0, 0));
-		xAxisWindow->setPosition(Vector2i(500, 5));
+		xAxisWindow->setPosition(Vector2i(width()/2, height()-20));
 		ComboBox* comboBox = new ComboBox(xAxisWindow, data->getVariables());
 		comboBox->setFixedWidth(150);
 		comboBox->setCallback([this, data](int index) {
 			pointShader->setXDim(index);
 			pointShader->setXRange(glm::vec2(data->getMin(index), data->getMax(index)));
     	});
+    	//comboBox->popup()->setLayout(new GroupLayout(10));
+    	//comboBox->popup()->setLayout(new BoxLayout(Orientation::Vertical, Alignment::Minimum, 0, 0));
+		//comboBox->popup()->setAnchorHeight(comboBox->popup()->anchorHeight() + comboBox->popup()->height());
+		performLayout();
+		comboBox->popup()->setAnchorHeight(comboBox->popup()->height() - 20);
+		xAxisWindow->setPosition(Vector2i(width()/2, height()-xAxisWindow->height()-5));
 
 		//new Label(window, "y-axis", "sans-bold");
 		Window* yAxisWindow = new Window(this);
 		yAxisWindow->setTitle("");
 		yAxisWindow->setLayout(new BoxLayout(Orientation::Vertical, Alignment::Minimum, 0, 0));
-		yAxisWindow->setPosition(Vector2i(1, 300));
+		yAxisWindow->setPosition(Vector2i(5, height()/2));
 		comboBox = new ComboBox(yAxisWindow, data->getVariables());
 		comboBox->setFixedWidth(150);
 		comboBox->setSelectedIndex(1);
@@ -128,6 +134,9 @@ public:
 			pointShader->setYDim(index);
 			pointShader->setYRange(glm::vec2(data->getMin(index), data->getMax(index)));
     	});
+
+    	performLayout();
+		comboBox->popup()->setAnchorHeight(comboBox->popup()->height()/2);
 
 		Slider* slider = addVariableSlider(window, pointSize, "Point Size", [this, pointNode](float value) { 
 			std::cout << value << std::endl; 
@@ -139,6 +148,7 @@ public:
 		comboBox = new ComboBox(window, data->getVariables());
 		comboBox->setFixedWidth(125);
 		comboBox->setSelectedIndex(2);
+		//comboBox->setSide(Popup::Left);
 		comboBox->setCallback([this, data](int index) {
 			pointShader->setColorDim(index);
 			pointShader->setColorRange(glm::vec2(data->getMin(index), data->getMax(index)));
@@ -148,6 +158,7 @@ public:
 			pointShader->setColor(glm::vec4(color[0],color[1],color[2],color[3]));
     	});
     	pointShader->setColor(glm::vec4(pointColor->color()[0],pointColor->color()[1],pointColor->color()[2],pointColor->color()[3]));
+
 	}
 
 	void drawContents() {
@@ -189,9 +200,9 @@ private:
 		Transform* transform = selectQuad->getComponent<Transform>();
 		if (transform) {
 			if (mMouseState && !mDragActive) {
-				std::cout << 1.0f*mousePos()[0]/1024.0 << " " << 1.0f*mousePos()[1]/768.0 << std::endl;
-				float x = 2.0f*mousePos()[0]/1024.0-1.0;
-				float y = 1.0-2.0f*mousePos()[1]/768.0;
+				std::cout << 1.0f*mousePos()[0]/width() << " " << 1.0f*mousePos()[1]/height() << std::endl;
+				float x = 2.0f*mousePos()[0]/width()-1.0;
+				float y = 1.0-2.0f*mousePos()[1]/height();
 				glm::mat4 trans = glm::translate(glm::mat4(1.0f), glm::vec3(x, y, 0.0f));//glm::scale(glm::mat4(1.0f), glm::vec3(0.25));
 				//glm::mat4 scale = glm::scale(glm::mat4(1.0f), glm::vec3(0.25));
 				transform->setTransform(glm::scale(trans, glm::vec3(0.25)));
