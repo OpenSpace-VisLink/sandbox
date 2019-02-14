@@ -43,6 +43,9 @@ public:
 		return NULL;
 	}
 
+	bool isVisible() { return visible; }
+	void setVisible(bool visible) { this->visible = visible; }
+
 protected:
 	SceneComponent* getComponentByType(const std::type_info& type) const;
 
@@ -56,6 +59,7 @@ private:
 	std::vector<SceneComponent*> components;
 	std::vector<SceneNode*> nodes;
 	SceneNode* parent;
+	bool visible;
 };
 
 }

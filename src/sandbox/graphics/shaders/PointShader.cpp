@@ -9,7 +9,7 @@
 
 namespace sandbox {
 
-PointShader::PointShader() : xDim(0), yDim(1), xRange(-1.0,1.0), yRange(-1.0,1.0) {
+PointShader::PointShader() : xDim(0), yDim(1), colorDim(2), xRange(-1.0,1.0), yRange(-1.0,1.0), colorRange(-1.0,1.0), color(0.0,0.0,0.0,1.0) {
 	addType<PointShader>();
 }
 
@@ -25,18 +25,23 @@ void PointShader::create(const SceneContext& sceneContext, ShaderProgramState& s
 		            "uniform float scale; "
 		            "uniform int xDataIndex; "
 		            "uniform int yDataIndex; "
+		            "uniform int zDataIndex; "
 		            "uniform int xDim; "
 		            "uniform int yDim; "
+		            "uniform int zDim; "
 		            "uniform vec2 xRange; "
 		            "uniform vec2 yRange; "
+				    "uniform vec2 zRange; "
 		            "uniform mat4 ModelMatrix; "
 		            "out vec2 pos; "
+		            "out vec3 normalizedValue; "
 		            ""
 		            "void main() { "
-		            "   pos = vec2(data[xDataIndex][xDim], data[yDataIndex][yDim]); "
-		            "   vec2 min = vec2(xRange[0], yRange[0]); "
-		            "   vec2 max = vec2(xRange[1], yRange[1]); "
-		            "   pos = 2.0*(pos - min)/(max - min)-1.0; "
+		            "   vec3 val = vec3(data[xDataIndex][xDim], data[yDataIndex][yDim], data[zDataIndex][zDim]); "
+		            "   vec3 min = vec3(xRange[0], yRange[0], zRange[0]); "
+		            "   vec3 max = vec3(xRange[1], yRange[1], zRange[1]); "
+		            "   normalizedValue = (val - min)/(max - min); "
+		            "   pos = 2.0*normalizedValue.xy-1.0; "
 		            "   gl_Position = ModelMatrix*vec4(pos, 0.0, 1.0); "
 		            "}";
 
@@ -45,13 +50,16 @@ void PointShader::create(const SceneContext& sceneContext, ShaderProgramState& s
     std::string fragmentShader =
             "#version 330 \n"
 		    ""
+		    "uniform vec4 color; "
 		    "in vec2 pos; "
+		    "in vec3 normalizedValue; "
 		    ""
             "layout (location = 0) out vec4 colorOut;  "
             ""
             ""
             "void main() { "
-            "	colorOut = vec4(pos,0,1); "
+            //"	colorOut = vec4(pos,0,1); "
+            "	colorOut = vec4(vec3(1.0)*(1-normalizedValue[2]) + normalizedValue[2]*color.xyz,color.a); "
             "}";
     state.addShader(compileShader(fragmentShader, GL_FRAGMENT_SHADER));
 }
@@ -68,10 +76,18 @@ void PointShader::setShaderParameters(const SceneContext& sceneContext, ShaderPr
     glUniform1i(loc, yDim / 4);
 	loc = glGetUniformLocation(state.shaderProgram, "yDim");
     glUniform1i(loc, yDim % 4);
+	loc = glGetUniformLocation(state.shaderProgram, "zDataIndex");
+    glUniform1i(loc, colorDim / 4);
+	loc = glGetUniformLocation(state.shaderProgram, "zDim");
+    glUniform1i(loc, colorDim % 4);
 	loc = glGetUniformLocation(state.shaderProgram, "xRange");
     glUniform2f(loc, xRange.x, xRange.y);
 	loc = glGetUniformLocation(state.shaderProgram, "yRange");
     glUniform2f(loc, yRange.x, yRange.y);
+	loc = glGetUniformLocation(state.shaderProgram, "zRange");
+    glUniform2f(loc, colorRange.x, colorRange.y);
+	loc = glGetUniformLocation(state.shaderProgram, "color");
+	glUniform4f(loc, color.r, color.g, color.b, color.a);
 }
 
 }

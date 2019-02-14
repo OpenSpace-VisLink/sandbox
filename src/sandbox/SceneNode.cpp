@@ -6,7 +6,7 @@
 
 namespace sandbox {
 
-SceneNode::SceneNode() : parent(NULL) {
+SceneNode::SceneNode() : parent(NULL), visible(true) {
 
 }
 
@@ -79,6 +79,8 @@ void SceneNode::use(const SceneContext& sceneContext) {
 }
 
 void SceneNode::render(const SceneContext& sceneContext) {
+	if (!visible) { return; }
+
 	RenderState::get(sceneContext).getSceneNode().push(this);
 
 	for (int f = 0; f < components.size(); f++) {

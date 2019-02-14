@@ -35,7 +35,7 @@ using namespace sandbox;
 
 class TestApp : public nanogui::Screen {
 public:
-	TestApp() : nanogui::Screen(Eigen::Vector2i(1024, 768), "Test App"), pointSize(3.0f) {
+	TestApp() : nanogui::Screen(Eigen::Vector2i(1024, 768), "Test App"), pointSize(2.0f) {
 		using namespace nanogui;
 		Window* window = new Window(this);
 		window->setTitle("");
@@ -43,6 +43,7 @@ public:
 		window->setLayout(new GroupLayout());
 		//window->setLayout(new BoxLayout(Orientation::Vertical, Alignment::Minimum, 0, 0));
 		window->setPosition(Vector2i(1, 1));
+		window->setFixedWidth(175);
 
 		//Widget* panel = new Widget(window);
 		//panel->setLayout(new BoxLayout(Orientation::Vertical, Alignment::Minimum, 0, 0));
@@ -69,13 +70,21 @@ public:
 		graphicsNode->addComponent((new OpenGLCallback())->init(this));
 		scene.addNode(graphicsNode);
 
+		SceneNode* scatterPlotNode = new SceneNode();
+		glm::mat4 scatterPlotTransform = glm::translate(glm::mat4(1.0), glm::vec3(0.15f, 0.10f, 0.0));
+		scatterPlotNode->addComponent(new Transform(glm::scale(scatterPlotTransform, glm::vec3(0.80f, 0.80, 0.0))));
+		Shader2D* scatterPlotBackground = new Shader2D();
+		scatterPlotBackground->setColor(glm::vec4(1.0));
+		scatterPlotNode->addComponent(scatterPlotBackground);
+		scatterPlotNode->addComponent(new NodeRenderer(quad));
+		graphicsNode->addNode(scatterPlotNode);
+
 		pointShader = new PointShader();
 		SceneNode* pointNode = new SceneNode();
-		glm::mat4 scatterPlotTransform = glm::translate(glm::mat4(1.0), glm::vec3(0.15f, 0.10f, 0.0));
-		pointNode->addComponent(new Transform(glm::scale(scatterPlotTransform, glm::vec3(0.85f, 0.80, 0.0))));
+		pointNode->addComponent(new Transform(glm::scale(glm::mat4(1.0), glm::vec3(0.90f, 0.90, 0.0))));
 		pointNode->addComponent(pointShader);
 		pointNode->addComponent(new NodeRenderer(dataNode));
-		graphicsNode->addNode(pointNode);
+		scatterPlotNode->addNode(pointNode);
 
 		SceneNode* selectNode = new SceneNode();
 		selectNode->addComponent(new Shader2D());
@@ -92,15 +101,16 @@ public:
 
 		pointShader->setXRange(glm::vec2(data->getMin(0), data->getMax(0)));
 		pointShader->setYRange(glm::vec2(data->getMin(1), data->getMax(1)));
+		pointShader->setColorRange(glm::vec2(data->getMin(2), data->getMax(2)));
 
 
 		//new Label(window, "x-axis", "sans-bold");
 		Window* xAxisWindow = new Window(this);
 		xAxisWindow->setTitle("");
 		xAxisWindow->setLayout(new BoxLayout(Orientation::Vertical, Alignment::Minimum, 0, 0));
-		xAxisWindow->setPosition(Vector2i(500, 10));
+		xAxisWindow->setPosition(Vector2i(500, 5));
 		ComboBox* comboBox = new ComboBox(xAxisWindow, data->getVariables());
-		comboBox->setFixedWidth(100);
+		comboBox->setFixedWidth(150);
 		comboBox->setCallback([this, data](int index) {
 			pointShader->setXDim(index);
 			pointShader->setXRange(glm::vec2(data->getMin(index), data->getMax(index)));
@@ -112,15 +122,32 @@ public:
 		yAxisWindow->setLayout(new BoxLayout(Orientation::Vertical, Alignment::Minimum, 0, 0));
 		yAxisWindow->setPosition(Vector2i(1, 300));
 		comboBox = new ComboBox(yAxisWindow, data->getVariables());
-		comboBox->setFixedWidth(100);
+		comboBox->setFixedWidth(150);
 		comboBox->setSelectedIndex(1);
 		comboBox->setCallback([this, data](int index) {
 			pointShader->setYDim(index);
 			pointShader->setYRange(glm::vec2(data->getMin(index), data->getMax(index)));
     	});
 
-		Slider* slider = addVariableSlider(window, pointSize, "Point Size", [this](float value) { std::cout << value << std::endl; });
-		slider->setRange(std::pair<float, float>(1,50));
+		Slider* slider = addVariableSlider(window, pointSize, "Point Size", [this, pointNode](float value) { 
+			std::cout << value << std::endl; 
+			pointNode->setVisible(value >= 1.0f);
+		});
+		slider->setRange(std::pair<float, float>(0,10));
+		
+		new Label(window, "Point Color");
+		comboBox = new ComboBox(window, data->getVariables());
+		comboBox->setFixedWidth(125);
+		comboBox->setSelectedIndex(2);
+		comboBox->setCallback([this, data](int index) {
+			pointShader->setColorDim(index);
+			pointShader->setColorRange(glm::vec2(data->getMin(index), data->getMax(index)));
+    	});
+		ColorPicker* pointColor = new ColorPicker(window, Color(0.0f, 0.0f, 0.5f, 1.0f));
+		pointColor->setCallback([this](const Color& color) {
+			pointShader->setColor(glm::vec4(color[0],color[1],color[2],color[3]));
+    	});
+    	pointShader->setColor(glm::vec4(pointColor->color()[0],pointColor->color()[1],pointColor->color()[2],pointColor->color()[3]));
 	}
 
 	void drawContents() {
@@ -135,7 +162,7 @@ private:
 	class OpenGLCallback : public RenderCallback<TestApp> {
 		void renderCallback(const SceneContext& sceneContext, TestApp* app) {
 			//std::cout << "Clear screen" << std::endl;
-			glClearColor(1,1,1,1);
+			glClearColor(0.75,0.75,0.75,1);
 			int ps = app->pointSize;
 			glPointSize(ps);
 			glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);

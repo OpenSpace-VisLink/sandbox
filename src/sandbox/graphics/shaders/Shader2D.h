@@ -11,9 +11,14 @@ public:
 	virtual ~Shader2D();
 
 	void setShaderParameters(const SceneContext& sceneContext, ShaderProgramState& state);
+	void setColor(const glm::vec4& color) { this-> color = color; hasColor = true; }
 
 protected:
 	void create(const SceneContext& sceneContext, ShaderProgramState& state);
+
+private:
+	glm::vec4 color;
+	bool hasColor;
 };
 
 }
