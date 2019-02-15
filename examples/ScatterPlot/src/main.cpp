@@ -154,11 +154,13 @@ public:
 		comboBox->setFixedWidth(125);
 		comboBox->setSelectedIndex(0);
 		//comboBox->setSide(Popup::Left);
-		comboBox->setCallback([this, data](int index) {
+		comboBox->setCallback([this, data, dataNode](int index) {
 			pointShader->setHasColorGradient(index > 0);
 			if (index > 0) {
-				pointShader->setColorDim(index-1);
-				pointShader->setColorRange(glm::vec2(data->getMin(index-1), data->getMax(index-1)));
+				FloatDataRenderer* dataRenderer = dataNode->getComponent<FloatDataRenderer>();
+				dataRenderer->sortByVariable(index);
+				//pointShader->setColorDim(index-1);
+				//pointShader->setColorRange(glm::vec2(data->getMin(index-1), data->getMax(index-1)));
 			}
     	});
 		ColorPicker* pointColor = new ColorPicker(window, Color(0.0f, 0.0f, 0.5f, 1.0f));

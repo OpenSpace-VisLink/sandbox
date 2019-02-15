@@ -21,7 +21,7 @@ public:
 private:
 	int sortedIndex;
 	bool sortDesc;
-	bool updateElements;
+	long updateElementVersion;
 
 	class FloatDataSharedState : public ContextState {
 	public:
@@ -34,6 +34,7 @@ private:
 
 	    GLuint vbo;
 	    GLuint elementBuffer;
+	    long updateElementVersion;
 	};
 
 	class FloatDataState : public ContextState {
