@@ -52,9 +52,9 @@ public:
 
 		SceneNode* dataNode = new SceneNode();
 		dataNode->addComponent(data);
-		dataNode->addComponent(new FloatDataRenderer());
 		//dataNode->addComponent(new CSVLoader("examples/ScatterPlot/data/cars.csv"));
 		dataNode->addComponent(new CSVLoader("/home/dan/src/cinema_quest_jay/data/full_5000.cdb/data.csv"));
+		dataNode->addComponent(new FloatDataRenderer());
 		dataNode->updateModel();
 		scene.addNode(dataNode);
 
@@ -156,11 +156,11 @@ public:
 		//comboBox->setSide(Popup::Left);
 		comboBox->setCallback([this, data, dataNode](int index) {
 			pointShader->setHasColorGradient(index > 0);
+			FloatDataRenderer* dataRenderer = dataNode->getComponent<FloatDataRenderer>();
+			dataRenderer->sortByVariable(index-1);
 			if (index > 0) {
-				FloatDataRenderer* dataRenderer = dataNode->getComponent<FloatDataRenderer>();
-				dataRenderer->sortByVariable(index);
-				//pointShader->setColorDim(index-1);
-				//pointShader->setColorRange(glm::vec2(data->getMin(index-1), data->getMax(index-1)));
+				pointShader->setColorDim(index-1);
+				pointShader->setColorRange(glm::vec2(data->getMin(index-1), data->getMax(index-1)));
 			}
     	});
 		ColorPicker* pointColor = new ColorPicker(window, Color(0.0f, 0.0f, 0.5f, 1.0f));

@@ -19,9 +19,9 @@ public:
 	void sortByVariable(int sortedIndex, bool sortDesc = false);
 
 private:
-	int sortedIndex;
-	bool sortDesc;
 	long updateElementVersion;
+	std::vector<unsigned int> fullIndices;
+	std::vector<unsigned int> sortedIndices;
 
 	class FloatDataSharedState : public ContextState {
 	public:

@@ -4,13 +4,18 @@
 
 namespace sandbox {
 
-FloatDataRenderer::FloatDataRenderer() : data(nullptr), sortedIndex(-1), sortDesc(false), updateElementVersion(0) {
+FloatDataRenderer::FloatDataRenderer() : data(nullptr), updateElementVersion(0) {
 	addType<FloatDataRenderer>();
 }
 
 void FloatDataRenderer::updateModel() {
 	if (!data) {
 		data = getSceneNode().getComponent<FloatDataSet>();
+
+		std::cout << data->getNumPoints() << std::endl;
+		for (unsigned int f = 0; f < data->getNumPoints(); f++) {
+		    fullIndices.push_back(f);
+		}
 	}
 }
 
@@ -20,14 +25,9 @@ void FloatDataRenderer::updateSharedContext(const SceneContext& sceneContext) {
 	if (data && !state.initialized) {
 	    std::cout << "INitialize float data shared context " << std::endl;
 
-	    std::vector<unsigned int> indices;
-	    for (unsigned int f = 0; f < data->getNumPoints(); f++) {
-	    	indices.push_back(f);
-	    }
-
 	    glGenBuffers(1, &state.elementBuffer);
 	    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, state.elementBuffer);
-	    glBufferData(GL_ELEMENT_ARRAY_BUFFER, data->getNumPoints() * sizeof(unsigned int), &indices[0], GL_DYNAMIC_DRAW);
+	    glBufferData(GL_ELEMENT_ARRAY_BUFFER, data->getNumPoints() * sizeof(unsigned int), &fullIndices[0], GL_DYNAMIC_DRAW);
 
 		glGenBuffers(1, &state.vbo);
 	    glBindBuffer(GL_ARRAY_BUFFER, state.vbo);
@@ -44,13 +44,8 @@ void FloatDataRenderer::updateSharedContext(const SceneContext& sceneContext) {
 
 	if (state.updateElementVersion != updateElementVersion) {
 		std::cout << "Update Elements" << std::endl;
-		std::vector<unsigned int> indices;
-	    for (unsigned int f = 0; f < data->getNumPoints(); f++) {
-	    	indices.push_back(f/sortedIndex);
-	    }
-
 	    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, state.elementBuffer);
-	    glBufferSubData(GL_ELEMENT_ARRAY_BUFFER,0, data->getNumPoints() * sizeof(unsigned int), &indices[0]);
+	    glBufferSubData(GL_ELEMENT_ARRAY_BUFFER,0, data->getNumPoints() * sizeof(unsigned int), &sortedIndices[0]);
 	    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
 	    state.updateElementVersion = updateElementVersion;
 	}
@@ -86,8 +81,17 @@ void FloatDataRenderer::updateContext(const SceneContext& sceneContext) {
 }
 
 void FloatDataRenderer::sortByVariable(int index, bool sortDesc) {
-	this->sortedIndex = index;
-	this->sortDesc = sortDesc;
+	if (index > 0) {
+		std::vector<unsigned int> indices;
+	    for (unsigned int f = 0; f < data->getNumPoints(); f++) {
+	    	indices.push_back(f/index);
+	    }
+	    this->sortedIndices = indices;
+	}
+	else {
+	    this->sortedIndices = fullIndices;
+	}
+
 	updateElementVersion++;
 }
 
