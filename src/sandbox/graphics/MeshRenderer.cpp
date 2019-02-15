@@ -76,6 +76,9 @@ void MeshRenderer::updateContext(const SceneContext& sceneContext) {
 	    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 3*sizeof(GLfloat), (char*)0 + 3*sizeof(float)*mesh->getNodes().size());
 	    glEnableVertexAttribArray(2);
 	    glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 2*sizeof(GLfloat), (char*)0 + 3*sizeof(float)*mesh->getNodes().size() + 3*sizeof(float)*mesh->getNormals().size());
+	    glBindVertexArray(0);
+	    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+	    glBindBuffer(GL_ARRAY_BUFFER, 0);
 	    state.initialized = true;
 	}
 	else if (!mesh && state.initialized) {

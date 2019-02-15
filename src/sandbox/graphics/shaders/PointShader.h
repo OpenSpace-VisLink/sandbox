@@ -20,6 +20,7 @@ public:
 	void setYRange(const glm::vec2& range ) { yRange = range; }
 	void setColorRange(const glm::vec2& range ) { colorRange = range; }
 	void setColor(const glm::vec4& color) { this-> color = color; }
+	void setHasColorGradient(bool hasColorGradient) { this->hasColorGradient = hasColorGradient; }
 
 protected:
 	void create(const SceneContext& sceneContext, ShaderProgramState& state);
@@ -32,6 +33,7 @@ private:
 	glm::vec2 yRange;
 	glm::vec2 colorRange;
 	glm::vec4 color;
+	bool hasColorGradient;
 };
 
 }

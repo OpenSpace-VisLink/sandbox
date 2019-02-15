@@ -4,7 +4,7 @@
 
 namespace sandbox {
 
-FloatDataRenderer::FloatDataRenderer() : data(nullptr) {
+FloatDataRenderer::FloatDataRenderer() : data(nullptr), sortedIndex(-1), sortDesc(false), updateElements(false) {
 	addType<FloatDataRenderer>();
 }
 
@@ -33,6 +33,7 @@ void FloatDataRenderer::updateSharedContext(const SceneContext& sceneContext) {
 	    glBindBuffer(GL_ARRAY_BUFFER, state.vbo);
 	    glBufferData(GL_ARRAY_BUFFER, data->getArray().size()*sizeof(float), 0, GL_DYNAMIC_DRAW);
 	    glBufferSubData(GL_ARRAY_BUFFER, 0, data->getArray().size()*sizeof(float), &data->getArray()[0]);
+
 	    state.initialized = true;
 	}
 	else if (!data && state.initialized) {
@@ -60,6 +61,9 @@ void FloatDataRenderer::updateContext(const SceneContext& sceneContext) {
 	    glVertexAttribPointer(2, 4, GL_FLOAT, GL_FALSE, sizeof(float)*data->getVariables().size(), (char*)(2*4*sizeof(float)));
 	    glEnableVertexAttribArray(3);
 	    glVertexAttribPointer(3, 4, GL_FLOAT, GL_FALSE, sizeof(float)*data->getVariables().size(), (char*)(3*4*sizeof(float)));
+	    glBindVertexArray(0);
+	    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+	    glBindBuffer(GL_ARRAY_BUFFER, 0);
 	    state.initialized = true;
 	}
 	else if (!data && state.initialized) {
@@ -68,11 +72,20 @@ void FloatDataRenderer::updateContext(const SceneContext& sceneContext) {
 	}
 }
 
+void FloatDataRenderer::sortByVariable(int index, bool sortDesc) {
+	this->sortedIndex = index;
+	this->sortDesc = sortDesc;
+	updateElements = true;
+}
+
 void FloatDataRenderer::render(const SceneContext& sceneContext) {
+	FloatDataSharedState& sharedState = *contextHandler.getSharedState(sceneContext);
 	FloatDataState& state = *contextHandler.getState(sceneContext);
 
 	if (state.initialized) {
 		//std::cout << "Render FloatData" << state.vao << " " << data->getIndices().size() << std::endl;
+		//glBindBuffer(GL_ARRAY_BUFFER, sharedState.vbo);
+	    //glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, sharedState.elementBuffer);
 	    glBindVertexArray(state.vao);
 
 	    RenderState& renderState = RenderState::get(sceneContext);

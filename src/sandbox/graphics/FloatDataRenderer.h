@@ -16,8 +16,13 @@ public:
 	void updateSharedContext(const SceneContext& sceneContext);
 	void updateContext(const SceneContext& sceneContext);
 	void render(const SceneContext& sceneContext);
+	void sortByVariable(int sortedIndex, bool sortDesc = false);
 
 private:
+	int sortedIndex;
+	bool sortDesc;
+	bool updateElements;
+
 	class FloatDataSharedState : public ContextState {
 	public:
 	    virtual ~FloatDataSharedState() {

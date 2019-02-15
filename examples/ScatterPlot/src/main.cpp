@@ -43,7 +43,7 @@ public:
 		window->setLayout(new GroupLayout());
 		//window->setLayout(new BoxLayout(Orientation::Horizontal, Alignment::Middle, 0, 0));
 		window->setPosition(Vector2i(1, 1));
-		//window->setFixedWidth(175);
+		window->setFixedWidth(180);
 
 		//Widget* panel = new Widget(window);
 		//panel->setLayout(new BoxLayout(Orientation::Vertical, Alignment::Minimum, 0, 0));
@@ -70,9 +70,14 @@ public:
 		graphicsNode->addComponent((new OpenGLCallback())->init(this));
 		scene.addNode(graphicsNode);
 
-		SceneNode* scatterPlotNode = new SceneNode();
-		glm::mat4 scatterPlotTransform = glm::translate(glm::mat4(1.0), glm::vec3(0.15f, 0.10f, 0.0));
-		scatterPlotNode->addComponent(new Transform(glm::scale(scatterPlotTransform, glm::vec3(0.80f, 0.80, 0.0))));
+		//float pixelWidth = 2.0f/width();
+		//float pixelHeight = 2.0f/height();
+		//std::cout << pixelHeight*50 << std::endl;
+		scatterPlotNode = new SceneNode();
+		//glm::mat4 scatterPlotTransform = glm::translate(glm::mat4(1.0),glm::vec3(pixelWidth*85, pixelHeight*10.0, 0.0));
+		//scatterPlotNode->addComponent(new Transform(scatterPlotTransform));
+		//scatterPlotNode->addComponent(new Transform(glm::scale(scatterPlotTransform, glm::vec3(1.0f-pixelWidth*105, 1.0f-pixelHeight*30, 0.0))));
+		scatterPlotNode->addComponent(new Transform());
 		Shader2D* scatterPlotBackground = new Shader2D();
 		scatterPlotBackground->setColor(glm::vec4(1.0));
 		scatterPlotNode->addComponent(scatterPlotBackground);
@@ -105,10 +110,9 @@ public:
 
 
 		//new Label(window, "x-axis", "sans-bold");
-		Window* xAxisWindow = new Window(this);
+		xAxisWindow = new Window(this);
 		xAxisWindow->setTitle("");
 		xAxisWindow->setLayout(new BoxLayout(Orientation::Vertical, Alignment::Minimum, 0, 0));
-		xAxisWindow->setPosition(Vector2i(width()/2, height()-20));
 		ComboBox* comboBox = new ComboBox(xAxisWindow, data->getVariables());
 		comboBox->setFixedWidth(150);
 		comboBox->setCallback([this, data](int index) {
@@ -123,10 +127,9 @@ public:
 		xAxisWindow->setPosition(Vector2i(width()/2, height()-xAxisWindow->height()-5));
 
 		//new Label(window, "y-axis", "sans-bold");
-		Window* yAxisWindow = new Window(this);
+		yAxisWindow = new Window(this);
 		yAxisWindow->setTitle("");
 		yAxisWindow->setLayout(new BoxLayout(Orientation::Vertical, Alignment::Minimum, 0, 0));
-		yAxisWindow->setPosition(Vector2i(5, height()/2));
 		comboBox = new ComboBox(yAxisWindow, data->getVariables());
 		comboBox->setFixedWidth(150);
 		comboBox->setSelectedIndex(1);
@@ -145,13 +148,18 @@ public:
 		slider->setRange(std::pair<float, float>(0,10));
 		
 		new Label(window, "Point Color");
-		comboBox = new ComboBox(window, data->getVariables());
+		std::vector<std::string> colorVariables = data->getVariables();
+		colorVariables.insert(colorVariables.begin(),"None");
+		comboBox = new ComboBox(window, colorVariables);
 		comboBox->setFixedWidth(125);
-		comboBox->setSelectedIndex(2);
+		comboBox->setSelectedIndex(0);
 		//comboBox->setSide(Popup::Left);
 		comboBox->setCallback([this, data](int index) {
-			pointShader->setColorDim(index);
-			pointShader->setColorRange(glm::vec2(data->getMin(index), data->getMax(index)));
+			pointShader->setHasColorGradient(index > 0);
+			if (index > 0) {
+				pointShader->setColorDim(index-1);
+				pointShader->setColorRange(glm::vec2(data->getMin(index-1), data->getMax(index-1)));
+			}
     	});
 		ColorPicker* pointColor = new ColorPicker(window, Color(0.0f, 0.0f, 0.5f, 1.0f));
 		pointColor->setCallback([this](const Color& color) {
@@ -159,6 +167,18 @@ public:
     	});
     	pointShader->setColor(glm::vec4(pointColor->color()[0],pointColor->color()[1],pointColor->color()[2],pointColor->color()[3]));
 
+    	resizeEvent(Eigen::Vector2i(width(), height()));
+	}
+
+	bool resizeEvent(const Eigen::Vector2i& size) {
+		float pixelWidth = 2.0f/size[0];
+		float pixelHeight = 2.0f/size[1];
+		Transform* transform = scatterPlotNode->getComponent<Transform>();
+		glm::mat4 scatterPlotTransform = glm::translate(glm::mat4(1.0),glm::vec3(pixelWidth*85, pixelHeight*10.0, 0.0));
+		transform->setTransform(glm::scale(scatterPlotTransform, glm::vec3(1.0f-pixelWidth*105, 1.0f-pixelHeight*30, 1.0)));
+		xAxisWindow->setPosition(Eigen::Vector2i(width()/2, height()-35));
+		yAxisWindow->setPosition(Eigen::Vector2i(5, height()/2));
+		return true;
 	}
 
 	void drawContents() {
@@ -176,9 +196,10 @@ private:
 			glClearColor(0.75,0.75,0.75,1);
 			int ps = app->pointSize;
 			glPointSize(ps);
+            glClearDepth(1.0f);
 			glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
 			glEnable(GL_DEPTH_TEST);
-            glClearDepth(1.0f);
+            glDepthFunc(GL_LESS);
             glDepthFunc(GL_LEQUAL);
             glPatchParameteri(GL_PATCH_VERTICES, 3);
             glEnable(GL_CULL_FACE);
@@ -229,6 +250,9 @@ private:
 	float pointSize;
 	PointShader* pointShader;
 	SceneNode* selectQuad;
+	SceneNode* scatterPlotNode;
+	nanogui::Window* xAxisWindow;
+	nanogui::Window* yAxisWindow;
 
 	SceneContext context;
 	SceneNode scene;
