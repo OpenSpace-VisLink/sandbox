@@ -6,6 +6,7 @@
 
 #include "sandbox/graphics/RenderState.h"
 #include "sandbox/geometry/Material.h"
+#include "sandbox/graphics/Texture.h"
 #include <iostream>
 
 
@@ -33,10 +34,12 @@ void MaterialShader::create(const SceneContext& sceneContext, ShaderProgramState
 		            ""
 		            "out vec3 pos; "
 		            "out vec3 norm; "
+		            "out vec2 uv; "
 		            ""
 		            "void main() { "
 		            "   pos = (ModelMatrix*vec4(position,1.0)).xyz; "
 		            "   norm = NormalMatrix*normal.xyz; "
+		            "   uv = coord; "
 		            "   gl_Position = ProjectionMatrix*ViewMatrix*ModelMatrix*vec4(pos, 1.0); "
 		            "}";
 
@@ -46,6 +49,8 @@ void MaterialShader::create(const SceneContext& sceneContext, ShaderProgramState
             "#version 330 \n"
             ""
 		    "uniform bool hasColor; "
+		    "uniform bool hasTexture; "
+            "uniform sampler2D tex; "
 		    "uniform bool hasMaterial; "
 		    "uniform vec4 color; "
 		    "uniform vec3 eyePosition; "
@@ -56,6 +61,7 @@ void MaterialShader::create(const SceneContext& sceneContext, ShaderProgramState
 		    ""
 		    "in vec3 pos; "
 		    "in vec3 norm; "
+		    "in vec2 uv; "
 		    ""
             "layout (location = 0) out vec4 colorOut;  "
             ""
@@ -77,7 +83,11 @@ void MaterialShader::create(const SceneContext& sceneContext, ShaderProgramState
             "  colorOut = vec4(max(intensity*diffuse + spec, ambient).xyz, 1.0);"
             ""
             //"  colorOut = vec4(norm,1); "
-            "  if (hasColor) { colorOut = vec4(colorOut.xyz*color.xyz,1.0); }"
+            "  if (hasColor) { colorOut = vec4(colorOut.xyz*color.xyz,1.0); } "
+            "  if (hasTexture) { "
+            "    vec4 texColor = texture(tex, uv);"
+            "	 colorOut = vec4(colorOut.xyz*texColor.xyz,texColor.a); "
+            "  } "
             "}";
 
     state.addShader(compileShader(fragmentShader, GL_FRAGMENT_SHADER));
@@ -102,12 +112,25 @@ void MaterialShader::setShaderParameters(const SceneContext& sceneContext, Shade
 
 	bool hasMaterial = false;
 	bool hasColor = false;
+	bool hasTexture = false;
 	glm::vec4 color;
 	const SceneNode* node = renderState.getSceneNode().get();
 	Material* material = node->getComponent<Material>();
 	if (material) {
 		hasColor = material->hasColor();
 		color = material->getColor();
+
+		if (material->getTexture()) {
+			Texture* texture = material->getTexture()->getComponent<Texture>();
+	    	if (texture) {
+		    		hasTexture = true;
+	    			glActiveTexture(GL_TEXTURE0+0);
+					glBindTexture(texture->getTarget(sceneContext), texture->getId(sceneContext));
+
+					loc = glGetUniformLocation(state.shaderProgram, "tex");
+					glUniform1i(loc, 0);
+	    	}
+	    }
 
 		glm::vec3 ambient = material->getAmbient();
 		loc = glGetUniformLocation(state.shaderProgram, "ambient");
@@ -134,8 +157,8 @@ void MaterialShader::setShaderParameters(const SceneContext& sceneContext, Shade
 	glUniform1i(loc, hasMaterial);
 	loc = glGetUniformLocation(state.shaderProgram, "color");
 	glUniform4f(loc, color.r, color.g, color.b, color.a);
-	//GLint loc = glGetUniformLocation(state.shaderProgram, "scale");
-    //glUniform1f(loc, 0.5);
+    loc = glGetUniformLocation(state.shaderProgram, "hasTexture");
+	glUniform1i(loc, hasTexture);
 }
 
 }

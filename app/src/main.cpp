@@ -10,10 +10,12 @@
 #include <nanogui/opengl.h>
 #include <nanogui/glutil.h>
 #include "sandbox/SceneNode.h"
+#include "sandbox/base/Image.h"
 #include "sandbox/base/RenderCallback.h"
 #include "sandbox/geometry/shapes/Quad.h"
 #include "sandbox/geometry/MeshLoader.h"
 #include "sandbox/graphics/MeshRenderer.h"
+#include "sandbox/graphics/Texture.h"
 #include "sandbox/graphics/shaders/MaterialShader.h"
 #include "sandbox/graphics/shaders/Shader2D.h"
 #include "sandbox/base/NodeRenderer.h"
@@ -50,6 +52,13 @@ public:
 		addVariableSlider(panel, specular, "Specular", [this](float value) { this->updateMaterial(); });
 		addVariableSlider(panel, shininess, "Shininess", [this](float value) { this->updateMaterial(); });
 
+		SceneNode* textures = new SceneNode();
+		SceneNode* texture = new SceneNode();
+		texture->addComponent(new Image("data/test.png"));
+		texture->addComponent(new Texture());
+		textures->addNode(texture);
+		scene.addNode(textures);
+
 		SceneNode* geometryNode = new SceneNode();
 		geometryNode->addComponent(new Transform(glm::scale(glm::mat4(1.0f),glm::vec3(0.5f))));
 		scene.addNode(geometryNode);
@@ -59,6 +68,10 @@ public:
 		quad->addComponent(new Transform(glm::rotate(glm::mat4(1.0f),0.0f,glm::vec3(1.0f,0.0f,0.0f))));
 		quad->addComponent(new Quad());
 		quad->addComponent(new MeshRenderer());
+		Material* quadMaterial = new Material();
+		quadMaterial->setTexture(texture);
+		//quadMaterial->setColor(glm::vec4(1,0,0,1));
+		quad->addComponent(quadMaterial);
 
 		obj = new SceneNode();
 		geometryNode->addNode(obj);

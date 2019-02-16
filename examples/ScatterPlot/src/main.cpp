@@ -11,6 +11,7 @@
 #include <nanogui/opengl.h>
 #include <nanogui/glutil.h>
 #include "sandbox/SceneNode.h"
+#include "sandbox/base/Image.h"
 #include "sandbox/base/RenderCallback.h"
 #include "sandbox/geometry/shapes/Quad.h"
 #include "sandbox/geometry/MeshLoader.h"

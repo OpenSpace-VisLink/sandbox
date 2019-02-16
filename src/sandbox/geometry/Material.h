@@ -27,6 +27,10 @@ public:
 	void setColor(const glm::vec4& color) { this-> color = color; colorExists = true; }
 	void removeColor() { bool colorExists = false; }
 
+	// texture properties
+	void setTexture(SceneNode* textureNode) { this->textureNode = textureNode; }
+	SceneNode* getTexture() const { return textureNode; }
+
 protected:
 	bool colorExists;
 	glm::vec4 color;
@@ -34,6 +38,7 @@ protected:
 	glm::vec3 diffuse;
 	glm::vec3 specular;
 	float shininess;
+	SceneNode* textureNode;
 };
 
 }
