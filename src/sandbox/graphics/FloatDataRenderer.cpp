@@ -1,5 +1,6 @@
 #include "sandbox/graphics/FloatDataRenderer.h"
 #include <iostream>
+#include <algorithm>    // std::sort
 #include "sandbox/graphics/RenderState.h"
 
 namespace sandbox {
@@ -80,13 +81,33 @@ void FloatDataRenderer::updateContext(const SceneContext& sceneContext) {
 	}
 }
 
+struct CompareFloatDataSetVariable : std::binary_function<unsigned int, unsigned int, bool>
+{
+    CompareFloatDataSetVariable(FloatDataSet* data, int index, bool sortDesc)
+    : data(data), index(index), sortDesc(sortDesc) {
+    	numVariables = data->getVariables().size();
+    }
+
+    bool operator()(unsigned int Lhs, unsigned int Rhs)const
+    {
+    	bool compare = data->getArray()[numVariables*Lhs + index] < data->getArray()[numVariables*Rhs + index];
+    	return sortDesc ? !compare : compare;
+    }
+
+    FloatDataSet* data;
+    int numVariables;
+    int index;
+    bool sortDesc;
+};
+
 void FloatDataRenderer::sortByVariable(int index, bool sortDesc) {
 	if (index > 0) {
-		std::vector<unsigned int> indices;
+		/*std::vector<unsigned int> indices;
 	    for (unsigned int f = 0; f < data->getNumPoints(); f++) {
 	    	indices.push_back(f/index);
-	    }
-	    this->sortedIndices = indices;
+	    }*/
+	    this->sortedIndices = fullIndices;
+	    std::sort(this->sortedIndices.begin(), this->sortedIndices.end(), CompareFloatDataSetVariable(data, index, sortDesc));
 	}
 	else {
 	    this->sortedIndices = fullIndices;
