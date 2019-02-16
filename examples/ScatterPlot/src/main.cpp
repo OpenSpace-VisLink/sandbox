@@ -18,6 +18,7 @@
 #include "sandbox/graphics/Blend.h"
 #include "sandbox/graphics/MeshRenderer.h"
 #include "sandbox/graphics/FloatDataRenderer.h"
+#include "sandbox/graphics/Texture.h"
 #include "sandbox/graphics/shaders/MaterialShader.h"
 #include "sandbox/graphics/shaders/Shader2D.h"
 #include "sandbox/graphics/shaders/PointShader.h"
@@ -49,6 +50,13 @@ public:
 		//Widget* panel = new Widget(window);
 		//panel->setLayout(new BoxLayout(Orientation::Vertical, Alignment::Minimum, 0, 0));
 
+		SceneNode* textures = new SceneNode();
+		SceneNode* texture = new SceneNode();
+		texture->addComponent(new Image("data/test.png"));
+		texture->addComponent(new Texture());
+		textures->addNode(texture);
+		scene.addNode(textures);
+
 		FloatDataSet* data = new FloatDataSet();
 
 		SceneNode* dataNode = new SceneNode();
@@ -65,6 +73,9 @@ public:
 		SceneNode* quad = new SceneNode();
 		quad->addComponent(new Quad());
 		quad->addComponent(new MeshRenderer());
+		Material* quadMaterial = new Material();
+		quadMaterial->setTexture(texture);
+		quad->addComponent(quadMaterial);
 		geometryNode->addNode(quad);
 
 		graphicsNode = new SceneNode();
@@ -80,7 +91,7 @@ public:
 		//scatterPlotNode->addComponent(new Transform(glm::scale(scatterPlotTransform, glm::vec3(1.0f-pixelWidth*105, 1.0f-pixelHeight*30, 0.0))));
 		scatterPlotNode->addComponent(new Transform());
 		Shader2D* scatterPlotBackground = new Shader2D();
-		scatterPlotBackground->setColor(glm::vec4(1.0));
+		//scatterPlotBackground->setColor(glm::vec4(1.0));
 		scatterPlotNode->addComponent(scatterPlotBackground);
 		scatterPlotNode->addComponent(new NodeRenderer(quad));
 		graphicsNode->addNode(scatterPlotNode);

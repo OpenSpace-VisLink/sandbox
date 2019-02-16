@@ -5,6 +5,8 @@
 #include <glm/gtc/type_ptr.hpp>
 
 #include "sandbox/graphics/RenderState.h"
+#include "sandbox/geometry/Material.h"
+#include "sandbox/graphics/Texture.h"
 
 
 namespace sandbox {
@@ -27,9 +29,11 @@ void Shader2D::create(const SceneContext& sceneContext, ShaderProgramState& stat
 		            "uniform float scale; "
 		            "uniform mat4 ModelMatrix; "
 		            "out vec2 pos; "
+		            "out vec2 uv; "
 		            ""
 		            "void main() { "
 		            "   pos = position.xy; "
+		            "   uv = coord; "
 		            "   gl_Position = ModelMatrix*vec4(pos, 0.0, 1.0); "
 		            "}";
 
@@ -38,15 +42,22 @@ void Shader2D::create(const SceneContext& sceneContext, ShaderProgramState& stat
     std::string fragmentShader =
             "#version 330 \n"
 		    ""
+		    "uniform bool hasTexture; "
+            "uniform sampler2D tex; "
 		    "uniform bool hasColor; "
 		    "uniform vec4 color; "
 		    "in vec2 pos; "
+		    "in vec2 uv; "
 		    ""
             "layout (location = 0) out vec4 colorOut;  "
             ""
             "void main() { "
             "	if (hasColor) { "
             "		colorOut = vec4(color); "
+            "	} "
+            "	else if (hasTexture) { "
+            "    vec4 texColor = texture(tex, uv);"
+            "	 colorOut = texture(tex, uv); "
             "	} "
             "	else { "
             "		colorOut = vec4(pos,0,0.5); "
@@ -64,6 +75,26 @@ void Shader2D::setShaderParameters(const SceneContext& sceneContext, ShaderProgr
 	glUniform1i(loc, hasColor);
 	loc = glGetUniformLocation(state.shaderProgram, "color");
 	glUniform4f(loc, color.r, color.g, color.b, color.a);
+
+	const SceneNode* node = renderState.getSceneNode().get();
+	bool hasTexture = false;
+	Material* material = node->getComponent<Material>();
+	if (material) {
+		if (material->getTexture()) {
+			Texture* texture = material->getTexture()->getComponent<Texture>();
+	    	if (texture) {
+		    		hasTexture = true;
+	    			glActiveTexture(GL_TEXTURE0+0);
+					glBindTexture(texture->getTarget(sceneContext), texture->getId(sceneContext));
+
+					loc = glGetUniformLocation(state.shaderProgram, "tex");
+					glUniform1i(loc, 0);
+	    	}
+	    }
+	}
+
+	loc = glGetUniformLocation(state.shaderProgram, "hasTexture");
+	glUniform1i(loc, hasTexture);
 }
 
 }
