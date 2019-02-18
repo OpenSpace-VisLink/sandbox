@@ -12,11 +12,13 @@ public:
 
 	void setShaderParameters(const SceneContext& sceneContext, ShaderProgramState& state);
 	void setColor(const glm::vec4& color) { this-> color = color; hasColor = true; }
+	void setTexture(SceneNode* textureNode) { this->textureNode = textureNode; }
 
 protected:
 	void create(const SceneContext& sceneContext, ShaderProgramState& state);
 
 private:
+	SceneNode* textureNode;
 	glm::vec4 color;
 	bool hasColor;
 };

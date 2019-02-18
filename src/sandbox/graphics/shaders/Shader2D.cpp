@@ -11,7 +11,7 @@
 
 namespace sandbox {
 
-Shader2D::Shader2D() : hasColor(false), color(0.0) {
+Shader2D::Shader2D() : hasColor(false), color(0.0), textureNode(nullptr) {
 	addType<Shader2D>();
 }
 
@@ -78,19 +78,25 @@ void Shader2D::setShaderParameters(const SceneContext& sceneContext, ShaderProgr
 
 	const SceneNode* node = renderState.getSceneNode().get();
 	bool hasTexture = false;
+	Texture* texture = NULL;
 	Material* material = node->getComponent<Material>();
 	if (material) {
 		if (material->getTexture()) {
-			Texture* texture = material->getTexture()->getComponent<Texture>();
-	    	if (texture) {
-		    		hasTexture = true;
-	    			glActiveTexture(GL_TEXTURE0+0);
-					glBindTexture(texture->getTarget(sceneContext), texture->getId(sceneContext));
-
-					loc = glGetUniformLocation(state.shaderProgram, "tex");
-					glUniform1i(loc, 0);
-	    	}
+			texture = material->getTexture()->getComponent<Texture>();
 	    }
+	}
+
+	if (textureNode) {
+		texture = textureNode->getComponent<Texture>();
+	}
+
+	if (texture) {
+		hasTexture = true;
+		glActiveTexture(GL_TEXTURE0+0);
+		glBindTexture(texture->getTarget(sceneContext), texture->getId(sceneContext));
+
+		loc = glGetUniformLocation(state.shaderProgram, "tex");
+		glUniform1i(loc, 0);
 	}
 
 	loc = glGetUniformLocation(state.shaderProgram, "hasTexture");

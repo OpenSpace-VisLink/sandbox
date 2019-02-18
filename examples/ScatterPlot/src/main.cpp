@@ -47,6 +47,24 @@ public:
 		window->setPosition(Vector2i(1, 1));
 		window->setFixedWidth(180);
 
+		/*std::vector<int> myHeap;
+		myHeap.push_back(4);
+		std::push_heap(myHeap.begin(), myHeap.end());
+		myHeap.push_back(2);
+		std::push_heap(myHeap.begin(), myHeap.end());
+		myHeap.push_back(8);
+		std::push_heap(myHeap.begin(), myHeap.end());
+		myHeap.push_back(1);
+		std::push_heap(myHeap.begin(), myHeap.end());
+		myHeap.push_back(1);
+		std::push_heap(myHeap.begin(), myHeap.end());
+		myHeap.push_back(7);
+		std::push_heap(myHeap.begin(), myHeap.end());
+		std::cout << "max: " << myHeap[0] << std::endl;
+		std::pop_heap(myHeap.begin(), myHeap.end());
+		std::cout << "max: " << myHeap[0] << std::endl;
+		myHeap.pop_back();*/
+
 		//Widget* panel = new Widget(window);
 		//panel->setLayout(new BoxLayout(Orientation::Vertical, Alignment::Minimum, 0, 0));
 
@@ -75,7 +93,7 @@ public:
 		quad->addComponent(new MeshRenderer());
 		Material* quadMaterial = new Material();
 		quadMaterial->setTexture(texture);
-		quad->addComponent(quadMaterial);
+		//quad->addComponent(quadMaterial);
 		geometryNode->addNode(quad);
 
 		graphicsNode = new SceneNode();
@@ -91,7 +109,8 @@ public:
 		//scatterPlotNode->addComponent(new Transform(glm::scale(scatterPlotTransform, glm::vec3(1.0f-pixelWidth*105, 1.0f-pixelHeight*30, 0.0))));
 		scatterPlotNode->addComponent(new Transform());
 		Shader2D* scatterPlotBackground = new Shader2D();
-		//scatterPlotBackground->setColor(glm::vec4(1.0));
+		scatterPlotBackground->setTexture(texture);
+		scatterPlotBackground->setColor(glm::vec4(1.0));
 		scatterPlotNode->addComponent(scatterPlotBackground);
 		scatterPlotNode->addComponent(new NodeRenderer(quad));
 		graphicsNode->addNode(scatterPlotNode);
