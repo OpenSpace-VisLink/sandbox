@@ -27,6 +27,7 @@
 #include "sandbox/base/Camera.h"
 #include "sandbox/data/CSVLoader.h"
 #include "sandbox/data/FloatDataSet.h"
+#include "sandbox/data/KdTree.h"
 #include "sandbox/geometry/Material.h"
 #include "glm/glm.hpp"
 #include <glm/gtc/matrix_access.hpp>
@@ -84,6 +85,22 @@ public:
 		dataNode->addComponent(new FloatDataRenderer());
 		dataNode->updateModel();
 		scene.addNode(dataNode);
+
+
+		std::vector<unsigned int> dimensions;
+		dimensions.push_back(0);
+		dimensions.push_back(1);
+		dimensions.push_back(2);
+		KdTree<float> kdTree(dimensions, *data);
+		std::vector<float> point;
+		point.push_back(0.0f);
+		point.push_back(0.0f);
+		point.push_back(0.0f);
+		std::vector<KdTree<float>::KdValue> values = kdTree.getNearest(point, 5);
+		for (int f = 0; f < values.size(); f++) {
+			std::cout << values[f].index << ", " << values[f].distance << std::endl;
+		}
+
 
 		SceneNode* geometryNode = new SceneNode();
 		scene.addNode(geometryNode);
