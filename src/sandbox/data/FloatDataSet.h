@@ -31,10 +31,17 @@ public:
 		return array[variables.size()*index + dimension];
 	}
 
-	float getDistance(std::vector<float> point, unsigned int index, std::vector<unsigned int> dimensions) const {
+	float getDistance(const std::vector<float>& point, unsigned int index, const std::vector<unsigned int>& dimensions) const {
 		float dist = 0.0f;
 		for (int f = 0; f < dimensions.size(); f++) {
-			dist += std::pow(array[variables.size()*index + dimensions[f] - point[f]], 2.0f);
+			if (index == 111) {
+				std::cout << dimensions[f] << " " << point[f] << " " << array[variables.size()*index + dimensions[f]] << " " << dist << std::endl;
+			}
+			dist += std::pow(array[variables.size()*index + dimensions[f]] - point[f], 2.0f);
+		}
+
+		if (index == 111) {
+			std::cout << std::sqrt(dist) << std::endl;
 		}
 
 		return std::sqrt(dist);

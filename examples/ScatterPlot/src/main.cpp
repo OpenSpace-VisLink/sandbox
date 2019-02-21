@@ -82,6 +82,7 @@ public:
 		dataNode->addComponent(data);
 		//dataNode->addComponent(new CSVLoader("examples/ScatterPlot/data/cars.csv"));
 		dataNode->addComponent(new CSVLoader("/home/dan/src/cinema_quest_jay/data/full_5000.cdb/data.csv"));
+		//dataNode->addComponent(new CSVLoader("/home/dan/src/cinema_quest_jay/data/patient.cdb/data.csv"));
 		dataNode->addComponent(new FloatDataRenderer());
 		dataNode->updateModel();
 		scene.addNode(dataNode);
@@ -96,10 +97,10 @@ public:
 		point.push_back(0.0f);
 		point.push_back(0.0f);
 		point.push_back(0.0f);
-		std::vector<KdTree<float>::KdValue> values = kdTree.getNearest(point, 5);
-		for (int f = 0; f < values.size(); f++) {
-			std::cout << values[f].index << ", " << values[f].distance << std::endl;
-		}
+		/*point.push_back(2.0f);
+		point.push_back(5.67804f);
+		point.push_back(6.29711);*/
+		std::vector<KdTree<float>::KdValue> values = kdTree.getNearestSorted(point, 10);
 
 
 		SceneNode* geometryNode = new SceneNode();
