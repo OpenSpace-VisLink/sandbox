@@ -141,14 +141,12 @@ private:
 		}
 
 		if (heap.size() < num || medianDistance < heap[0].distance) {
-			std::cout << "push: " << heap.size() << " " << medianDistance << " " << values[median] << std::endl;
 			KdValue val;
 			val.distance = medianDistance;
 			val.index = values[median];
 			heap.push_back(val);
 			std::push_heap(heap.begin(), heap.end());
 			if (heap.size() > num) {
-				std::cout <<"Pop: " <<  heap[0].index << " " << heap[0].distance << std::endl;
 				std::pop_heap(heap.begin(), heap.end());
 				heap.pop_back();
 			}

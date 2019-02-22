@@ -38,7 +38,7 @@ using namespace sandbox;
 
 class TestApp : public nanogui::Screen {
 public:
-	TestApp() : nanogui::Screen(Eigen::Vector2i(1024, 768), "Test App"), pointSize(2.0f) {
+	TestApp() : nanogui::Screen(Eigen::Vector2i(1024, 768), "Test App"), pointSize(2.0f), xDimension(0), yDimension(1) {
 		using namespace nanogui;
 		Window* window = new Window(this);
 		window->setTitle("");
@@ -76,7 +76,7 @@ public:
 		textures->addNode(texture);
 		scene.addNode(textures);
 
-		FloatDataSet* data = new FloatDataSet();
+		data = new FloatDataSet();
 
 		SceneNode* dataNode = new SceneNode();
 		dataNode->addComponent(data);
@@ -91,8 +91,7 @@ public:
 		std::vector<unsigned int> dimensions;
 		dimensions.push_back(0);
 		dimensions.push_back(1);
-		dimensions.push_back(2);
-		KdTree<float> kdTree(dimensions, *data);
+		kdTree = new KdTree<float>(dimensions, *data);
 		std::vector<float> point;
 		point.push_back(0.0f);
 		point.push_back(0.0f);
@@ -100,7 +99,7 @@ public:
 		/*point.push_back(2.0f);
 		point.push_back(5.67804f);
 		point.push_back(6.29711);*/
-		std::vector<KdTree<float>::KdValue> values = kdTree.getNearestSorted(point, 10);
+		std::vector<KdTree<float>::KdValue> values = kdTree->getNearestSorted(point, 10);
 
 
 		SceneNode* geometryNode = new SceneNode();
@@ -134,8 +133,8 @@ public:
 		graphicsNode->addNode(scatterPlotNode);
 
 		pointShader = new PointShader();
-		SceneNode* pointNode = new SceneNode();
-		pointNode->addComponent(new Transform(glm::scale(glm::mat4(1.0), glm::vec3(0.90f, 0.90, 0.0))));
+		pointNode = new SceneNode();
+		pointNode->addComponent(new Transform(glm::scale(glm::mat4(1.0), glm::vec3(0.90f, 0.90, 1.0))));
 		pointNode->addComponent(pointShader);
 		pointNode->addComponent(new NodeRenderer(dataNode));
 		scatterPlotNode->addNode(pointNode);
@@ -164,7 +163,8 @@ public:
 		xAxisWindow->setLayout(new BoxLayout(Orientation::Vertical, Alignment::Minimum, 0, 0));
 		ComboBox* comboBox = new ComboBox(xAxisWindow, data->getVariables());
 		comboBox->setFixedWidth(150);
-		comboBox->setCallback([this, data](int index) {
+		comboBox->setCallback([this](int index) {
+			xDimension = index;
 			pointShader->setXDim(index);
 			pointShader->setXRange(glm::vec2(data->getMin(index), data->getMax(index)));
     	});
@@ -182,7 +182,8 @@ public:
 		comboBox = new ComboBox(yAxisWindow, data->getVariables());
 		comboBox->setFixedWidth(150);
 		comboBox->setSelectedIndex(1);
-		comboBox->setCallback([this, data](int index) {
+		comboBox->setCallback([this](int index) {
+			yDimension = index;
 			pointShader->setYDim(index);
 			pointShader->setYRange(glm::vec2(data->getMin(index), data->getMax(index)));
     	});
@@ -190,7 +191,7 @@ public:
     	performLayout();
 		comboBox->popup()->setAnchorHeight(comboBox->popup()->height()/2);
 
-		Slider* slider = addVariableSlider(window, pointSize, "Point Size", [this, pointNode](float value) { 
+		Slider* slider = addVariableSlider(window, pointSize, "Point Size", [this](float value) { 
 			std::cout << value << std::endl; 
 			pointNode->setVisible(value >= 1.0f);
 		});
@@ -203,7 +204,7 @@ public:
 		comboBox->setFixedWidth(125);
 		comboBox->setSelectedIndex(0);
 		//comboBox->setSide(Popup::Left);
-		comboBox->setCallback([this, data, dataNode](int index) {
+		comboBox->setCallback([this, dataNode](int index) {
 			pointShader->setHasColorGradient(index > 0);
 			FloatDataRenderer* dataRenderer = dataNode->getComponent<FloatDataRenderer>();
 			dataRenderer->sortByVariable(index-1);
@@ -219,6 +220,10 @@ public:
     	pointShader->setColor(glm::vec4(pointColor->color()[0],pointColor->color()[1],pointColor->color()[2],pointColor->color()[3]));
 
     	resizeEvent(Eigen::Vector2i(width(), height()));
+	}
+
+	~TestApp() {
+		delete kdTree;
 	}
 
 	bool resizeEvent(const Eigen::Vector2i& size) {
@@ -272,12 +277,37 @@ private:
 		Transform* transform = selectQuad->getComponent<Transform>();
 		if (transform) {
 			if (mMouseState && !mDragActive) {
-				std::cout << 1.0f*mousePos()[0]/width() << " " << 1.0f*mousePos()[1]/height() << std::endl;
+				//std::cout << 1.0f*mousePos()[0]/width() << " " << 1.0f*mousePos()[1]/height() << std::endl;
 				float x = 2.0f*mousePos()[0]/width()-1.0;
 				float y = 1.0-2.0f*mousePos()[1]/height();
+
+				std::cout << std::endl << x << " " << y << std::endl;
+
 				glm::mat4 trans = glm::translate(glm::mat4(1.0f), glm::vec3(x, y, 0.0f));//glm::scale(glm::mat4(1.0f), glm::vec3(0.25));
 				//glm::mat4 scale = glm::scale(glm::mat4(1.0f), glm::vec3(0.25));
 				transform->setTransform(glm::scale(trans, glm::vec3(0.25)));
+
+
+				Transform* transform = scatterPlotNode->getComponent<Transform>();
+				trans = transform->getTransform();
+				Transform* pointTrans = pointNode->getComponent<Transform>();
+				glm::vec4 p(x,y,0,1.0);
+				glm::vec2 newP = glm::inverse(trans*pointTrans->getTransform())*p; //
+				std::cout << std::endl << newP.x << " " << newP.y << std::endl;
+				float sX = (1.0+newP.x)/2.0;
+				float sY = (1.0+newP.y)/2.0;
+				std::cout << std::endl << sX << " " << sY << std::endl;
+
+				std::vector<float> point;
+
+				point.push_back(data->getMin(xDimension) + sX*(data->getMax(xDimension)-data->getMin(xDimension)));
+				point.push_back(data->getMin(yDimension) + sY*(data->getMax(yDimension)-data->getMin(yDimension)));
+				//point.push_back(sY);
+				/*point.push_back(2.0f);
+				point.push_back(5.67804f);
+				point.push_back(6.29711);*/
+				std::cout << point[0] << " " << point[1] << std::endl;
+				std::vector<KdTree<float>::KdValue> values = kdTree->getNearestSorted(point, 10);
 			}
 			else {
 				transform->setTransform(glm::scale(glm::mat4(1.0f), glm::vec3(0.0f)));
@@ -305,9 +335,13 @@ private:
 	nanogui::Window* xAxisWindow;
 	nanogui::Window* yAxisWindow;
 
+	SceneNode* pointNode;
 	SceneContext context;
 	SceneNode scene;
 	SceneNode* graphicsNode;
+	KdTree<float>* kdTree;
+	FloatDataSet* data;
+	int xDimension, yDimension;
 };
 
 int main(int argc, char**argv) {

@@ -34,14 +34,7 @@ public:
 	float getDistance(const std::vector<float>& point, unsigned int index, const std::vector<unsigned int>& dimensions) const {
 		float dist = 0.0f;
 		for (int f = 0; f < dimensions.size(); f++) {
-			if (index == 111) {
-				std::cout << dimensions[f] << " " << point[f] << " " << array[variables.size()*index + dimensions[f]] << " " << dist << std::endl;
-			}
-			dist += std::pow(array[variables.size()*index + dimensions[f]] - point[f], 2.0f);
-		}
-
-		if (index == 111) {
-			std::cout << std::sqrt(dist) << std::endl;
+			dist += std::pow((array[variables.size()*index + dimensions[f]] - point[f])/(getMax(dimensions[f]) - getMin(dimensions[f])), 2.0f);
 		}
 
 		return std::sqrt(dist);

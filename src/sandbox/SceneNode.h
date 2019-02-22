@@ -31,6 +31,7 @@ public:
 	void render(const SceneContext& sceneContext);
 
 	glm::vec3 getWorldPosition() const;
+	glm::mat4 getWorldTransform() const;
 
 	template<typename T>
 	T* getComponent() const {

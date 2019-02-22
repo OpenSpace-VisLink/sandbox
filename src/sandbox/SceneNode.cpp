@@ -109,6 +109,19 @@ glm::vec3 SceneNode::getWorldPosition() const {
 	return position;
 }
 
+
+glm::mat4 SceneNode::getWorldTransform() const {
+	glm::mat4 trans(1.0);
+	for (const SceneNode* node = this; node != NULL; node = node->getParent() ) {
+		Transform* transform = node->getComponent<Transform>();
+		if (transform) {
+			trans = transform->getTransform()*trans;
+		}
+	}
+
+	return trans;
+}
+
 SceneComponent* SceneNode::getComponentByType(const std::type_info& type) const {
 	std::map<const std::type_info*, SceneComponent*, type_compare>::const_iterator it = typed_components.find(&type);
 	if (it == typed_components.end()) {

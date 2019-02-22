@@ -42,7 +42,7 @@ void PointShader::create(const SceneContext& sceneContext, ShaderProgramState& s
 		            "   vec3 max = vec3(xRange[1], yRange[1], zRange[1]); "
 		            "   normalizedValue = (val - min)/(max - min); "
 		            "   pos = 2.0*normalizedValue-1.0; "
-		            "   gl_Position = ModelMatrix*vec4(pos, 1.0); "
+		            "   gl_Position = ModelMatrix*vec4(pos.xy, 0.0, 1.0); "
 		            "}";
 
 	state.addShader(compileShader(vertexShader, GL_VERTEX_SHADER));
