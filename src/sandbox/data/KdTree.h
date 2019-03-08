@@ -54,14 +54,14 @@ public:
 		std::sort_heap(nearest.begin(), nearest.end());
 		//std::reverse(nearest.begin(), nearest.end());
 
-		for (int f = 0; f < nearest.size(); f++) {
+		/*for (int f = 0; f < nearest.size(); f++) {
 			std::cout << nearest[f].index << ", " << nearest[f].distance << " [" ;
 			for (int i = 0; i < dimensions.size(); i++) {
 				std::cout << searchable.getDimension(nearest[f].index, dimensions[i]) << ", ";
 			}
 
 			std::cout << "]" << std::endl;
-		}
+		}*/
 
 		return nearest;
 	}

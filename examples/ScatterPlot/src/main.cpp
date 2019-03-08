@@ -38,7 +38,7 @@ using namespace sandbox;
 
 class TestApp : public nanogui::Screen {
 public:
-	TestApp() : nanogui::Screen(Eigen::Vector2i(1024, 768), "Test App"), pointSize(2.0f), xDimension(0), yDimension(1) {
+	TestApp() : nanogui::Screen(Eigen::Vector2i(1024, 768), "Test App"), pointSize(2.0f), xDimension(0), yDimension(1), backgroundDimension(-1) {
 		using namespace nanogui;
 		Window* window = new Window(this);
 		window->setTitle("");
@@ -81,9 +81,9 @@ public:
 		for (int x = 0; x < image->getWidth(); x++) {
 			for (int y = 0; y < image->getHeight(); y++) {
 				//std::cout << x << ", " << y << std::endl;
-				image->setPixelValue(x,y,0,255.0*(1.0f*x/image->getWidth()));
-				image->setPixelValue(x,y,1,255.0*(1.0f*y/image->getHeight()));
-				image->setPixelValue(x,y,2,0);
+				image->setPixelValue(x,y,0,255);
+				image->setPixelValue(x,y,1,255);
+				image->setPixelValue(x,y,2,255);
 				image->setPixelValue(x,y,3,255);
 			}
 		}
@@ -148,7 +148,8 @@ public:
 		pointNode->addComponent(new Transform(glm::scale(glm::mat4(1.0), glm::vec3(0.90f, 0.90, 1.0))));
 		scatterPlotNode->addNode(pointNode);
 
-		SceneNode* scatterPlotBackgroundMap = new SceneNode();
+		scatterPlotBackgroundMap = new SceneNode();
+		scatterPlotBackgroundMap->setVisible(false);
 		Shader2D* scatterPlotBackgroundShader = new Shader2D();
 		scatterPlotBackgroundShader->setTexture(texture);
 		scatterPlotBackgroundMap->addComponent(scatterPlotBackgroundShader);
@@ -189,6 +190,7 @@ public:
 			xDimension = index;
 			pointShader->setXDim(index);
 			pointShader->setXRange(glm::vec2(data->getMin(index), data->getMax(index)));
+			regenerateBackground();
     	});
     	//comboBox->popup()->setLayout(new GroupLayout(10));
     	//comboBox->popup()->setLayout(new BoxLayout(Orientation::Vertical, Alignment::Minimum, 0, 0));
@@ -208,6 +210,7 @@ public:
 			yDimension = index;
 			pointShader->setYDim(index);
 			pointShader->setYRange(glm::vec2(data->getMin(index), data->getMax(index)));
+			regenerateBackground();
     	});
 
     	performLayout();
@@ -241,6 +244,23 @@ public:
     	});
     	pointShader->setColor(glm::vec4(pointColor->color()[0],pointColor->color()[1],pointColor->color()[2],pointColor->color()[3]));
 
+    	new Label(window, "Background Color");
+		comboBox = new ComboBox(window, colorVariables);
+		comboBox->setFixedWidth(125);
+		comboBox->setSelectedIndex(0);
+		//comboBox->setSide(Popup::Left);
+		comboBox->setCallback([this, dataNode](int index) {
+			backgroundDimension = index -1;
+			regenerateBackground();
+    	});
+    	backgroundColor = glm::vec4(0.25,0.25,0.25,0.25);
+		pointColor = new ColorPicker(window, Color(backgroundColor.r, backgroundColor.g, backgroundColor.b, backgroundColor.a));
+		pointColor->setCallback([this](const Color& color) {
+			backgroundColor = glm::vec4(color[0],color[1],color[2],color[3]);
+    	});
+    	pointShader->setColor(glm::vec4(pointColor->color()[0],pointColor->color()[1],pointColor->color()[2],pointColor->color()[3]));
+
+
     	resizeEvent(Eigen::Vector2i(width(), height()));
 	}
 
@@ -268,6 +288,74 @@ public:
 	}
 
 private:
+	void regenerateBackground() {
+		if (backgroundDimension >= 0) {
+			scatterPlotBackgroundMap->setVisible(true);
+			std::vector<unsigned int> dimensions;
+			dimensions.push_back(xDimension);
+			dimensions.push_back(yDimension);
+			delete kdTree;
+			kdTree = new KdTree<float>(dimensions, *data);
+
+			std::vector<float> point;
+			point.push_back(0.0f);
+			point.push_back(0.0f);
+			for (int x = 0; x < image->getWidth(); x++) {
+				for (int y = 0; y < image->getHeight(); y++) {
+					/*image->setPixelValue(x,y,0,255.0*(1.0f*x/image->getWidth()));
+					image->setPixelValue(x,y,1,255.0*(1.0f - 1.0f*y/image->getHeight()));
+					image->setPixelValue(x,y,2,0);
+					image->setPixelValue(x,y,3,255);*/
+					image->setPixelValue(x,y,0,255);
+					image->setPixelValue(x,y,1,255);
+					image->setPixelValue(x,y,2,255);
+					image->setPixelValue(x,y,3,255);
+
+					//if (std::pow(1.0f*x/image->getWidth() - sX, 2.0f) + std::pow(1.0-1.0f*y/image->getWidth() - sY, 2.0f) < 0.01) {
+						point[0] = data->getMin(xDimension) + 1.0f*x/image->getWidth()*(data->getMax(xDimension)-data->getMin(xDimension));
+						point[1] = data->getMin(yDimension) + (1.0-1.0f*y/image->getHeight())*(data->getMax(yDimension)-data->getMin(yDimension));
+						std::vector<KdTree<float>::KdValue> values = kdTree->getNearestSorted(point, 10);
+						
+						float totalInverseDistance = 0.0f;
+						for (int f = 0; f < values.size(); f++) {
+							totalInverseDistance += 1.0f/values[f].distance;
+						}
+						unsigned int zDimension = backgroundDimension;
+
+						float estimate = 0.0;
+						for (int f = 0; f < values.size(); f++) {
+							float weight = (1.0f/values[f].distance)/totalInverseDistance;
+							estimate += weight*data->getDimension(values[f].index, zDimension);
+						}
+
+						estimate = (estimate - data->getMin(zDimension))/(data->getMax(zDimension)-data->getMin(zDimension));
+
+						glm::vec4 color = glm::vec4(1.0)*(1-estimate) + estimate*backgroundColor;
+
+						//std::cout << values[0].distance << std::endl;
+						//image->setPixelValue(x,y,0,255.0*(1.0-values[0].distance*10.0f));
+						image->setPixelValue(x,y,0,255.0*color.r);
+						image->setPixelValue(x,y,1,255.0*color.g);
+						image->setPixelValue(x,y,2,255.0*color.b);
+						image->setPixelValue(x,y,3,255);
+					//}
+				}
+			}
+		}
+		else {
+			scatterPlotBackgroundMap->setVisible(false);
+			/*for (int x = 0; x < image->getWidth(); x++) {
+				for (int y = 0; y < image->getHeight(); y++) {
+					//std::cout << x << ", " << y << std::endl;
+					image->setPixelValue(x,y,0,255);
+					image->setPixelValue(x,y,1,255);
+					image->setPixelValue(x,y,2,255);
+					image->setPixelValue(x,y,3,255);
+				}
+			}*/
+		}
+	}
+
 	class OpenGLCallback : public RenderCallback<TestApp> {
 		void renderCallback(const SceneContext& sceneContext, TestApp* app) {
 			//std::cout << "Clear screen" << std::endl;
@@ -330,15 +418,6 @@ private:
 				point.push_back(6.29711);*/
 				std::cout << point[0] << " " << point[1] << std::endl;
 				std::vector<KdTree<float>::KdValue> values = kdTree->getNearestSorted(point, 10);
-
-				for (int x = 0; x < image->getWidth(); x++) {
-					for (int y = 0; y < image->getHeight(); y++) {
-						image->setPixelValue(x,y,0,255.0*(1.0f*x/image->getWidth()));
-						image->setPixelValue(x,y,1,255.0*(1.0f*y/image->getHeight()));
-						image->setPixelValue(x,y,2,0);
-						image->setPixelValue(x,y,3,255);
-					}
-				}
 			}
 			else {
 				transform->setTransform(glm::scale(glm::mat4(1.0f), glm::vec3(0.0f)));
@@ -373,8 +452,10 @@ private:
 	SceneNode* graphicsNode;
 	KdTree<float>* kdTree;
 	FloatDataSet* data;
-	int xDimension, yDimension;
+	int xDimension, yDimension, backgroundDimension;
 	Image* image;
+	glm::vec4 backgroundColor;
+	SceneNode* scatterPlotBackgroundMap;
 };
 
 int main(int argc, char**argv) {
