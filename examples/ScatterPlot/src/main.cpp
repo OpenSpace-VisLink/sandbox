@@ -71,10 +71,22 @@ public:
 
 		SceneNode* textures = new SceneNode();
 		SceneNode* texture = new SceneNode();
-		texture->addComponent(new Image("data/test.png"));
+		//texture->addComponent(new Image("data/test.png"));
+		texture->addComponent(new Image(500,500,4));
 		texture->addComponent(new Texture());
 		textures->addNode(texture);
 		scene.addNode(textures);
+
+		image = texture->getComponent<Image>();
+		for (int x = 0; x < image->getWidth(); x++) {
+			for (int y = 0; y < image->getHeight(); y++) {
+				//std::cout << x << ", " << y << std::endl;
+				image->setPixelValue(x,y,0,255.0*(1.0f*x/image->getWidth()));
+				image->setPixelValue(x,y,1,255.0*(1.0f*y/image->getHeight()));
+				image->setPixelValue(x,y,2,0);
+				image->setPixelValue(x,y,3,255);
+			}
+		}
 
 		data = new FloatDataSet();
 
@@ -126,18 +138,28 @@ public:
 		//scatterPlotNode->addComponent(new Transform(glm::scale(scatterPlotTransform, glm::vec3(1.0f-pixelWidth*105, 1.0f-pixelHeight*30, 0.0))));
 		scatterPlotNode->addComponent(new Transform());
 		Shader2D* scatterPlotBackground = new Shader2D();
-		scatterPlotBackground->setTexture(texture);
+		//scatterPlotBackground->setTexture(texture);
 		scatterPlotBackground->setColor(glm::vec4(1.0));
 		scatterPlotNode->addComponent(scatterPlotBackground);
 		scatterPlotNode->addComponent(new NodeRenderer(quad));
 		graphicsNode->addNode(scatterPlotNode);
 
-		pointShader = new PointShader();
 		pointNode = new SceneNode();
 		pointNode->addComponent(new Transform(glm::scale(glm::mat4(1.0), glm::vec3(0.90f, 0.90, 1.0))));
-		pointNode->addComponent(pointShader);
-		pointNode->addComponent(new NodeRenderer(dataNode));
 		scatterPlotNode->addNode(pointNode);
+
+		SceneNode* scatterPlotBackgroundMap = new SceneNode();
+		Shader2D* scatterPlotBackgroundShader = new Shader2D();
+		scatterPlotBackgroundShader->setTexture(texture);
+		scatterPlotBackgroundMap->addComponent(scatterPlotBackgroundShader);
+		scatterPlotBackgroundMap->addComponent(new NodeRenderer(quad));
+		pointNode->addNode(scatterPlotBackgroundMap);
+
+		pointShader = new PointShader();
+		points = new SceneNode();
+		points->addComponent(pointShader);
+		points->addComponent(new NodeRenderer(dataNode));
+		pointNode->addNode(points);
 
 		SceneNode* selectNode = new SceneNode();
 		selectNode->addComponent(new Shader2D());
@@ -193,7 +215,7 @@ public:
 
 		Slider* slider = addVariableSlider(window, pointSize, "Point Size", [this](float value) { 
 			std::cout << value << std::endl; 
-			pointNode->setVisible(value >= 1.0f);
+			points->setVisible(value >= 1.0f);
 		});
 		slider->setRange(std::pair<float, float>(0,10));
 		
@@ -308,6 +330,15 @@ private:
 				point.push_back(6.29711);*/
 				std::cout << point[0] << " " << point[1] << std::endl;
 				std::vector<KdTree<float>::KdValue> values = kdTree->getNearestSorted(point, 10);
+
+				for (int x = 0; x < image->getWidth(); x++) {
+					for (int y = 0; y < image->getHeight(); y++) {
+						image->setPixelValue(x,y,0,255.0*(1.0f*x/image->getWidth()));
+						image->setPixelValue(x,y,1,255.0*(1.0f*y/image->getHeight()));
+						image->setPixelValue(x,y,2,0);
+						image->setPixelValue(x,y,3,255);
+					}
+				}
 			}
 			else {
 				transform->setTransform(glm::scale(glm::mat4(1.0f), glm::vec3(0.0f)));
@@ -336,12 +367,14 @@ private:
 	nanogui::Window* yAxisWindow;
 
 	SceneNode* pointNode;
+	SceneNode* points;
 	SceneContext context;
 	SceneNode scene;
 	SceneNode* graphicsNode;
 	KdTree<float>* kdTree;
 	FloatDataSet* data;
 	int xDimension, yDimension;
+	Image* image;
 };
 
 int main(int argc, char**argv) {

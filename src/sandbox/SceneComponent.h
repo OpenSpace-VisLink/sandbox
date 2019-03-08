@@ -9,6 +9,7 @@ namespace sandbox {
 
 class SceneComponent {
 public:
+	SceneComponent() : version(0) {}
 	virtual ~SceneComponent() {}
 	virtual void setSceneNode(SceneNode* node) { this->node = node; }
 	virtual void onSceneNodeChange() {}
@@ -20,6 +21,8 @@ public:
 	virtual void render(const SceneContext& sceneContext) {}
 	virtual void finishRender(const SceneContext& sceneContext) {}
 
+	virtual long getVersion() { return version; }
+
 	template<typename T>
 	void addType() {
 		static const std::type_info& type = typeid(T);
@@ -29,10 +32,12 @@ public:
 
 protected:
 	const SceneNode& getSceneNode() const { return *node; }
+	virtual void updateVersion() { version++; }
 
 private:
 	SceneNode* node;
 	std::vector<const std::type_info*> types;
+	long version;
 };
 
 }

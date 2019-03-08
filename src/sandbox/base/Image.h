@@ -13,8 +13,9 @@ public:
 		addType<Image>();
 	}
 
-	Image(int width, int height, int components) : imageLoaded(false), image(0), width(width), height(height), components(components), path("") {
+	Image(int width, int height, int components) : imageLoaded(true), image(0), width(width), height(height), components(components), path("") {
 		addType<Image>();
+		image = new unsigned char[width*height*components];
 	}
 
 	Image(const std::string& path) : imageLoaded(false), path(path) {
@@ -35,6 +36,19 @@ public:
     const unsigned char* getData() const {
     	return image;
     }
+
+    unsigned char* getData() {
+    	return image;
+    }
+
+    const unsigned char* getPixel(int x, int y) {
+		return &image[(x + width*y)*components];
+	}
+
+	void setPixelValue(int x, int y, int component, unsigned char value) {
+		image[(x + width*y)*components + component] = value;
+		updateVersion();
+	}
 
     int getWidth() const { return width; }
     int getHeight() const { return height; }

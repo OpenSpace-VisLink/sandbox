@@ -18,6 +18,7 @@ void Texture::updateSharedContext(const SceneContext& sceneContext) {
 	TextureSharedState& state = *contextHandler.getSharedState(sceneContext);
 
 	if (image && !state.initialized) {
+		state.textureVersion = image->getVersion();
 	    std::cout << "INitialize texture shared context " << std::endl;
 	    GLuint format = getFormat();
 		GLuint internalFormat = getInternalFormat();
@@ -32,6 +33,11 @@ void Texture::updateSharedContext(const SceneContext& sceneContext) {
 	else if (!image && state.initialized) {
 		glDeleteTextures(1, &state.texture);
 	    state.initialized = false;
+	}
+	
+	if (state.textureVersion != image->getVersion()) {
+		glBindTexture(state.target, state.texture);
+		glTexImage2D(state.target, 0, getInternalFormat(), image->getWidth(), image->getHeight(), 0, getFormat(), getType(), image->getData());
 	}
 }
 

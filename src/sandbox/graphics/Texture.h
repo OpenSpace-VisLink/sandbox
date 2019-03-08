@@ -28,6 +28,10 @@ private:
 	class TextureSharedState : public ContextState {
 	public:
 	    virtual ~TextureSharedState() {
+	    	reset();
+	    }
+
+	    void reset() {
 	    	if (initialized) {
 	    		glDeleteTextures(1, &texture);
 	    	}
@@ -36,6 +40,7 @@ private:
 		GLuint texture;
 		int width, height;
 		GLuint target;
+		long textureVersion;
 	};
 
 	Image* image;
