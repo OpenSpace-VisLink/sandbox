@@ -11,7 +11,7 @@ FloatDataRenderer::FloatDataRenderer() : data(nullptr), updateElementVersion(0) 
 
 void FloatDataRenderer::updateModel() {
 	if (!data) {
-		data = getSceneNode().getComponent<FloatDataSet>();
+		data = getSceneNode().getComponent< DataView<float> >();
 
 		fullIndices = data->getPoints();
 		sortedIndices = fullIndices;
@@ -79,9 +79,9 @@ void FloatDataRenderer::updateContext(const SceneContext& sceneContext) {
 	}
 }
 
-struct CompareFloatDataSetVariable : std::binary_function<unsigned int, unsigned int, bool>
+struct CompareFloatDataViewVariable : std::binary_function<unsigned int, unsigned int, bool>
 {
-    CompareFloatDataSetVariable(FloatDataSet* data, int index, bool sortDesc)
+    CompareFloatDataViewVariable(FloatDataView* data, int index, bool sortDesc)
     : data(data), index(index), sortDesc(sortDesc) {
     	numVariables = data->getVariables().size();
     }
@@ -92,7 +92,7 @@ struct CompareFloatDataSetVariable : std::binary_function<unsigned int, unsigned
     	return sortDesc ? !compare : compare;
     }
 
-    FloatDataSet* data;
+    FloatDataView* data;
     int numVariables;
     int index;
     bool sortDesc;
@@ -105,7 +105,7 @@ void FloatDataRenderer::sortByVariable(int index, bool sortDesc) {
 	    	indices.push_back(f/index);
 	    }*/
 	    this->sortedIndices = fullIndices;
-	    std::sort(this->sortedIndices.begin(), this->sortedIndices.end(), CompareFloatDataSetVariable(data, index, sortDesc));
+	    std::sort(this->sortedIndices.begin(), this->sortedIndices.end(), CompareFloatDataViewVariable(data, index, sortDesc));
 	}
 	else {
 	    this->sortedIndices = fullIndices;

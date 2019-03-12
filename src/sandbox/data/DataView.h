@@ -6,8 +6,11 @@
 namespace sandbox {
 
 template <typename T>
-class DataView : public KdSearchable<T> {
+class DataView : public SceneComponent, public KdSearchable<T> {
 public:
+	DataView() {
+		addType< DataView<float> >();
+	}
 	virtual ~DataView() {}
 	virtual const std::vector<std::string>& getVariables() const = 0;
 	virtual const std::vector<T>& getArray() const = 0;
@@ -15,6 +18,8 @@ public:
 	virtual T getMin(unsigned int dimension) const = 0;
 	virtual T getMax(unsigned int dimension) const = 0;
 };
+
+typedef DataView<float> FloatDataView;
 
 }
 

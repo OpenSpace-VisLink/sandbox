@@ -2,7 +2,7 @@
 #define SANDBOX_GRAPHICS_FLOATDATA_RENDERER_H_
 
 #include "sandbox/SceneComponent.h"
-#include "sandbox/data/FloatDataSet.h"
+#include "sandbox/data/DataView.h"
 #include "OpenGL.h"
 
 namespace sandbox {
@@ -48,7 +48,7 @@ private:
 	    GLuint vao;
 	};
 
-	FloatDataSet* data;
+	FloatDataView* data;
 	SceneContextHandler<FloatDataSharedState,FloatDataState> contextHandler;
 };
 

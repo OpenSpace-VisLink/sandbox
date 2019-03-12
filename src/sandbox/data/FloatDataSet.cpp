@@ -5,12 +5,10 @@ namespace sandbox {
 
 FloatDataSet::FloatDataSet() : numPoints(0) {
 	addType<FloatDataSet>();
-	addType< DataView<float> >();
 }
 
 FloatDataSet::FloatDataSet(const std::vector<std::string>& variables) : numPoints(0) {
 	addType<FloatDataSet>();
-	addType< DataView<float> >();
 	setVariables(variables);
 }
 

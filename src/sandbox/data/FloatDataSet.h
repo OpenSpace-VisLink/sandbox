@@ -9,7 +9,7 @@
 
 namespace sandbox {
 
-class FloatDataSet : public SceneComponent, public DataView<float> {
+class FloatDataSet : public FloatDataView {
 public:
 	FloatDataSet();
 	FloatDataSet(const std::vector<std::string>& variables);
