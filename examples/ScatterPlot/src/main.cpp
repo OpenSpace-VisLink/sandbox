@@ -27,6 +27,7 @@
 #include "sandbox/base/Camera.h"
 #include "sandbox/data/CSVLoader.h"
 #include "sandbox/data/FloatDataSet.h"
+#include "sandbox/data/AdvancedDataView.h"
 #include "sandbox/data/KdTree.h"
 #include "sandbox/geometry/Material.h"
 #include "glm/glm.hpp"
@@ -42,32 +43,10 @@ public:
 		using namespace nanogui;
 		Window* window = new Window(this);
 		window->setTitle("");
-		//window->setDrag(false);
 		window->setLayout(new GroupLayout());
-		//window->setLayout(new BoxLayout(Orientation::Horizontal, Alignment::Middle, 0, 0));
 		window->setPosition(Vector2i(1, 1));
 		window->setFixedWidth(180);
 
-		/*std::vector<int> myHeap;
-		myHeap.push_back(4);
-		std::push_heap(myHeap.begin(), myHeap.end());
-		myHeap.push_back(2);
-		std::push_heap(myHeap.begin(), myHeap.end());
-		myHeap.push_back(8);
-		std::push_heap(myHeap.begin(), myHeap.end());
-		myHeap.push_back(1);
-		std::push_heap(myHeap.begin(), myHeap.end());
-		myHeap.push_back(1);
-		std::push_heap(myHeap.begin(), myHeap.end());
-		myHeap.push_back(7);
-		std::push_heap(myHeap.begin(), myHeap.end());
-		std::cout << "max: " << myHeap[0] << std::endl;
-		std::pop_heap(myHeap.begin(), myHeap.end());
-		std::cout << "max: " << myHeap[0] << std::endl;
-		myHeap.pop_back();*/
-
-		//Widget* panel = new Widget(window);
-		//panel->setLayout(new BoxLayout(Orientation::Vertical, Alignment::Minimum, 0, 0));
 
 		SceneNode* textures = new SceneNode();
 		SceneNode* texture = new SceneNode();
@@ -95,24 +74,23 @@ public:
 		//dataNode->addComponent(new CSVLoader("examples/ScatterPlot/data/cars.csv"));
 		//dataNode->addComponent(new CSVLoader("/home/dan/src/cinema_quest_jay/data/full_5000.cdb/data.csv"));
 		dataNode->addComponent(new CSVLoader("/home/dan/src/cinema_quest/data/discrete2.cdb/data.csv"));
-		dataNode->addComponent(new FloatDataRenderer());
+
 		dataNode->updateModel();
 		scene.addNode(dataNode);
 
+		SceneNode* dataRenderNode = new SceneNode();
+		FloatAdvancedDataView* view = new FloatAdvancedDataView(dataNode);
+		//view->addFilter(new DimensionCompareFilter<float>(0,50,DimensionCompareFilter<float>::GreaterThan));
+		//view->addFilter(new DimensionCompareFilter<float>(0,100,DimensionCompareFilter<float>::LessThan));
+		//view->addFilter(new TopKFilter<float>(100));
+		dataRenderNode->addComponent(view);
+		dataRenderNode->addComponent(new FloatDataRenderer());
+		dataNode->addNode(dataRenderNode);
 
 		std::vector<unsigned int> dimensions;
 		dimensions.push_back(0);
 		dimensions.push_back(1);
 		kdTree = new KdTree<float>(dimensions, *data);
-		std::vector<float> point;
-		point.push_back(0.0f);
-		point.push_back(0.0f);
-		point.push_back(0.0f);
-		/*point.push_back(2.0f);
-		point.push_back(5.67804f);
-		point.push_back(6.29711);*/
-		std::vector<KdTree<float>::KdValue> values = kdTree->getNearestSorted(point, 10);
-
 
 		SceneNode* geometryNode = new SceneNode();
 		scene.addNode(geometryNode);

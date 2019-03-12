@@ -11,7 +11,7 @@ template<typename T>
 class KdSearchable {
 public:
 	virtual ~KdSearchable() {}
-	virtual unsigned int getSize() const = 0;
+	virtual const std::vector<unsigned int>& getPoints() const = 0;
 	virtual T getDimension(unsigned int index, unsigned int dimension) const = 0;
 	virtual T getDistance(const std::vector<T>& point, unsigned int index, const std::vector<unsigned int>& dimensions) const = 0;
 };
@@ -20,9 +20,7 @@ template<typename T>
 class KdTree {
 public:
 	KdTree(std::vector<unsigned int> dimensions, const KdSearchable<T>& searchable) : dimensions(dimensions), searchable(searchable) {
-		for (unsigned int f = 0; f < searchable.getSize(); f++) {
-			values.push_back(f);
-		}
+		values = searchable.getPoints();
 
 		createSplit(0, values.size(), 0);
 	}

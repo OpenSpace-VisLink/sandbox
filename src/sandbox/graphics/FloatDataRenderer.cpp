@@ -13,8 +13,10 @@ void FloatDataRenderer::updateModel() {
 	if (!data) {
 		data = getSceneNode().getComponent< DataView<float> >();
 
-		fullIndices = data->getPoints();
-		sortedIndices = fullIndices;
+		if (data) {
+			fullIndices = data->getPoints();
+			sortedIndices = fullIndices;
+		}
 	}
 }
 
@@ -41,7 +43,7 @@ void FloatDataRenderer::updateSharedContext(const SceneContext& sceneContext) {
 	    state.initialized = false;
 	}
 
-	if (state.updateElementVersion != updateElementVersion) {
+	if (data && state.initialized && state.updateElementVersion != updateElementVersion) {
 		std::cout << "Update Elements" << std::endl;
 	    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, state.elementBuffer);
 	    glBufferSubData(GL_ELEMENT_ARRAY_BUFFER,0, sortedIndices.size() * sizeof(unsigned int), &sortedIndices[0]);
