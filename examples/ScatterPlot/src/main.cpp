@@ -93,8 +93,8 @@ public:
 		SceneNode* dataNode = new SceneNode();
 		dataNode->addComponent(data);
 		//dataNode->addComponent(new CSVLoader("examples/ScatterPlot/data/cars.csv"));
-		dataNode->addComponent(new CSVLoader("/home/dan/src/cinema_quest_jay/data/full_5000.cdb/data.csv"));
-		//dataNode->addComponent(new CSVLoader("/home/dan/src/cinema_quest_jay/data/patient.cdb/data.csv"));
+		//dataNode->addComponent(new CSVLoader("/home/dan/src/cinema_quest_jay/data/full_5000.cdb/data.csv"));
+		dataNode->addComponent(new CSVLoader("/home/dan/src/cinema_quest/data/discrete2.cdb/data.csv"));
 		dataNode->addComponent(new FloatDataRenderer());
 		dataNode->updateModel();
 		scene.addNode(dataNode);
@@ -318,17 +318,19 @@ private:
 						
 						float totalInverseDistance = 0.0f;
 						for (int f = 0; f < values.size(); f++) {
-							totalInverseDistance += 1.0f/values[f].distance;
+							totalInverseDistance += std::pow(1.0f/values[f].distance,2.0);
 						}
 						unsigned int zDimension = backgroundDimension;
 
 						float estimate = 0.0;
 						for (int f = 0; f < values.size(); f++) {
-							float weight = (1.0f/values[f].distance)/totalInverseDistance;
+							float weight = std::pow(1.0f/values[f].distance,2.0)/totalInverseDistance;
 							estimate += weight*data->getDimension(values[f].index, zDimension);
 						}
 
 						estimate = (estimate - data->getMin(zDimension))/(data->getMax(zDimension)-data->getMin(zDimension));
+						float binSize = (1.0/6.0);
+						estimate = std::floor(estimate/binSize)*binSize;
 
 						glm::vec4 color = glm::vec4(1.0)*(1-estimate) + estimate*backgroundColor;
 

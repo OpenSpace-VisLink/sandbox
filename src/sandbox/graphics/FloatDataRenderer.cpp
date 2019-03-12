@@ -13,10 +13,8 @@ void FloatDataRenderer::updateModel() {
 	if (!data) {
 		data = getSceneNode().getComponent<FloatDataSet>();
 
-		std::cout << data->getNumPoints() << std::endl;
-		for (unsigned int f = 0; f < data->getNumPoints(); f++) {
-		    fullIndices.push_back(f);
-		}
+		fullIndices = data->getPoints();
+		sortedIndices = fullIndices;
 	}
 }
 
@@ -28,7 +26,7 @@ void FloatDataRenderer::updateSharedContext(const SceneContext& sceneContext) {
 
 	    glGenBuffers(1, &state.elementBuffer);
 	    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, state.elementBuffer);
-	    glBufferData(GL_ELEMENT_ARRAY_BUFFER, data->getNumPoints() * sizeof(unsigned int), &fullIndices[0], GL_DYNAMIC_DRAW);
+	    glBufferData(GL_ELEMENT_ARRAY_BUFFER, fullIndices.size() * sizeof(unsigned int), &fullIndices[0], GL_DYNAMIC_DRAW);
 
 		glGenBuffers(1, &state.vbo);
 	    glBindBuffer(GL_ARRAY_BUFFER, state.vbo);
@@ -46,7 +44,7 @@ void FloatDataRenderer::updateSharedContext(const SceneContext& sceneContext) {
 	if (state.updateElementVersion != updateElementVersion) {
 		std::cout << "Update Elements" << std::endl;
 	    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, state.elementBuffer);
-	    glBufferSubData(GL_ELEMENT_ARRAY_BUFFER,0, data->getNumPoints() * sizeof(unsigned int), &sortedIndices[0]);
+	    glBufferSubData(GL_ELEMENT_ARRAY_BUFFER,0, sortedIndices.size() * sizeof(unsigned int), &sortedIndices[0]);
 	    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
 	    state.updateElementVersion = updateElementVersion;
 	}
@@ -135,7 +133,7 @@ void FloatDataRenderer::render(const SceneContext& sceneContext) {
 	    //glDrawElements(GL_PATCHES, data.indices.size(), GL_UNSIGNED_INT, (void*)0);
 	    //glDrawElements(GL_TRIANGLES, data->getIndices().size(), GL_UNSIGNED_INT, (void*)0);
 		glDrawElementsInstancedBaseVertex(GL_POINTS,
-				data->getNumPoints(),
+				sortedIndices.size(),
 				GL_UNSIGNED_INT,
 				(void*)(sizeof(unsigned int) * 0),
 				1, //numInstances,

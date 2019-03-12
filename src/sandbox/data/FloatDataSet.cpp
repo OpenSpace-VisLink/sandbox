@@ -5,10 +5,12 @@ namespace sandbox {
 
 FloatDataSet::FloatDataSet() : numPoints(0) {
 	addType<FloatDataSet>();
+	addType< DataView<float> >();
 }
 
 FloatDataSet::FloatDataSet(const std::vector<std::string>& variables) : numPoints(0) {
 	addType<FloatDataSet>();
+	addType< DataView<float> >();
 	setVariables(variables);
 }
 
@@ -34,6 +36,8 @@ void FloatDataSet::addData(const std::vector<float>& dataPoint) {
 			if (statistics[f].min > dataPoint[f]) { statistics[f].min = dataPoint[f]; } 
 		}
 	}
+
+	points.push_back(points.size());
 
 	numPoints++;
 }
