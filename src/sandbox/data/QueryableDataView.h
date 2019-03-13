@@ -1,5 +1,5 @@
-#ifndef SANDBOX_ADVANCED_DATA_VIEW_H_
-#define SANDBOX_ADVANCED_DATA_VIEW_H_
+#ifndef SANDBOX_QUERYABLE_DATA_VIEW_H_
+#define SANDBOX_QUERYABLE_DATA_VIEW_H_
 
 #include "sandbox/data/DataViewDecorator.h"
 #include "sandbox/SceneNode.h"
@@ -14,10 +14,10 @@ public:
 };
 
 template <typename T>
-class AdvancedDataView : public DataViewDecorator<T> {
+class QueryableDataView : public DataViewDecorator<T> {
 public:
-	AdvancedDataView(SceneNode* node) : DataViewDecorator<T>(node) {
-		SceneComponent::addType< AdvancedDataView<T> >();
+	QueryableDataView(SceneNode* node) : DataViewDecorator<T>(node) {
+		SceneComponent::addType< QueryableDataView<T> >();
 	}
 
 	void updateModel() {
@@ -34,7 +34,7 @@ public:
 		}
 	}
 
-	virtual ~AdvancedDataView() {
+	virtual ~QueryableDataView() {
 		for (int f = 0; f < queries.size(); f++) {
 			delete queries[f];
 		}
@@ -53,7 +53,7 @@ private:
 	std::vector<unsigned int> points;
 };
 
-typedef AdvancedDataView<float> FloatAdvancedDataView;
+typedef QueryableDataView<float> FloatQueryableDataView;
 typedef DataViewQuery<float> FloatDataViewQuery;
 
 template <typename T>
@@ -127,40 +127,6 @@ public:
 private:
 	unsigned int dimension;
 };
-
-/*
-
-struct CompareFloatDataViewVariable : std::binary_function<unsigned int, unsigned int, bool>
-{
-    CompareFloatDataViewVariable(FloatDataView* data, int index, bool sortDesc)
-    : data(data), index(index), sortDesc(sortDesc) {
-    	numVariables = data->getVariables().size();
-    }
-
-    bool operator()(unsigned int Lhs, unsigned int Rhs)const
-    {
-    	bool compare = data->getArray()[numVariables*Lhs + index] < data->getArray()[numVariables*Rhs + index];
-    	return sortDesc ? !compare : compare;
-    }
-
-    FloatDataView* data;
-    int numVariables;
-    int index;
-    bool sortDesc;
-};
-
-void FloatDataRenderer::sortByVariable(int index, bool sortDesc) {
-	if (index > 0) {
-
-	    this->sortedIndices = fullIndices;
-	    std::sort(this->sortedIndices.begin(), this->sortedIndices.end(), CompareFloatDataViewVariable(data, index, sortDesc));
-	}
-	else {
-	    this->sortedIndices = fullIndices;
-	}
-
-	updateElementVersion++;
-}*/
 
 template <typename T>
 class DimensionCompareFilter : public DataViewFilter<T> {

@@ -27,7 +27,7 @@
 #include "sandbox/base/Camera.h"
 #include "sandbox/data/CSVLoader.h"
 #include "sandbox/data/FloatDataSet.h"
-#include "sandbox/data/AdvancedDataView.h"
+#include "sandbox/data/QueryableDataView.h"
 #include "sandbox/data/KdTree.h"
 #include "sandbox/geometry/Material.h"
 #include "glm/glm.hpp"
@@ -79,7 +79,7 @@ public:
 		scene.addNode(dataNode);
 
 		SceneNode* dataRenderNode = new SceneNode();
-		FloatAdvancedDataView* view = new FloatAdvancedDataView(dataNode);
+		FloatQueryableDataView* view = new FloatQueryableDataView(dataNode);
 		//view->addQuery(new DimensionCompareFilter<float>(0,50,DimensionCompareFilter<float>::GreaterThan));
 		//view->addQuery(new DimensionCompareFilter<float>(0,100,DimensionCompareFilter<float>::LessThan));
 		view->addQuery(new SortByDimension<float>(0));
