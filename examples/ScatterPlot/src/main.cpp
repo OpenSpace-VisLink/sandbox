@@ -82,7 +82,7 @@ public:
 		FloatQueryableDataView* view = new FloatQueryableDataView(dataNode);
 		//view->addQuery(new DimensionCompareFilter<float>(0,50,DimensionCompareFilter<float>::GreaterThan));
 		//view->addQuery(new DimensionCompareFilter<float>(0,100,DimensionCompareFilter<float>::LessThan));
-		view->addQuery(new SortByDimension<float>(0));
+		//view->addQuery(new SortByDimension<float>(0));
 		view->addQuery(new TopKFilter<float>(100));
 		dataRenderNode->addComponent(view);
 		dataRenderNode->addComponent(new FloatDataRenderer());
@@ -91,7 +91,7 @@ public:
 		std::vector<unsigned int> dimensions;
 		dimensions.push_back(0);
 		dimensions.push_back(1);
-		kdTree = new KdTree<float>(dimensions, *data);
+		kdTree = new KdTree<float>(dimensions, *data, new NormalizedEuclideanDistance<float>(*data));
 
 		SceneNode* geometryNode = new SceneNode();
 		scene.addNode(geometryNode);
@@ -274,7 +274,7 @@ private:
 			dimensions.push_back(xDimension);
 			dimensions.push_back(yDimension);
 			delete kdTree;
-			kdTree = new KdTree<float>(dimensions, *data);
+			kdTree = new KdTree<float>(dimensions, *data, new NormalizedEuclideanDistance<float>(*data));
 
 			std::vector<float> point;
 			point.push_back(0.0f);

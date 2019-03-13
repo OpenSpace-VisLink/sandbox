@@ -13,19 +13,27 @@ public:
 	virtual ~KdSearchable() {}
 	virtual const std::vector<unsigned int>& getPoints() const = 0;
 	virtual T getDimension(unsigned int index, unsigned int dimension) const = 0;
-	virtual T getDistance(const std::vector<T>& point, unsigned int index, const std::vector<unsigned int>& dimensions) const = 0;
+};
+
+template<typename T>
+class KdDistance {
+public:
+	virtual ~KdDistance() {}
+	virtual T getDistance(const std::vector<T>& pointA, const std::vector<T>& pointB, const std::vector<unsigned int>& dimensions) const = 0;
 };
 
 template<typename T>
 class KdTree {
 public:
-	KdTree(std::vector<unsigned int> dimensions, const KdSearchable<T>& searchable) : dimensions(dimensions), searchable(searchable) {
+	KdTree(std::vector<unsigned int> dimensions, const KdSearchable<T>& searchable, const KdDistance<T>* distanceFunction) : dimensions(dimensions), searchable(searchable), distanceFunction(distanceFunction) {
 		values = searchable.getPoints();
 
 		createSplit(0, values.size(), 0);
 	}
 
-	virtual ~KdTree() {}
+	virtual ~KdTree() {
+		delete distanceFunction;
+	}
 
 
 	struct KdValue {
@@ -82,16 +90,18 @@ private:
 	void getNearest(const std::vector<T>& point, int num, std::vector<KdValue>& heap, int start, int end, int dimensionIndex) const {
 		int median = start + (end - start)/2;
 		std::vector<T> linearPoint(point.size());
+		std::vector<T> projectedPoint(point.size());
 		for (int f = 0; f < dimensions.size(); f++) {
+			projectedPoint[f] = searchable.getDimension(values[median], dimensions[f]);
 			if (f == dimensionIndex) {
 				linearPoint[f] = point[f];
 			}
 			else {
-				linearPoint[f] = searchable.getDimension(values[median], dimensions[f]);
+				linearPoint[f] = projectedPoint[f];
 			}
 		}
-		T medianDistance = searchable.getDistance(point, values[median], dimensions);
-		T linearDistance = searchable.getDistance(linearPoint, values[median], dimensions);
+		T medianDistance = distanceFunction->getDistance(point, projectedPoint, dimensions);
+		T linearDistance = distanceFunction->getDistance(linearPoint, projectedPoint, dimensions);
 
 		//T medianVal = searchable.getDimension(values[median], dimensionIndex);
 		int bestStart, bestEnd, otherStart, otherEnd;
@@ -171,6 +181,7 @@ private:
 
 	std::vector<unsigned int> dimensions;
 	const KdSearchable<T>& searchable;
+	const KdDistance<T>* distanceFunction;
 	std::vector<unsigned int> values;
 };
 

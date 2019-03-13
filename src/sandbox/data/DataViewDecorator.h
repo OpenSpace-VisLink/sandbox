@@ -41,14 +41,6 @@ public:
 		if (view) { return view->getPoints(); } 
 		else { static std::vector<unsigned int> v; return v; }
 	}
-	virtual T getDimension(unsigned int index, unsigned int dimension) const {
-		if (view) { return view->getDimension(index, dimension); } 
-		else { return T(); }
-	}
-	virtual T getDistance(const std::vector<T>& point, unsigned int index, const std::vector<unsigned int>& dimensions) const {
-		if (view) { return view->getDistance(point, index, dimensions); } 
-		else { return T(); }
-	}
 
 protected:
 	const DataView<T>* getView() const { return view; }
