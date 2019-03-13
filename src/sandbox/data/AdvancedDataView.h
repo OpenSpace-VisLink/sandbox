@@ -7,11 +7,9 @@
 namespace sandbox {
 
 template <typename T>
-class DataViewFilter {
+class DataViewQuery {
 public:
-	virtual void* createContext(const DataView<T>& view) { return NULL; }
-	virtual void deleteContext(void* context) {}
-	virtual bool isValid(const T* point, void* context) const = 0;
+	virtual void updatePoints(const DataView<T>& view, std::vector<unsigned int>& points) const {}
 };
 
 template <typename T>
@@ -25,33 +23,10 @@ public:
 		DataViewDecorator<T>::updateModel();
 		const DataView<T>* view = DataViewDecorator<T>::getView();
 		if (view && version != SceneComponent::getVersion()) {
-			points.clear();
+			points = view->getPoints();
 
-			std::vector<void*> filterContexts;
-			for (int f = 0; f < filters.size(); f++) {
-				filterContexts.push_back(filters[f]->createContext(*view));
-			}
-
-			const std::vector<unsigned int>& oldPoints = view->getPoints();
-			for (int f = 0; f < oldPoints.size(); f++) {
-				unsigned int index = oldPoints[f];
-				const T* point = view->getPoint(index);
-				bool isValid = true;
-
-				for (int i = 0; i < filters.size(); i++) {
-					isValid = filters[i]->isValid(point, filterContexts[i]);
-					if (!isValid) {
-						break;
-					}
-				}
-
-				if (isValid) {
-					points.push_back(index);
-				}
-			}
-
-			for (int f = 0; f < filters.size(); f++) {
-				filters[f]->deleteContext(filterContexts[f]);
+			for (int f = 0; f < queries.size(); f++) {
+				queries[f]->updatePoints(*view, points);
 			}
 
 			version = SceneComponent::getVersion();
@@ -59,26 +34,60 @@ public:
 	}
 
 	virtual ~AdvancedDataView() {
-		for (int f = 0; f < filters.size(); f++) {
-			delete filters[f];
+		for (int f = 0; f < queries.size(); f++) {
+			delete queries[f];
 		}
 	}
 
-	void addFilter(DataViewFilter<T>* filter) {
-		filters.push_back(filter);
+	void addQuery(DataViewQuery<T>* query) {
+		queries.push_back(query);
 		SceneComponent::updateVersion();
 	}
 
 	const std::vector<unsigned int>& getPoints() const { return points; }
 
 private:
-	std::vector<DataViewFilter<T>*> filters;
+	std::vector<DataViewQuery<T>*> queries;
 	long version;
 	std::vector<unsigned int> points;
 };
 
 typedef AdvancedDataView<float> FloatAdvancedDataView;
-typedef DataViewFilter<float> FloatDataViewFilter;
+typedef DataViewQuery<float> FloatDataViewQuery;
+
+template <typename T>
+class DataViewQueryReference : public DataViewQuery<T> {
+public:
+	DataViewQueryReference(const DataViewQuery<T>& query) : query(query) {}
+	virtual void updatePoints(const DataView<T>& view, std::vector<unsigned int>& points) const {
+		query.updatePoints(view, points);
+	}
+ 
+private:
+	const DataViewQuery<T>& query;
+};
+
+template <typename T>
+class DataViewFilter : public DataViewQuery<T> {
+public:
+	void updatePoints(const DataView<T>& view, std::vector<unsigned int>& points) const {
+		std::vector<unsigned int> newPoints;
+		void* context = createContext(view);
+		for (int f = 0; f < points.size(); f++) {
+			if (isValid(view.getPoint(points[f]), context)) {
+				newPoints.push_back(points[f]);
+			}
+		}
+
+		deleteContext(context);
+
+		points = newPoints;
+	}
+
+	virtual void* createContext(const DataView<T>& view) const { return NULL; }
+	virtual void deleteContext(void* context) const {}
+	virtual bool isValid(const T* point, void* context) const = 0;
+};
 
 template <typename T>
 class DimensionCompareFilter : public DataViewFilter<T> {
@@ -117,8 +126,8 @@ class TopKFilter : public DataViewFilter<T> {
 public:
 	TopKFilter(int k) : k(k) {}
 
-	void* createContext(const DataView<T>& view) { return new int(0); }
-	void deleteContext(void* context) { delete static_cast<int*>(context); }
+	void* createContext(const DataView<T>& view) const { return new int(0); }
+	void deleteContext(void* context) const { delete static_cast<int*>(context); }
 
 	bool isValid(const T* point, void* context) const {
 		int& curNum = *static_cast<int*>(context);

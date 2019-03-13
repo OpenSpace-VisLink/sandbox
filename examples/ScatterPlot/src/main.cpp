@@ -80,9 +80,9 @@ public:
 
 		SceneNode* dataRenderNode = new SceneNode();
 		FloatAdvancedDataView* view = new FloatAdvancedDataView(dataNode);
-		//view->addFilter(new DimensionCompareFilter<float>(0,50,DimensionCompareFilter<float>::GreaterThan));
-		//view->addFilter(new DimensionCompareFilter<float>(0,100,DimensionCompareFilter<float>::LessThan));
-		//view->addFilter(new TopKFilter<float>(100));
+		//view->addQuery(new DimensionCompareFilter<float>(0,50,DimensionCompareFilter<float>::GreaterThan));
+		//view->addQuery(new DimensionCompareFilter<float>(0,100,DimensionCompareFilter<float>::LessThan));
+		view->addQuery(new TopKFilter<float>(10));
 		dataRenderNode->addComponent(view);
 		dataRenderNode->addComponent(new FloatDataRenderer());
 		dataNode->addNode(dataRenderNode);
