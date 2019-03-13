@@ -23,17 +23,12 @@ public:
 	const std::vector<float>& getArray() const { return array; }
 	const std::vector<unsigned int>& getPoints() const { return points; }
 
-	float getMin(unsigned int dimension) const { return statistics[dimension].min; }
-	float getMax(unsigned int dimension) const { return statistics[dimension].max; }
+	const FloatDataView::DataViewStatistics& getStatistics(unsigned int dimension) const { return statistics[dimension]; }
 
 private:
-	struct stats {
-		float min;
-		float max;
-	};
 	
 	std::vector<std::string> variables;
-	std::vector<stats> statistics;
+	std::vector<FloatDataView::DataViewStatistics> statistics;
 	std::vector<float> array;
 	std::vector<unsigned int> points;
 	unsigned int numPoints;

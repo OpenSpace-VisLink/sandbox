@@ -74,12 +74,11 @@ public:
 		//dataNode->addComponent(new CSVLoader("examples/ScatterPlot/data/cars.csv"));
 		//dataNode->addComponent(new CSVLoader("/home/dan/src/cinema_quest_jay/data/full_5000.cdb/data.csv"));
 		dataNode->addComponent(new CSVLoader("/home/dan/src/cinema_quest/data/discrete2.cdb/data.csv"));
-
-		dataNode->updateModel();
 		scene.addNode(dataNode);
 
 		SceneNode* dataRenderNode = new SceneNode();
 		FloatQueryableDataView* view = new FloatQueryableDataView(dataNode);
+		data = view;
 		//view->addQuery(new DimensionCompareFilter<float>(0,50,DimensionCompareFilter<float>::GreaterThan));
 		//view->addQuery(new DimensionCompareFilter<float>(0,100,DimensionCompareFilter<float>::LessThan));
 		//view->addQuery(new SortByDimension<float>(0));
@@ -87,6 +86,9 @@ public:
 		dataRenderNode->addComponent(view);
 		dataRenderNode->addComponent(new FloatDataRenderer());
 		dataNode->addNode(dataRenderNode);
+
+
+		dataNode->updateModel();
  
 		std::vector<unsigned int> dimensions;
 		dimensions.push_back(0);
@@ -157,7 +159,7 @@ public:
 		pointShader->setXRange(glm::vec2(data->getMin(0), data->getMax(0)));
 		pointShader->setYRange(glm::vec2(data->getMin(1), data->getMax(1)));
 		pointShader->setColorRange(glm::vec2(data->getMin(2), data->getMax(2)));
-
+		std::cout << data->getMin(0) << "," << data->getMax(0) << std::endl;
 
 		//new Label(window, "x-axis", "sans-bold");
 		xAxisWindow = new Window(this);
@@ -432,7 +434,7 @@ private:
 	SceneNode scene;
 	SceneNode* graphicsNode;
 	KdTree<float>* kdTree;
-	FloatDataSet* data;
+	FloatDataView* data;
 	int xDimension, yDimension, backgroundDimension;
 	Image* image;
 	glm::vec4 backgroundColor;

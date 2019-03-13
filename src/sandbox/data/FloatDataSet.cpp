@@ -24,7 +24,7 @@ void FloatDataSet::addData(const std::vector<float>& dataPoint) {
 	for (int f = 0; f < dataPoint.size(); f++) {
 		
 		if (numPoints == 0) {
-			stats var;
+			FloatDataSet::DataViewStatistics var;
 			var.max = dataPoint[f];
 			var.min = dataPoint[f];
 			statistics.push_back(var);

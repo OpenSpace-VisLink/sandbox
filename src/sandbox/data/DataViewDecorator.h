@@ -41,6 +41,10 @@ public:
 		if (view) { return view->getPoints(); } 
 		else { static std::vector<unsigned int> v; return v; }
 	}
+	virtual const typename DataView<T>::DataViewStatistics& getStatistics(unsigned int dimension) const {
+		if (view) { return view->getStatistics(dimension); } 
+		else { static typename DataView<T>::DataViewStatistics stats; return stats; }
+	}
 
 protected:
 	const DataView<T>* getView() const { return view; }

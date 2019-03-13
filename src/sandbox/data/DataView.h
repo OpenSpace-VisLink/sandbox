@@ -14,8 +14,6 @@ public:
 	virtual ~DataView() {}
 	virtual const std::vector<std::string>& getVariables() const = 0;
 	virtual const std::vector<T>& getArray() const = 0;
-	virtual T getMin(unsigned int dimension) const = 0;
-	virtual T getMax(unsigned int dimension) const = 0;
 
 	const T* getPoint(unsigned int index) const {
 		return &getArray()[index*getVariables().size()];
@@ -24,6 +22,25 @@ public:
 	T getDimension(unsigned int index, unsigned int dimension) const {
 		return getPoint(index)[dimension];
 	}
+
+	struct DataViewStatistics {
+		DataViewStatistics() : min(), max(), mean(), variance() {}
+
+		T getMin() const { return min; }
+		T getMax() const { return max; }
+		T getMean() const { return mean; }
+		T getVariance() const { return variance; }
+		T getStandardDeviation() const { return std::sqrt(variance); }
+
+		T min, max, mean, variance;
+	};
+
+	virtual const DataViewStatistics& getStatistics(unsigned int dimension) const = 0;
+	T getMin(unsigned int dimension) const { return getStatistics(dimension).getMin(); }
+	T getMax(unsigned int dimension) const { return getStatistics(dimension).getMax(); }
+	T getMean(unsigned int dimension) const { return getStatistics(dimension).getMean(); }
+	T getVariance(unsigned int dimension) const { return getStatistics(dimension).getVariance(); }
+	T getStandardDeviation(unsigned int dimension) const { return getStatistics(dimension).getStandardDeviation(); }
 };
 
 typedef DataView<float> FloatDataView;
@@ -37,7 +54,7 @@ public:
 		T dist = T();
 
 		for (int f = 0; f < dimensions.size(); f++) {
-			dist += std::pow((pointB[f] - pointA[f])/(view.getMax(dimensions[f]) - view.getMin(dimensions[f])), 2.0f);
+			dist += std::pow((pointB[f] - pointA[f])/(view.getStatistics(dimensions[f]).getMax() - view.getStatistics(dimensions[f]).getMin()), 2.0f);
 		}
 
 		return std::sqrt(dist);
