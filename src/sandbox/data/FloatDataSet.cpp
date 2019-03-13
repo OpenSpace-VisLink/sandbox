@@ -3,15 +3,21 @@
 
 namespace sandbox {
 
-FloatDataSet::FloatDataSet() : numPoints(0) {
+FloatDataSet::FloatDataSet() : currentVersion(-1) {
 	addType<FloatDataSet>();
 }
 
-FloatDataSet::FloatDataSet(const std::vector<std::string>& variables) : numPoints(0) {
+FloatDataSet::FloatDataSet(const std::vector<std::string>& variables) : currentVersion(-1) {
 	addType<FloatDataSet>();
 	setVariables(variables);
 }
 
+void FloatDataSet::updateModel() {
+	if (currentVersion != getVersion()) {
+		statistics = calculateStatistics();
+		currentVersion = getVersion();
+	}
+}
 
 void FloatDataSet::addData(const std::vector<float>& dataPoint) { 
 	if (dataPoint.size() != variables.size()) {
@@ -21,7 +27,7 @@ void FloatDataSet::addData(const std::vector<float>& dataPoint) {
 
 	array.insert(array.end(), dataPoint.begin(), dataPoint.end());
 
-	for (int f = 0; f < dataPoint.size(); f++) {
+	/*for (int f = 0; f < dataPoint.size(); f++) {
 		
 		if (numPoints == 0) {
 			FloatDataSet::DataViewStatistics var;
@@ -33,11 +39,11 @@ void FloatDataSet::addData(const std::vector<float>& dataPoint) {
 			if (statistics[f].max < dataPoint[f]) { statistics[f].max = dataPoint[f]; } 
 			if (statistics[f].min > dataPoint[f]) { statistics[f].min = dataPoint[f]; } 
 		}
-	}
+	}*/
 
 	points.push_back(points.size());
 
-	numPoints++;
+	updateVersion();
 }
 
 }

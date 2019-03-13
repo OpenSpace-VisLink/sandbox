@@ -159,7 +159,6 @@ public:
 		pointShader->setXRange(glm::vec2(data->getMin(0), data->getMax(0)));
 		pointShader->setYRange(glm::vec2(data->getMin(1), data->getMax(1)));
 		pointShader->setColorRange(glm::vec2(data->getMin(2), data->getMax(2)));
-		std::cout << data->getMin(0) << "," << data->getMax(0) << std::endl;
 
 		//new Label(window, "x-axis", "sans-bold");
 		xAxisWindow = new Window(this);

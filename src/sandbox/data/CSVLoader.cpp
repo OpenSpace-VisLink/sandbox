@@ -61,8 +61,9 @@ void CSVLoader::updateModel() {
 			}
 
 			isLoaded = true;
-		}
 
+			floatDataSet->updateModel();
+		}
 	}
 }
 

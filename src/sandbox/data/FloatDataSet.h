@@ -15,6 +15,8 @@ public:
 	FloatDataSet(const std::vector<std::string>& variables);
 	virtual ~FloatDataSet() {}
 
+	void updateModel();
+
 	void addVariable(const std::string& variable) { variables.push_back(variable); }
 
 	void setVariables(const std::vector<std::string>& variables) { this->variables = variables; }
@@ -31,7 +33,7 @@ private:
 	std::vector<FloatDataView::DataViewStatistics> statistics;
 	std::vector<float> array;
 	std::vector<unsigned int> points;
-	unsigned int numPoints;
+	long currentVersion;
 };
 
 }

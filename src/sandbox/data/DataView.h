@@ -30,9 +30,9 @@ public:
 		T getMax() const { return max; }
 		T getMean() const { return mean; }
 		T getVariance() const { return variance; }
-		T getStandardDeviation() const { return std::sqrt(variance); }
+		T getStandardDeviation() const { return standardDeviation; }
 
-		T min, max, mean, variance;
+		T min, max, mean, variance, standardDeviation;
 	};
 
 	virtual const DataViewStatistics& getStatistics(unsigned int dimension) const = 0;
@@ -41,6 +41,79 @@ public:
 	T getMean(unsigned int dimension) const { return getStatistics(dimension).getMean(); }
 	T getVariance(unsigned int dimension) const { return getStatistics(dimension).getVariance(); }
 	T getStandardDeviation(unsigned int dimension) const { return getStatistics(dimension).getStandardDeviation(); }
+
+	std::vector<DataViewStatistics> calculateStatistics() const {
+		std::vector<DataViewStatistics> statistics;
+		const std::vector<unsigned int>& points = this->getPoints();
+
+		for (int f = 0; f < getVariables().size(); f++) {
+			statistics.push_back(calculateStatistics(f));
+		}
+
+		return statistics;
+	}
+
+	virtual DataViewStatistics calculateStatistics(unsigned int dimension) const {
+		DataViewStatistics stats;
+		const std::vector<unsigned int>& points = this->getPoints();
+
+		for (int i = 0; i < points.size(); i++) {
+			T val = getDimension(points[i], dimension);
+			if (i == 0) {
+				stats.min = val;
+				stats.max = val;
+			}
+			else {
+				if (stats.min > val) { stats.min = val; }
+				if (stats.max < val) { stats.max = val; }
+			}
+
+			stats.mean += val;
+		}
+
+		stats.mean /= points.size();
+
+		for (int i = 0; i < points.size(); i++) {
+			T val = getDimension(points[i], dimension);
+			T diff = val - stats.mean;
+			stats.variance += diff*diff;
+		}
+
+		stats.variance /= points.size();
+		stats.standardDeviation = std::sqrt(stats.variance);
+
+		return stats;
+	}
+
+	/*
+	   			function calcStatistics(items, getValue) {
+   				var mean = 0;
+   				var max = 0;
+   				var min = 0;
+   				items.forEach(function(item, index) {
+   					var val = getValue(item);
+   					if (index == 0) {
+   						max = val;
+   						min = val;
+   					}
+   					else {
+   						max = max < val ? val : max;
+   						min = min > val ? val : min;
+   					}
+   					mean += val;
+   				});
+   				mean /= items.length;
+
+   				var variance = 0;
+   				items.forEach(function(item, index) {
+   					var val = getValue(item);
+   					variance += (val - mean)*(val-mean);
+   				});
+   				variance /= items.length;
+
+   				return {mean: mean, variance: variance, max: max, min: min};
+      		}
+      		*/
 };
 
 typedef DataView<float> FloatDataView;
