@@ -3,6 +3,7 @@
 
 #include "sandbox/data/DataViewDecorator.h"
 #include "sandbox/SceneNode.h"
+#include <algorithm>
 
 namespace sandbox {
 
@@ -88,6 +89,78 @@ public:
 	virtual void deleteContext(void* context) const {}
 	virtual bool isValid(const T* point, void* context) const = 0;
 };
+
+
+
+template <typename T>
+class DataViewSort : public DataViewQuery<T> {
+public:
+	struct CompareOperator : std::binary_function<unsigned int, unsigned int, bool>
+	{
+	    CompareOperator(const DataViewSort<T>* sort, const DataView<T>& view)
+	    	: sort(sort), view(view) {}
+
+	    bool operator()(unsigned int Lhs, unsigned int Rhs) const {
+	    	return sort->compare(view, Lhs, Rhs);
+	    }
+ 
+ 		const DataViewSort<T>* sort;
+	    const DataView<T>& view;
+	};
+
+	void updatePoints(const DataView<T>& view, std::vector<unsigned int>& points) const {
+		std::sort(points.begin(), points.end(), CompareOperator(this, view));
+	}
+
+	virtual bool compare(const DataView<T>& view, unsigned int Lhs, unsigned int Rhs) const = 0;
+};
+
+template <typename T>
+class SortByDimension : public DataViewSort<T> {
+public: 
+	SortByDimension(unsigned int dimension) : dimension(dimension) {}
+
+	bool compare(const DataView<T>& view, unsigned int Lhs, unsigned int Rhs) const {
+	    return view.getPoint(Lhs)[dimension] < view.getPoint(Rhs)[dimension];
+	}
+
+private:
+	unsigned int dimension;
+};
+
+/*
+
+struct CompareFloatDataViewVariable : std::binary_function<unsigned int, unsigned int, bool>
+{
+    CompareFloatDataViewVariable(FloatDataView* data, int index, bool sortDesc)
+    : data(data), index(index), sortDesc(sortDesc) {
+    	numVariables = data->getVariables().size();
+    }
+
+    bool operator()(unsigned int Lhs, unsigned int Rhs)const
+    {
+    	bool compare = data->getArray()[numVariables*Lhs + index] < data->getArray()[numVariables*Rhs + index];
+    	return sortDesc ? !compare : compare;
+    }
+
+    FloatDataView* data;
+    int numVariables;
+    int index;
+    bool sortDesc;
+};
+
+void FloatDataRenderer::sortByVariable(int index, bool sortDesc) {
+	if (index > 0) {
+
+	    this->sortedIndices = fullIndices;
+	    std::sort(this->sortedIndices.begin(), this->sortedIndices.end(), CompareFloatDataViewVariable(data, index, sortDesc));
+	}
+	else {
+	    this->sortedIndices = fullIndices;
+	}
+
+	updateElementVersion++;
+}*/
 
 template <typename T>
 class DimensionCompareFilter : public DataViewFilter<T> {

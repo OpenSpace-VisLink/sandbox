@@ -82,11 +82,12 @@ public:
 		FloatAdvancedDataView* view = new FloatAdvancedDataView(dataNode);
 		//view->addQuery(new DimensionCompareFilter<float>(0,50,DimensionCompareFilter<float>::GreaterThan));
 		//view->addQuery(new DimensionCompareFilter<float>(0,100,DimensionCompareFilter<float>::LessThan));
-		view->addQuery(new TopKFilter<float>(10));
+		view->addQuery(new SortByDimension<float>(0));
+		view->addQuery(new TopKFilter<float>(100));
 		dataRenderNode->addComponent(view);
 		dataRenderNode->addComponent(new FloatDataRenderer());
 		dataNode->addNode(dataRenderNode);
-
+ 
 		std::vector<unsigned int> dimensions;
 		dimensions.push_back(0);
 		dimensions.push_back(1);
