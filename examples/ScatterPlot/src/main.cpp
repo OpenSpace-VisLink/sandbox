@@ -75,20 +75,25 @@ public:
 		//dataNode->addComponent(new CSVLoader("/home/dan/src/cinema_quest_jay/data/full_5000.cdb/data.csv"));
 		dataNode->addComponent(new CSVLoader("/home/dan/src/cinema_quest/data/discrete2.cdb/data.csv"));
 		scene.addNode(dataNode);
+		dataNode->updateModel();
 
 		SceneNode* dataRenderNode = new SceneNode();
 		FloatQueryableDataView* view = new FloatQueryableDataView(dataNode);
-		data = view;
-		//view->addQuery(new DimensionCompareFilter<float>(0,50,DimensionCompareFilter<float>::GreaterThan));
-		//view->addQuery(new DimensionCompareFilter<float>(0,100,DimensionCompareFilter<float>::LessThan));
-		//view->addQuery(new SortByDimension<float>(0));
-		view->addQuery(new TopKFilter<float>(100));
+		view->updateModel();
+		view->addQuery(new DimensionCompareFilter<float>(2,21599.9,DimensionCompareFilter<float>::GreaterThan));
+		ApplyLogScale<float>* applyLogScale = new ApplyLogScale<float>();
+		for (int f = 0; f < data->getVariables().size(); f++) {
+			if (data->getVariables()[f].rfind("input_", 0) == 0) {
+				applyLogScale->addDimension(f);
+			}
+		}
+		view->addQuery(applyLogScale);
 		dataRenderNode->addComponent(view);
 		dataRenderNode->addComponent(new FloatDataRenderer());
 		dataNode->addNode(dataRenderNode);
-
-
 		dataNode->updateModel();
+
+		data = view;
  
 		std::vector<unsigned int> dimensions;
 		dimensions.push_back(0);

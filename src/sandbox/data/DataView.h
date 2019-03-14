@@ -84,36 +84,6 @@ public:
 
 		return stats;
 	}
-
-	/*
-	   			function calcStatistics(items, getValue) {
-   				var mean = 0;
-   				var max = 0;
-   				var min = 0;
-   				items.forEach(function(item, index) {
-   					var val = getValue(item);
-   					if (index == 0) {
-   						max = val;
-   						min = val;
-   					}
-   					else {
-   						max = max < val ? val : max;
-   						min = min > val ? val : min;
-   					}
-   					mean += val;
-   				});
-   				mean /= items.length;
-
-   				var variance = 0;
-   				items.forEach(function(item, index) {
-   					var val = getValue(item);
-   					variance += (val - mean)*(val-mean);
-   				});
-   				variance /= items.length;
-
-   				return {mean: mean, variance: variance, max: max, min: min};
-      		}
-      		*/
 };
 
 typedef DataView<float> FloatDataView;

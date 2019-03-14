@@ -10,27 +10,36 @@ namespace sandbox {
 template <typename T>
 class DataViewQuery {
 public:
-	virtual void updatePoints(const DataView<T>& view, std::vector<unsigned int>& points) const {}
+	virtual bool updateArray(const DataView<T>& view, std::vector<T>& array) const { return false; }
+	virtual bool updatePoints(const DataView<T>& view, std::vector<unsigned int>& points) const { return false; }
 };
 
 template <typename T>
 class QueryableDataView : public DataViewDecorator<T> {
 public:
-	QueryableDataView(SceneNode* node) : DataViewDecorator<T>(node) {
+	QueryableDataView(SceneNode* node) : DataViewDecorator<T>(node), pointsChanged(false) {
 		SceneComponent::addType< QueryableDataView<T> >();
 	}
 
 	void updateModel() {
 		DataViewDecorator<T>::updateModel();
 		const DataView<T>* view = DataViewDecorator<T>::getView();
-		if (view && version != SceneComponent::getVersion()) {
-			points = view->getPoints();
+		if (view && version != this->getVersion()) {
+			points.clear();
+			array.clear();
+			arrayChanged = false;
+			pointsChanged = false;
 
 			for (int f = 0; f < queries.size(); f++) {
-				queries[f]->updatePoints(*view, points);
+				bool changed = queries[f]->updateArray(*this, array);
+				arrayChanged = changed || arrayChanged; 
+				if (changed) {
+					statistics = this->calculateStatistics();
+				}
+				pointsChanged = queries[f]->updatePoints(*this, points) || pointsChanged;
 			}
 
-			version = SceneComponent::getVersion();
+			version = this->getVersion();
 		}
 	}
 
@@ -42,15 +51,41 @@ public:
 
 	void addQuery(DataViewQuery<T>* query) {
 		queries.push_back(query);
-		SceneComponent::updateVersion();
+		this->updateVersion();
 	}
 
-	const std::vector<unsigned int>& getPoints() const { return points; }
+	virtual const std::vector<T>& getArray() const {
+		if (arrayChanged) {
+			return array; 
+		}
+
+		return DataViewDecorator<T>::getArray();
+	}
+
+	const std::vector<unsigned int>& getPoints() const { 
+		if (pointsChanged) {
+			return points; 
+		}
+
+		return DataViewDecorator<T>::getPoints();
+	}
+
+	const typename DataView<T>::DataViewStatistics& getStatistics(unsigned int dimension) const {
+		if (arrayChanged) {
+			return statistics[dimension]; 
+		}
+
+		return DataViewDecorator<T>::getStatistics(dimension);
+	}
 
 private:
 	std::vector<DataViewQuery<T>*> queries;
 	long version;
+	std::vector<T> array;
 	std::vector<unsigned int> points;
+	bool pointsChanged;
+	bool arrayChanged;
+	std::vector<typename DataView<T>::DataViewStatistics> statistics;
 };
 
 typedef QueryableDataView<float> FloatQueryableDataView;
@@ -60,8 +95,9 @@ template <typename T>
 class DataViewQueryReference : public DataViewQuery<T> {
 public:
 	DataViewQueryReference(const DataViewQuery<T>& query) : query(query) {}
-	virtual void updatePoints(const DataView<T>& view, std::vector<unsigned int>& points) const {
+	virtual bool updatePoints(const DataView<T>& view, std::vector<unsigned int>& points) const {
 		query.updatePoints(view, points);
+		return true;
 	}
  
 private:
@@ -71,18 +107,20 @@ private:
 template <typename T>
 class DataViewFilter : public DataViewQuery<T> {
 public:
-	void updatePoints(const DataView<T>& view, std::vector<unsigned int>& points) const {
+	bool updatePoints(const DataView<T>& view, std::vector<unsigned int>& points) const {
 		std::vector<unsigned int> newPoints;
+		const std::vector<unsigned int>& oldPoints = view.getPoints();
 		void* context = createContext(view);
-		for (int f = 0; f < points.size(); f++) {
-			if (isValid(view.getPoint(points[f]), context)) {
-				newPoints.push_back(points[f]);
+		for (int f = 0; f < oldPoints.size(); f++) {
+			if (isValid(view.getPoint(oldPoints[f]), context)) {
+				newPoints.push_back(oldPoints[f]);
 			}
 		}
 
 		deleteContext(context);
 
 		points = newPoints;
+		return true;
 	}
 
 	virtual void* createContext(const DataView<T>& view) const { return NULL; }
@@ -108,11 +146,30 @@ public:
 	    const DataView<T>& view;
 	};
 
-	void updatePoints(const DataView<T>& view, std::vector<unsigned int>& points) const {
+	bool updatePoints(const DataView<T>& view, std::vector<unsigned int>& points) const {
+		points = view.getPoints();
 		std::sort(points.begin(), points.end(), CompareOperator(this, view));
+
+		return true;
 	}
 
 	virtual bool compare(const DataView<T>& view, unsigned int Lhs, unsigned int Rhs) const = 0;
+};
+
+template <typename T>
+class DataViewApply : public DataViewQuery<T> {
+public:
+	bool updateArray(const DataView<T>& view, std::vector<T>& array) const {
+		array = view.getArray();
+		int numVariables = view.getVariables().size();
+		for (int f = 0; f < array.size()/numVariables; f++) {
+			apply(&array[f*numVariables]);
+		}
+
+		return true;
+	}
+
+	virtual void apply(T* point) const = 0;
 };
 
 template <typename T>
@@ -180,6 +237,30 @@ public:
 
 private:
 	int k;
+};
+
+template <typename T>
+class ApplyLogScale : public DataViewApply<T> {
+public:
+	ApplyLogScale() : dimensions() {}
+	ApplyLogScale(std::vector<unsigned int> dimensions) : dimensions(dimensions) {}
+	ApplyLogScale(unsigned int dimension) : dimensions() {
+		addDimension(dimension);
+	}
+
+	void addDimension(unsigned int dimension) {
+		dimensions.push_back(dimension);
+	}
+
+	virtual void apply(T* point) const {
+		for (int f = 0; f < dimensions.size(); f++) {
+			unsigned int dimension = dimensions[f];
+			point[dimension] = std::log(point[dimension]);
+		}
+	}
+
+private:
+	std::vector<unsigned int> dimensions;
 };
 
 }

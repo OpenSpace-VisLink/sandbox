@@ -29,14 +29,6 @@ public:
 		if (view) { return view->getArray(); } 
 		else { static std::vector<T> v; return v; }
 	}
-	virtual T getMin(unsigned int dimension) const {
-		if (view) { return view->getMin(dimension); } 
-		else { return T(); }
-	}
-	virtual T getMax(unsigned int dimension) const {
-		if (view) { return view->getMax(dimension); } 
-		else { return T(); }
-	}
 	virtual const std::vector<unsigned int>& getPoints() const {
 		if (view) { return view->getPoints(); } 
 		else { static std::vector<unsigned int> v; return v; }

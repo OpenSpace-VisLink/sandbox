@@ -75,7 +75,7 @@ public:
 
 private:
 	void createSplit(int start, int end, int dimensionIndex) {
-		std::cout << "Create split " << start << "..." << end << std::endl;
+		//std::cout << "Create split " << start << "..." << end << std::endl;
 		if (end - start <= 1) {
 			return;
 		}
