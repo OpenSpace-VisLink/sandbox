@@ -88,8 +88,14 @@ public:
 			}
 		}
 		view->addQuery(applyLogScale);
-		GroupByDimensions<float>* groupByDimensions = new GroupByDimensions<float>();
-		groupByDimensions->addDimension(0);
+		view->addQuery(new AddColumn<float>());
+		GroupByDimensions<float>* groupBySim = new GroupByDimensions<float>(new MeanAggregator<float>());
+		groupBySim->addDimension(0);
+		view->addQuery(groupBySim);
+		GroupByDimensions<float>* groupByDimensions = new GroupByDimensions<float>(new GroupAggregator<float>());
+		groupByDimensions->addDimension(4);
+		groupByDimensions->addDimension(5);
+		groupByDimensions->addDimension(6);
 		view->addQuery(groupByDimensions);
 		dataRenderNode->addComponent(view);
 		dataRenderNode->addComponent(new FloatDataRenderer());

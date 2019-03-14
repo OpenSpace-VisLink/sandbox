@@ -11,6 +11,7 @@ template <typename T>
 class DataViewQuery {
 public:
 	virtual bool updateArray(const DataView<T>& view, std::vector<T>& array) const { return false; }
+	virtual bool updateVariables(const DataView<T>& view, std::vector<std::string>& variables) const { return false; }
 	virtual bool updatePoints(const DataView<T>& view, std::vector<unsigned int>& points) const { return false; }
 };
 
@@ -27,11 +28,15 @@ public:
 		if (view && version != this->getVersion()) {
 			points.clear();
 			array.clear();
+			variables = view->getVariables();
 			arrayChanged = false;
 			pointsChanged = false;
 
 			for (int f = 0; f < queries.size(); f++) {
 				bool changed = queries[f]->updateArray(*this, array);
+				if (changed) {
+					queries[f]->updateVariables(*this, variables);
+				}
 				arrayChanged = changed || arrayChanged; 
 				pointsChanged = queries[f]->updatePoints(*this, points) || pointsChanged;
 				if (changed) {
@@ -62,6 +67,14 @@ public:
 		return DataViewDecorator<T>::getArray();
 	}
 
+	virtual const std::vector<std::string>& getVariables() const {
+		if (arrayChanged) {
+			return variables; 
+		}
+
+		return DataViewDecorator<T>::getVariables();
+	}
+
 	const std::vector<unsigned int>& getPoints() const { 
 		if (pointsChanged) {
 			return points; 
@@ -82,6 +95,7 @@ private:
 	std::vector<DataViewQuery<T>*> queries;
 	long version;
 	std::vector<T> array;
+	std::vector<std::string> variables;
 	std::vector<unsigned int> points;
 	bool pointsChanged;
 	bool arrayChanged;
@@ -173,8 +187,55 @@ public:
 };
 
 template <typename T>
-class DataViewGroupBy : public DataViewQuery<T> {
+class AddColumn : public DataViewQuery<T> {
 public:
+	bool updateArray(const DataView<T>& view, std::vector<T>& array) const {
+		const std::vector<T>& oldArray = view.getArray();
+		std::vector<T> newArray;
+		int numVariables = view.getVariables().size();
+		for (int f = 0; f < view.getPoints().size(); f++) {
+			for (int i = 0; i < numVariables + 1; i++) {
+				if (i == numVariables) {
+					newArray.push_back(T());
+				}
+				else {
+					newArray.push_back(view.getPoint(view.getPoints()[f])[i]);
+				}
+			}
+		}
+
+		array = newArray;
+
+		return true;
+	}
+
+
+	bool updateVariables(const DataView<T>& view, std::vector<std::string>& variables) const { 
+		variables.push_back("new_var");
+	}
+
+};
+
+template <typename T>
+class DataViewGroupBy : public DataViewQuery<T> {
+
+public:
+	class Aggregator {
+	public:
+		virtual void addAggregate(const DataView<T>& view, unsigned int groupId, const std::vector<unsigned int>& points, std::vector<T>& array) const {
+			for (int f = 0; f < view.getVariables().size(); f++) {
+				array.push_back(view.getPoint(points[0])[f]);
+			}
+		}
+	};
+
+	DataViewGroupBy() : aggregator(new Aggregator) {}
+	DataViewGroupBy(Aggregator* aggregator) : aggregator(aggregator) {}
+	~DataViewGroupBy() {
+		delete aggregator;
+	}
+
+private:
 	struct CompareOperator// : std::binary_function<unsigned int, unsigned int, bool>
 	{
 	    CompareOperator(const DataViewGroupBy<T>* groupBy, const DataView<T>& view)
@@ -188,6 +249,7 @@ public:
 	    const DataView<T>& view;
 	};
 
+public:
 	bool updateArray(const DataView<T>& view, std::vector<T>& array) const {
 		CompareOperator compare(this, view);
 		std::map<unsigned int, std::vector<unsigned int>, CompareOperator> groups(compare);
@@ -201,7 +263,7 @@ public:
 		std::vector<T> newArray;
 
 		for (std::map<unsigned int, std::vector<unsigned int>>::iterator it = groups.begin(); it != groups.end(); it++) {
-			addAggregate(view, it->first, it->second, newArray);
+			aggregator->addAggregate(view, it->first, it->second, newArray);
 		}
 
 		array = newArray;
@@ -220,11 +282,8 @@ public:
 
 	virtual bool compare(const DataView<T>& view, unsigned int Lhs, unsigned int Rhs) const = 0;
 
-	virtual void addAggregate(const DataView<T>& view, unsigned int groupId, const std::vector<unsigned int>& points, std::vector<T>& array) const {
-		for (int f = 0; f < view.getVariables().size(); f++) {
-			array.push_back(view.getPoint(points[0])[f]);
-		}
-	}
+private:
+	Aggregator* aggregator;
 };
 
 template <typename T>
@@ -244,9 +303,7 @@ template <typename T>
 class GroupByDimensions : public DataViewGroupBy<T> {
 public: 
 	GroupByDimensions() : dimensions() {}
-	GroupByDimensions(unsigned int dimension) : dimensions() {
-		addDimension(dimension);
-	}
+	GroupByDimensions(typename DataViewGroupBy<T>::Aggregator* aggregator) : DataViewGroupBy<T>(aggregator), dimensions() {}
 
 	void addDimension(unsigned int dimension) {
 		dimensions.push_back(dimension);
@@ -262,6 +319,13 @@ public:
 		return false;
 	}
 
+private:
+	std::vector<unsigned int> dimensions;
+};
+
+template <typename T>
+class MeanAggregator : public DataViewGroupBy<T>::Aggregator {
+public:
 	virtual void addAggregate(const DataView<T>& view, unsigned int groupId, const std::vector<unsigned int>& points, std::vector<T>& array) const {
 		for (int f = 0; f < view.getVariables().size(); f++) {
 			array.push_back(aggregate(view, points, f));
@@ -277,9 +341,23 @@ public:
 
 		return mean/points.size();
 	}
+};
 
-private:
-	std::vector<unsigned int> dimensions;
+template <typename T>
+class GroupAggregator : public DataViewGroupBy<T>::Aggregator {
+public:
+	virtual void addAggregate(const DataView<T>& view, unsigned int groupId, const std::vector<unsigned int>& points, std::vector<T>& array) const {
+		for (int f = 0; f < points.size(); f++) {
+			for (int i = 0; i < view.getVariables().size(); i++) {
+				if (i == view.getVariables().size()-1) {
+					array.push_back(groupId);
+				}
+				else {
+					array.push_back(view.getPoint(points[f])[i]);
+				}
+			}
+		}
+	}
 };
 
 template <typename T>
