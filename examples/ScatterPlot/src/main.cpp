@@ -88,6 +88,7 @@ public:
 			}
 		}
 		view->addQuery(applyLogScale);
+		view->addQuery(new GroupByDimension<float>(0));
 		dataRenderNode->addComponent(view);
 		dataRenderNode->addComponent(new FloatDataRenderer());
 		dataNode->addNode(dataRenderNode);
@@ -217,7 +218,7 @@ public:
 		comboBox->setCallback([this, dataNode](int index) {
 			pointShader->setHasColorGradient(index > 0);
 			FloatDataRenderer* dataRenderer = dataNode->getComponent<FloatDataRenderer>();
-			dataRenderer->sortByVariable(index-1);
+			//dataRenderer->sortByVariable(index-1);
 			if (index > 0) {
 				pointShader->setColorDim(index-1);
 				pointShader->setColorRange(glm::vec2(data->getMin(index-1), data->getMax(index-1)));
