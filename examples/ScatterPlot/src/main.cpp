@@ -88,7 +88,9 @@ public:
 			}
 		}
 		view->addQuery(applyLogScale);
-		view->addQuery(new GroupByDimension<float>(0));
+		GroupByDimensions<float>* groupByDimensions = new GroupByDimensions<float>();
+		groupByDimensions->addDimension(0);
+		view->addQuery(groupByDimensions);
 		dataRenderNode->addComponent(view);
 		dataRenderNode->addComponent(new FloatDataRenderer());
 		dataNode->addNode(dataRenderNode);

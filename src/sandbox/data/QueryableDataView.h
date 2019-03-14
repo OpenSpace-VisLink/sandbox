@@ -197,18 +197,11 @@ public:
 		for (int f = 0; f < points.size(); f++) {
 			groups[points[f]].push_back(points[f]);
 		}
-		/*array = view.getArray();
-		int numVariables = view.getVariables().size();
-		for (int f = 0; f < array.size()/numVariables; f++) {
-			apply(&array[f*numVariables]);
-		}*/
 
 		std::vector<T> newArray;
 
 		for (std::map<unsigned int, std::vector<unsigned int>>::iterator it = groups.begin(); it != groups.end(); it++) {
-			for (int f = 0; f < view.getVariables().size(); f++) {
-				newArray.push_back(aggregate(view, it->second, f));
-			}
+			addAggregate(view, it->first, it->second, newArray);
 		}
 
 		array = newArray;
@@ -227,11 +220,11 @@ public:
 
 	virtual bool compare(const DataView<T>& view, unsigned int Lhs, unsigned int Rhs) const = 0;
 
-	virtual T aggregate(const DataView<T>& view, const std::vector<unsigned int>& points, unsigned int dimension) const {
-		return view.getPoint(points[0])[dimension];
+	virtual void addAggregate(const DataView<T>& view, unsigned int groupId, const std::vector<unsigned int>& points, std::vector<T>& array) const {
+		for (int f = 0; f < view.getVariables().size(); f++) {
+			array.push_back(view.getPoint(points[0])[f]);
+		}
 	}
-
-	//virtual void apply(T* point) const = 0;
 };
 
 template <typename T>
@@ -248,19 +241,34 @@ private:
 };
 
 template <typename T>
-class GroupByDimension : public DataViewGroupBy<T> {
+class GroupByDimensions : public DataViewGroupBy<T> {
 public: 
-	GroupByDimension(unsigned int dimension) : dimension(dimension) {}
+	GroupByDimensions() : dimensions() {}
+	GroupByDimensions(unsigned int dimension) : dimensions() {
+		addDimension(dimension);
+	}
+
+	void addDimension(unsigned int dimension) {
+		dimensions.push_back(dimension);
+	}
 
 	bool compare(const DataView<T>& view, unsigned int Lhs, unsigned int Rhs) const {
-	    return view.getPoint(Lhs)[dimension] < view.getPoint(Rhs)[dimension];
+		for (int f = 0; f < dimensions.size(); f++) {
+			unsigned int dimension = dimensions[f];
+			if (view.getPoint(Lhs)[dimension] < view.getPoint(Rhs)[dimension]) { return true; }
+			if (view.getPoint(Rhs)[dimension] < view.getPoint(Lhs)[dimension]) { return false; }
+		}
+
+		return false;
+	}
+
+	virtual void addAggregate(const DataView<T>& view, unsigned int groupId, const std::vector<unsigned int>& points, std::vector<T>& array) const {
+		for (int f = 0; f < view.getVariables().size(); f++) {
+			array.push_back(aggregate(view, points, f));
+		}
 	}
 
 	T aggregate(const DataView<T>& view, const std::vector<unsigned int>& points, unsigned int dimension) const {
-		if (this->dimension == dimension) {
-			return view.getPoint(points[0])[dimension];
-		}
-
 		T mean = T();
 
 		for (int f = 0; f < points.size(); f++) {
@@ -271,7 +279,7 @@ public:
 	}
 
 private:
-	unsigned int dimension;
+	std::vector<unsigned int> dimensions;
 };
 
 template <typename T>
