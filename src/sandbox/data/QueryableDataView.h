@@ -209,9 +209,17 @@ public:
 		return true;
 	}
 
-
 	bool updateVariables(const DataView<T>& view, std::vector<std::string>& variables) const { 
 		variables.push_back("new_var");
+	}
+
+	bool updatePoints(const DataView<T>& view, std::vector<unsigned int>& points) const {
+		points.clear();
+		for (int f = 0; f < view.getArray().size()/view.getVariables().size(); f++) {
+			points.push_back(f);
+		}
+
+		return true;
 	}
 
 };

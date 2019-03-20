@@ -73,7 +73,7 @@ public:
 		dataNode->addComponent(data);
 		//dataNode->addComponent(new CSVLoader("examples/ScatterPlot/data/cars.csv"));
 		//dataNode->addComponent(new CSVLoader("/home/dan/src/cinema_quest_jay/data/full_5000.cdb/data.csv"));
-		dataNode->addComponent(new CSVLoader("/home/dan/src/cinema_quest/data/discrete2.cdb/data.csv"));
+		dataNode->addComponent(new CSVLoader("/home/dan/src/cinema_quest/data/discrete2.cdb/data2.csv"));
 		scene.addNode(dataNode);
 		dataNode->updateModel();
 
@@ -81,6 +81,7 @@ public:
 		FloatQueryableDataView* view = new FloatQueryableDataView(dataNode);
 		view->updateModel();
 		view->addQuery(new DimensionCompareFilter<float>(2,21599.9,DimensionCompareFilter<float>::GreaterThan));
+		view->addQuery(new DimensionCompareFilter<float>(9,7.0,DimensionCompareFilter<float>::LessThanEqual));
 		ApplyLogScale<float>* applyLogScale = new ApplyLogScale<float>();
 		for (int f = 0; f < data->getVariables().size(); f++) {
 			if (data->getVariables()[f].rfind("input_", 0) == 0) {
