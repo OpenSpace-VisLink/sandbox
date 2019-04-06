@@ -6,6 +6,10 @@
 
 namespace sandbox {
 
+SceneNode::SceneNode(SceneNode* parent) : parent(parent), visible(true) {
+	parent->addNode(this);
+}
+
 SceneNode::SceneNode() : parent(NULL), visible(true) {
 
 }

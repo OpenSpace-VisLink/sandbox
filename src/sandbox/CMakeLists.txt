@@ -16,6 +16,8 @@ set (SOURCEFILES
   geometry/Mesh.cpp
   geometry/Material.cpp
   geometry/MeshLoader.cpp
+  geometry/algorithms/SmoothNormals.cpp
+  geometry/shapes/Grid.cpp
   geometry/shapes/Quad.cpp
   graphics/Blend.cpp
   graphics/FloatDataRenderer.cpp
@@ -40,6 +42,8 @@ set (HEADERFILES
   geometry/Mesh.h
   geometry/Material.h
   geometry/MeshLoader.h
+  geometry/algorithms/SmoothNormals.h
+  geometry/shapes/Grid.h
   geometry/shapes/Quad.h
   graphics/Blend.h
   graphics/FloatDataRenderer.h

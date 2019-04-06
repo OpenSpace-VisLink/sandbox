@@ -14,6 +14,7 @@ class SceneComponent;
 class SceneNode {
 public:
 	SceneNode();
+	SceneNode(SceneNode* parent);
 	virtual ~SceneNode();
 
 	void addNode(SceneNode* node);
