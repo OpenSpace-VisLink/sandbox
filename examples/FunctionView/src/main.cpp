@@ -1,6 +1,6 @@
 #include <iostream>
 
-#include <nanogui/nanogui.h>
+#include "sandbox/external/NanoGUI.h"
 #include <nanogui/opengl.h>
 #include <nanogui/window.h>
 #include <nanogui/layout.h>
@@ -27,13 +27,19 @@
 
 using namespace sandbox;
 
-class TestApp : public nanogui::Screen {
+class TestApp : public NanoguiScreen {
 public:
-	TestApp() : nanogui::Screen(Eigen::Vector2i(1024, 768), "Test App") {
+	TestApp() : NanoguiScreen(Eigen::Vector2i(1024, 768), "Test App") {
 		using namespace nanogui;
 
 		Grid* grid = new Grid(30, 30);
 		
+		SceneNode* eventNode = new SceneNode(&scene);
+			NanoguiResizeEvent* resize = new NanoguiResizeEvent(this);
+			eventNode->addComponent(resize);
+			ResizeEventHandler* resizeCallback = (new ResizeCallback())->init(this);
+			resize->subscribe(resizeCallback);
+			eventNode->addComponent(resizeCallback);
 		SceneNode* geometryNode = new SceneNode(&scene);
 			SceneNode* gridNode = new SceneNode(geometryNode);
 				gridNode->addComponent(grid);
@@ -46,7 +52,7 @@ public:
 			graphicsNode->addComponent(new Camera());
 			graphicsNode->addComponent(new MaterialShader());
 				SceneNode* functionViewNode = new SceneNode(graphicsNode);
-				functionViewNode->addComponent(new Transform(glm::rotate(glm::mat4(1.0f), -3.1415f/4.0f, glm::vec3(1.0f,0.0,0))));
+				functionViewNode->addComponent(new Transform(glm::rotate(glm::mat4(1.0f), -3.1415f/4.0f, glm::vec3(1.0f,0.0,0))*glm::scale(glm::mat4(1.0f), glm::vec3(1.5f,1.5,1.5))));
 				functionViewNode->addComponent(new NodeRenderer(gridNode));
 
 
@@ -64,16 +70,6 @@ public:
 	~TestApp() {
 	}
 
-	bool resizeEvent(const Eigen::Vector2i& size) {
-		/*float pixelWidth = 2.0f/size[0];
-		float pixelHeight = 2.0f/size[1];
-		Transform* transform = scatterPlotNode->getComponent<Transform>();
-		glm::mat4 scatterPlotTransform = glm::translate(glm::mat4(1.0),glm::vec3(pixelWidth*85, pixelHeight*10.0, 0.0));
-		transform->setTransform(glm::scale(scatterPlotTransform, glm::vec3(1.0f-pixelWidth*105, 1.0f-pixelHeight*30, 1.0)));
-		xAxisWindow->setPosition(Eigen::Vector2i(width()/2, height()-35));
-		yAxisWindow->setPosition(Eigen::Vector2i(5, height()/2));*/
-		return true;
-	}
 
 	void drawContents() {
 		scene.updateModel();
@@ -83,6 +79,12 @@ public:
 	}
 
 private:
+
+	class ResizeCallback : public StateEventHandlerCallback<ResizeState, TestApp> {
+		void onEvent(const ResizeState& state, TestApp* app) {
+			std::cout << state.width << " " << state.height << " " << app << std::endl;
+		}
+	};
 
 	class OpenGLCallback : public RenderCallback<TestApp> {
 		void renderCallback(const SceneContext& sceneContext, TestApp* app) {

@@ -53,6 +53,7 @@ set (HEADERFILES
   graphics/shaders/MaterialShader.h
   graphics/shaders/PointShader.h
   graphics/shaders/Shader2D.h
+  interaction/events/ResizeEvent.h
 )
 
 # --------------------- Dependencies -----------------------

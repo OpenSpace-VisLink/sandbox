@@ -3,6 +3,7 @@
 
 #include "glm/glm.hpp"
 #include "sandbox/SceneComponent.h"
+#include "sandbox/interaction/events/ResizeEvent.h"
 
 namespace sandbox {
 
