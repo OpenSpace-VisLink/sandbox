@@ -20,6 +20,7 @@
 #include "sandbox/geometry/Material.h"
 #include "sandbox/graphics/MeshRenderer.h"
 #include "sandbox/graphics/shaders/MaterialShader.h"
+#include "sandbox/graphics/Window.h"
 #include "glm/glm.hpp"
 #include <glm/gtc/matrix_access.hpp>
 #include <glm/gtc/matrix_transform.hpp>
@@ -47,6 +48,7 @@ public:
 				gridNode->addComponent(new MeshRenderer());
 				//gridNode->addComponent(new Material());
 		graphicsNode = new SceneNode(&scene);
+			graphicsNode->addComponent(new sandbox::Window(eventNode));
 			graphicsNode->addComponent((new OpenGLCallback())->init(this));
 			graphicsNode->addComponent(new Transform(glm::translate(glm::mat4(1.0f),glm::vec3(4,1,3))));
 			graphicsNode->addComponent(new Camera());

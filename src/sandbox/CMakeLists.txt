@@ -27,6 +27,7 @@ set (SOURCEFILES
   graphics/shaders/MaterialShader.cpp
   graphics/shaders/PointShader.cpp
   graphics/shaders/Shader2D.cpp
+  graphics/Window.cpp
 )
 
 set (HEADERFILES
@@ -53,7 +54,7 @@ set (HEADERFILES
   graphics/shaders/MaterialShader.h
   graphics/shaders/PointShader.h
   graphics/shaders/Shader2D.h
-  interaction/events/ResizeEvent.h
+  graphics/Window.h
 )
 
 # --------------------- Dependencies -----------------------

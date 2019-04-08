@@ -16,16 +16,16 @@ public:
 	
 	virtual ~Event() {}
 
-protected:
-	void subscribe(EventHandler* handler) {
-		handlers.push_back(handler);
-	}
-
 	void unsubscribe(EventHandler* handler) {
 		std::vector<EventHandler*>::iterator it = std::find(handlers.begin(), handlers.end(), handler);
 		if (it != handlers.end()) {
 			handlers.erase(it);
 		}
+	}
+
+protected:
+	void subscribe(EventHandler* handler) {
+		handlers.push_back(handler);
 	}
 
 	void notify() {
@@ -81,6 +81,9 @@ private:
 template<typename STATE>
 class BaseEvent : public StateEvent<STATE> {
 public:
+	BaseEvent() {
+		SceneComponent::addType<BaseEvent<STATE> >();
+	}
 	virtual ~BaseEvent() {}
 
 	void subscribe(StateEventHandler<STATE>* handler) {
