@@ -17,14 +17,17 @@ void Window::updateModel() {
 void Window::render(const SceneContext& sceneContext) {
 	if (resize) {
 		RenderState& renderState = RenderState::get(sceneContext);
-		renderState.getViewportSize().push(glm::ivec2(resize->getState().width, resize->getState().height));
+		glm::ivec4 viewport = glm::ivec4(0, 0, resize->getState().width, resize->getState().height);
+		renderState.getViewport().push(viewport);
+		glViewport((GLint)viewport[0], (GLint)viewport[1], (GLsizei)viewport[2], (GLsizei)viewport[3]);
+		// glViewport((GLint)rect.getX(), (GLint)rect.getY(), (GLsizei)rect.getWidth(), (GLsizei)rect.getHeight());
 	}
 }
 
 void Window::finishRender(const SceneContext& sceneContext) {
 	if (resize) {
 		RenderState& renderState = RenderState::get(sceneContext);
-		renderState.getViewportSize().pop();	
+		renderState.getViewport().pop();	
 	}
 }
 

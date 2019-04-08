@@ -27,6 +27,7 @@ set (SOURCEFILES
   graphics/shaders/MaterialShader.cpp
   graphics/shaders/PointShader.cpp
   graphics/shaders/Shader2D.cpp
+  graphics/Viewport.cpp
   graphics/Window.cpp
 )
 
@@ -54,6 +55,7 @@ set (HEADERFILES
   graphics/shaders/MaterialShader.h
   graphics/shaders/PointShader.h
   graphics/shaders/Shader2D.h
+  graphics/Viewport.h
   graphics/Window.h
 )
 

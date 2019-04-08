@@ -20,6 +20,7 @@
 #include "sandbox/geometry/Material.h"
 #include "sandbox/graphics/MeshRenderer.h"
 #include "sandbox/graphics/shaders/MaterialShader.h"
+#include "sandbox/graphics/Viewport.h"
 #include "sandbox/graphics/Window.h"
 #include "glm/glm.hpp"
 #include <glm/gtc/matrix_access.hpp>
@@ -50,12 +51,22 @@ public:
 		graphicsNode = new SceneNode(&scene);
 			graphicsNode->addComponent(new sandbox::Window(eventNode));
 			graphicsNode->addComponent((new OpenGLCallback())->init(this));
-			graphicsNode->addComponent(new Transform(glm::translate(glm::mat4(1.0f),glm::vec3(4,1,3))));
-			graphicsNode->addComponent(new Camera());
-			graphicsNode->addComponent(new MaterialShader());
-				SceneNode* functionViewNode = new SceneNode(graphicsNode);
-				functionViewNode->addComponent(new Transform(glm::rotate(glm::mat4(1.0f), -3.1415f/4.0f, glm::vec3(1.0f,0.0,0))*glm::scale(glm::mat4(1.0f), glm::vec3(1.5f,1.5,1.5))));
-				functionViewNode->addComponent(new NodeRenderer(gridNode));
+			SceneNode* functionViewNode = new SceneNode(graphicsNode);				
+				functionViewNode->addComponent(new PercentViewport(glm::vec4(0.0, 0.0, 0.5, 1.0)));
+				functionViewNode->addComponent(new Transform(glm::translate(glm::mat4(1.0f),glm::vec3(4,1,3))));
+				functionViewNode->addComponent(new Camera());
+				SceneNode* functionNode = new SceneNode(functionViewNode);
+					functionNode->addComponent(new MaterialShader());
+					functionNode->addComponent(new Transform(glm::rotate(glm::mat4(1.0f), -3.1415f/4.0f, glm::vec3(1.0f,0.0,0))*glm::scale(glm::mat4(1.0f), glm::vec3(1.5f,1.5,1.5))));
+					functionNode->addComponent(new NodeRenderer(gridNode));
+			functionViewNode = new SceneNode(graphicsNode);				
+				functionViewNode->addComponent(new PercentViewport(glm::vec4(0.5, 0.0, 0.5, 1.0)));
+				functionViewNode->addComponent(new Transform(glm::translate(glm::mat4(1.0f),glm::vec3(4,1,3))));
+				functionViewNode->addComponent(new Camera());
+				functionNode = new SceneNode(functionViewNode);
+					functionNode->addComponent(new MaterialShader());
+					functionNode->addComponent(new Transform(glm::rotate(glm::mat4(1.0f), -3.1415f/4.0f, glm::vec3(1.0f,0.0,0))*glm::scale(glm::mat4(1.0f), glm::vec3(1.0f,1.0,1.0))));
+					functionNode->addComponent(new NodeRenderer(gridNode));
 
 
 		for (int x = 0; x < grid->getWidth(); x++) {

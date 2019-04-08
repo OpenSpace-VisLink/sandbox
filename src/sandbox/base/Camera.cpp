@@ -30,9 +30,9 @@ void Camera::updateModel() {
 void Camera::render(const SceneContext& sceneContext) {
 	RenderState& renderState = RenderState::get(sceneContext);
 
-	glm::ivec2 viewportSize = renderState.getViewportSize().get();
+	glm::ivec4 viewport = renderState.getViewport().get();
 
-	float aspectRatio = (float)viewportSize.x / (float)viewportSize.y; //1.0;//(float)1024  / (float)768;
+	float aspectRatio = (float)viewport[2] / (float)viewport[3]; //1.0;//(float)1024  / (float)768;
 
 	// Projection matrix : 45° Field of View, 4:3 ratio, display range : 0.1 unit <-> 100 units
 	projection = glm::perspective(glm::radians(45.0f), aspectRatio, 0.1f, 100.0f);
