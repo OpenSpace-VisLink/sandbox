@@ -99,18 +99,25 @@ public:
 			graphicsNode->addComponent(new sandbox::Window(eventNode));
 			graphicsNode->addComponent((new OpenGLCallback())->init(this));
 			SceneNode* functionViewNode = new SceneNode(graphicsNode);				
-				functionViewNode->addComponent(new PercentViewport(glm::vec4(0.0, 0.0, 0.5, 1.0)));
+				functionViewNode->addComponent(new PercentViewport(glm::vec4(0.0, 0.0, 0.5, 0.5)));
 				functionViewNode->addComponent(new Transform(glm::translate(glm::mat4(1.0f),glm::vec3(4,3,3))));
 				//functionViewNode->addComponent(new Transform(glm::translate(glm::mat4(1.0f),glm::vec3(0,0,3))));
 				functionViewNode->addComponent(new Camera());
 				functionViewNode->addComponent(new MaterialShader());
 				SceneNode* functionNode = new SceneNode(functionViewNode);
-					functionNode->addComponent(new Transform(glm::rotate(glm::mat4(1.0f), -3.1415f*1.0f/2.0f, glm::vec3(1.0f,0.0,0))*glm::scale(glm::mat4(1.0f), glm::vec3(2.0f,2.0f,1.0f*2.0f))));
+					functionNode->addComponent(new Transform(glm::rotate(glm::mat4(1.0f), -3.1415f*1.0f/2.0f, glm::vec3(1.0f,0.0,0))*glm::scale(glm::mat4(1.0f), glm::vec3(3.0f,3.0f,1.0f*3.0f))));
 					functionNode->addComponent(new NodeRenderer(gridNode));
 				SceneNode* pointsNode = new SceneNode(functionViewNode);
-					pointsNode->addComponent(new Transform(glm::rotate(glm::mat4(1.0f), -3.1415f*1.0f/2.0f, glm::vec3(1.0f,0.0,0))*glm::scale(glm::mat4(1.0f), glm::vec3(2.0f,2.0f,1.0f*2.0f))));
+					pointsNode->addComponent(new Transform(glm::rotate(glm::mat4(1.0f), -3.1415f*1.0f/2.0f, glm::vec3(1.0f,0.0,0))*glm::scale(glm::mat4(1.0f), glm::vec3(3.0f,3.0f,1.0f*3.0f))));
 					//pointsNode->addComponent(new NodeRenderer(sampleNode));
-			functionViewNode = new SceneNode(graphicsNode);		
+			SceneNode* flatGraph = new SceneNode(graphicsNode);
+				flatGraph->addComponent(new PercentViewport(glm::vec4(0.0, 0.5, 0.5, 0.5)));
+				flatGraph->addComponent(new Transform(glm::translate(glm::mat4(1.0f),glm::vec3(0,0,3))));
+				flatGraph->addComponent(new Camera());
+				flatGraph->addComponent(new MaterialShader());
+				SceneNode* flatPointsNode = new SceneNode(flatGraph);
+					flatPointsNode->addComponent(new Transform(glm::rotate(glm::mat4(1.0f), -3.1415f*2.0f/2.0f, glm::vec3(1.0f,0.0,0))*glm::scale(glm::mat4(1.0f), glm::vec3(2.0f,2.0f,0.0f*2.0f))));
+			/*functionViewNode = new SceneNode(graphicsNode);
 				functionViewNode->addComponent(new PercentViewport(glm::vec4(0.5, 0.5, 0.5, 0.5)));
 				functionViewNode->addComponent(new Transform(glm::translate(glm::mat4(1.0f),glm::vec3(0,0,3))));
 				functionViewNode->addComponent(new Camera());
@@ -118,14 +125,15 @@ public:
 					functionNode->addComponent(new Transform(glm::scale(glm::mat4(1.0f),glm::vec3(0.5f))));
 					//functionNode->addComponent(new Transform(glm::translate(glm::mat4(1.0f),glm::vec3(0.5,0.0,0.0))));
 					functionNode->addComponent(new MaterialShader());
-					functionNode->addComponent(new NodeRenderer(arrowNode));
+					functionNode->addComponent(new NodeRenderer(arrowNode));*/
 			functionViewNode = new SceneNode(graphicsNode);				
 				functionViewNode->addComponent(new PercentViewport(glm::vec4(0.5, 0.0, 0.5, 0.5)));
-				functionViewNode->addComponent(new Transform(glm::translate(glm::mat4(1.0f),glm::vec3(4,1,3))));
+				functionViewNode->addComponent(new Transform(glm::translate(glm::mat4(1.0f),glm::vec3(4,3,3))));
+				//functionViewNode->addComponent(new Transform(glm::translate(glm::mat4(1.0f),glm::vec3(4,1,3))));
 				functionViewNode->addComponent(new Camera());
 				functionNode = new SceneNode(functionViewNode);
 					functionNode->addComponent(new MaterialShader());
-					functionNode->addComponent(new Transform(glm::rotate(glm::mat4(1.0f), -3.1415f/2.0f, glm::vec3(1.0f,0.0,0))*glm::scale(glm::mat4(1.0f), glm::vec3(1.5f,1.5,1.5))));
+					functionNode->addComponent(new Transform(glm::rotate(glm::mat4(1.0f), -3.1415f/2.0f, glm::vec3(1.0f,0.0,0))*glm::scale(glm::mat4(1.0f), glm::vec3(3.0f))));
 					functionNode->addComponent(new NodeRenderer(gridNode));
 
 
@@ -140,7 +148,7 @@ public:
 		std::vector<glm::vec3> sampleNormals;
 		std::vector<glm::vec2> gradients;
 		std::vector<unsigned int> sampleIndices;
-		for (int f = 0; f < 500; f++) {
+		for (int f = 0; f < 1000; f++) {
 			float x = float(std::rand())/RAND_MAX;
 			float y = float(std::rand())/RAND_MAX;
 			float z = function(x, y);
@@ -165,9 +173,18 @@ public:
 			pointNode->addComponent(new Transform(glm::translate(glm::mat4(1.0f),samplePoints[f])*
 				rotMat*
 				glm::rotate(glm::mat4(1.0f),float(-3.14159f/2.0),glm::vec3(0.0f, 0.0f, 1.0f))*
-				glm::scale(glm::mat4(1.0f),glm::vec3(0.03f, 1.0f*glm::dot(gradients[f], grad)*0.03, 0.03f))));
+				glm::scale(glm::mat4(1.0f),glm::vec3(1.0f, glm::length(gradients[f]), 1.0f)*0.03f)));
 			pointNode->addComponent(new NodeRenderer(arrowNode));
+			SceneNode* flatPointNode = new SceneNode(flatPointsNode);
+			flatPointNode->addComponent(new Transform(glm::translate(glm::mat4(1.0f),samplePoints[f])*
+				rotMat*
+				glm::rotate(glm::mat4(1.0f),float(-3.14159f/2.0),glm::vec3(0.0f, 0.0f, 1.0f))*
+				glm::scale(glm::mat4(1.0f),glm::vec3(1.0f, glm::length(gradients[f]), 1.0f)*0.03f)));
+			flatPointNode->addComponent(new NodeRenderer(arrowNode));
 		}
+
+		// Other approach
+		
 
     	resizeEvent(Eigen::Vector2i(width(), height()));
 	}
