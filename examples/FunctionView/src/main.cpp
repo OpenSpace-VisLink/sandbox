@@ -24,12 +24,16 @@
 #include "sandbox/graphics/Viewport.h"
 #include "sandbox/graphics/Window.h"
 #include "sandbox/graphics/RenderState.h"
+#include "sandbox/data/KdTree.h"
 #include "glm/glm.hpp"
 #include <glm/gtc/matrix_access.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
 #include <glm/gtc/quaternion.hpp>
 #include <cstdlib>
+
+#include <iostream>
+#include <Eigen/Dense>
 
 using namespace sandbox;
 
@@ -148,7 +152,7 @@ public:
 		std::vector<glm::vec3> sampleNormals;
 		std::vector<glm::vec2> gradients;
 		std::vector<unsigned int> sampleIndices;
-		for (int f = 0; f < 1000; f++) {
+		for (int f = 0; f < 100; f++) {
 			float x = float(std::rand())/RAND_MAX;
 			float y = float(std::rand())/RAND_MAX;
 			float z = function(x, y);
@@ -183,11 +187,52 @@ public:
 			flatPointNode->addComponent(new NodeRenderer(arrowNode));
 		}
 
-		// Other approach
-		
+		// Other approach 
+	   /*Eigen::MatrixXf A = Eigen::MatrixXf::Random(3, 2);
+	   std::cout << "Here is the matrix A:\n" << A << std::endl;
+	   Eigen::VectorXf b = VectorXf::Random(3);
+	   std::cout << "Here is the right hand side b:\n" << b << std::endl;
+	   std::cout << "The least-squares solution is:\n"
+	        << A.bdcSvd(Eigen::ComputeThinU | Eigen::ComputeThinV).solve(b) << std::endl;*/
+
+		// create kdTree;
+		PointCollection pc(samplePoints);
+		std::vector<unsigned int> dimensions;
+		dimensions.push_back(0);
+		dimensions.push_back(1);
+		KdTree<float> kdTree(dimensions, pc, new EuclideanDistance<float>());
+
+		std::vector<float> point;
+		point.push_back(samplePoints[50][0]);
+		point.push_back(samplePoints[50][1]);
+		std::cout << point[0] << ", " << point[1] << std::endl;
+		std::vector<KdTree<float>::KdValue> nearest = kdTree.getNearestSorted(point, 5);
+		for (int f = 1; f < nearest.size(); f++) {
+			std::cout << nearest[f].index << " " << nearest[f].distance << " : ";
+			std::cout << samplePoints[nearest[f].index][0] << ", " << samplePoints[nearest[f].index][1] << std::endl;
+
+			glm::vec3 diff = samplePoints[nearest[f].index]-samplePoints[50];
+			glm::vec2 dir = normalize(glm::vec2(diff));
+			float dirDeriv = diff.z/(glm::length(glm::vec2(diff)));
+			std::cout << dirDeriv << std::endl;
+		}
 
     	resizeEvent(Eigen::Vector2i(width(), height()));
 	}
+
+	class PointCollection : public KdSearchable<float> {
+	public:
+		PointCollection(const std::vector<glm::vec3>& points) : points(points) {
+			for (int f = 0; f < points.size(); f++) {
+				indices.push_back(f);
+			}
+		}
+		const std::vector<unsigned int>& getPoints() const { return indices; }
+		float getDimension(unsigned int index, unsigned int dimension) const { return points[index][dimension]; }
+	private:
+		std::vector<glm::vec3> points;
+		std::vector<unsigned int> indices;
+	};
 
 	glm::quat rotationBetweenVectors(glm::vec3 start, glm::vec3 dest){
 		start = normalize(start);

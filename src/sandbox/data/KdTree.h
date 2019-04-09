@@ -23,6 +23,21 @@ public:
 };
 
 template<typename T>
+class EuclideanDistance : public KdDistance<T> {
+public:
+	T getDistance(const std::vector<T>& pointA, const std::vector<T>& pointB, const std::vector<unsigned int>& dimensions) const {
+		T dist = T();
+
+		for (int f = 0; f < dimensions.size(); f++) {
+			dist += std::pow((pointB[f] - pointA[f]), 2.0f);
+		}
+
+		return dist;//std::sqrt(dist);
+	}
+};
+
+
+template<typename T>
 class KdTree {
 public:
 	KdTree(std::vector<unsigned int> dimensions, const KdSearchable<T>& searchable, const KdDistance<T>* distanceFunction) : dimensions(dimensions), searchable(searchable), distanceFunction(distanceFunction) {
@@ -184,6 +199,7 @@ private:
 	const KdDistance<T>* distanceFunction;
 	std::vector<unsigned int> values;
 };
+
 
 }
 
