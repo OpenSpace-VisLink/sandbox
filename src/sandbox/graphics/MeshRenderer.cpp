@@ -4,7 +4,7 @@
 
 namespace sandbox {
 
-MeshRenderer::MeshRenderer() : mesh(nullptr) {
+MeshRenderer::MeshRenderer(GLuint renderType) : mesh(nullptr), renderType(renderType) {
 	addType<MeshRenderer>();
 }
 
@@ -102,7 +102,7 @@ void MeshRenderer::render(const SceneContext& sceneContext) {
 
 	    //glDrawElements(GL_PATCHES, mesh.indices.size(), GL_UNSIGNED_INT, (void*)0);
 	    //glDrawElements(GL_TRIANGLES, mesh->getIndices().size(), GL_UNSIGNED_INT, (void*)0);
-		glDrawElementsInstancedBaseVertex(GL_TRIANGLES,
+		glDrawElementsInstancedBaseVertex(renderType,//GL_TRIANGLES,
 				mesh->getIndices().size(),
 				GL_UNSIGNED_INT,
 				(void*)(sizeof(unsigned int) * 0),

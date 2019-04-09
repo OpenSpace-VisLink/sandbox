@@ -9,7 +9,7 @@ namespace sandbox {
 
 class MeshRenderer : public SceneComponent {
 public:
-	MeshRenderer();
+	MeshRenderer(GLuint renderType = GL_TRIANGLES);
 	virtual ~MeshRenderer() {}
 
 	void updateModel();
@@ -44,6 +44,7 @@ private:
 
 	Mesh* mesh;
 	SceneContextHandler<MeshSharedState,MeshState> contextHandler;
+	GLuint renderType;
 };
 
 }

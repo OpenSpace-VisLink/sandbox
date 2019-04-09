@@ -40,7 +40,7 @@ void MaterialShader::create(const SceneContext& sceneContext, ShaderProgramState
 		            "   pos = (ModelMatrix*vec4(position,1.0)).xyz; "
 		            "   norm = NormalMatrix*normal.xyz; "
 		            "   uv = coord; "
-		            "   gl_Position = ProjectionMatrix*ViewMatrix*ModelMatrix*vec4(pos, 1.0); "
+		            "   gl_Position = ProjectionMatrix*ViewMatrix*ModelMatrix*vec4(position, 1.0); "
 		            "}";
 
 	state.addShader(compileShader(vertexShader, GL_VERTEX_SHADER));
