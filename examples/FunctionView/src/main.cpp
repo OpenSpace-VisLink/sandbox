@@ -70,7 +70,9 @@ public:
 					arrowTipNode->addComponent(new Transform(tipTrans));
 					arrowTipNode->addComponent(new Cylinder(20, 1.0f, 0.0f));
 					arrowTipNode->addComponent(new MeshRenderer());
-					arrowTipNode->addComponent(new Material());
+					Material* material = new Material();
+					material->setColor(glm::vec4(1.0f, 0, 0, 1));
+					arrowTipNode->addComponent(material);
 				SceneNode* cylNode = new SceneNode(arrowNode);
 					glm::mat4 cylTrans = glm::translate(glm::mat4(1.0f),glm::vec3(0,-1.0,0));
 					cylTrans = glm::scale(cylTrans,glm::vec3(0.1f, 1.0f, 0.1f));
@@ -78,12 +80,14 @@ public:
 					cylNode->addComponent(new Cylinder(20));
 					//cylNode->addComponent((new TestCallback("cyl"))->init(this));
 					cylNode->addComponent(new MeshRenderer());
-					cylNode->addComponent(new Material());
+					material = new Material();
+					material->setColor(glm::vec4(1.0f, 0, 0, 1));
+					cylNode->addComponent(material);
 			SceneNode* gridNode = new SceneNode(geometryNode);
 				gridNode->addComponent(grid);
 				gridNode->addComponent(new SmoothNormals());
 				gridNode->addComponent(new MeshRenderer());
-				//gridNode->addComponent(new Material());
+				gridNode->addComponent(new Material());
 			SceneNode* sampleNode = new SceneNode(geometryNode);
 				Mesh* sampleMesh = new Mesh();
 				sampleNode->addComponent(sampleMesh);
@@ -128,7 +132,7 @@ public:
 		for (int x = 0; x < grid->getWidth(); x++) {
 			for (int y = 0; y < grid->getHeight(); y++) {
 				//grid->getNode(x,y).z = 0.5*std::sin(2.0f*3.1415*y/grid->getHeight())*std::sin(2.0f*3.1415*x/grid->getWidth());
-				grid->getNode(x,y).z = function(1.0f*x/grid->getWidth(), 1.0f*y/grid->getHeight());//*std::sin(2.0f*3.1415*x/grid->getWidth());
+				grid->getNode(x,y).z = function(1.0f*x/(grid->getWidth()-1), 1.0f*y/(grid->getHeight()-1));//*std::sin(2.0f*3.1415*x/grid->getWidth());
 			}
 		}
 
@@ -161,7 +165,7 @@ public:
 			pointNode->addComponent(new Transform(glm::translate(glm::mat4(1.0f),samplePoints[f])*
 				rotMat*
 				glm::rotate(glm::mat4(1.0f),float(-3.14159f/2.0),glm::vec3(0.0f, 0.0f, 1.0f))*
-				glm::scale(glm::mat4(1.0f),glm::vec3(1.0f, glm::dot(gradients[f], grad), 1.0f)*0.03f)));
+				glm::scale(glm::mat4(1.0f),glm::vec3(0.03f, 1.0f*glm::dot(gradients[f], grad)*0.03, 0.03f))));
 			pointNode->addComponent(new NodeRenderer(arrowNode));
 		}
 

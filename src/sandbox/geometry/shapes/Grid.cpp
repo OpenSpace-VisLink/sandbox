@@ -6,8 +6,8 @@ Grid::Grid(int width, int height) : width(width), height(height) {
 
 	addType<Grid>();
 
-	float dx = 1.0f/float(width);
-	float dy = 1.0f/float(height);
+	float dx = 1.0f/float(width-1);
+	float dy = 1.0f/float(height-1);
 
 	for (int x = 0; x < width; x++) {
 		for (int y = 0; y < height; y++) {
