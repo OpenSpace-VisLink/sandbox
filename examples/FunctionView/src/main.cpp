@@ -28,12 +28,21 @@
 #include <glm/gtc/matrix_access.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
+#include <glm/gtc/quaternion.hpp>
 #include <cstdlib>
 
 using namespace sandbox;
 
 float function(float x, float y) {
 	return 0.5*std::cos(2.0f*3.1415*y)*std::cos(2.0f*3.1415*x);
+}
+
+float fx(float x, float y) {
+	return 0.5*std::cos(2.0f*3.1415*y)*std::sin(2.0f*3.1415*x)*-2.0f*3.1415;
+}
+
+float fy(float x, float y) {
+	return 0.5*std::sin(2.0f*3.1415*y)*std::cos(2.0f*3.1415*x)*-2.0f*3.1415;
 }
 
 class TestApp : public NanoguiScreen {
@@ -53,14 +62,18 @@ public:
 			SceneNode* arrowNode = new SceneNode(geometryNode);
 				//functionNode->addComponent(new Transform(glm::translate(glm::mat4(1.0f),glm::vec3(0.5,0.0,0.0))));
 				//arrowNode->addComponent(new Transform(glm::translate(glm::mat4(1.0f),glm::vec3(-0.75,0,0))));
-				arrowNode->addComponent(new Transform(glm::translate(glm::mat4(1.0f),glm::vec3(0,2.0,0))));
-				arrowNode->addComponent(new Cylinder(20, 1.0f, 0.0f));
-				arrowNode->addComponent(new MeshRenderer());
-				arrowNode->addComponent(new Material());
+				arrowNode->addComponent(new Transform(glm::scale(glm::mat4(1.0f),glm::vec3(1.0f/1.25))*glm::translate(glm::mat4(1.0f),glm::vec3(0,2.0,0))));
 				//arrowNode->addComponent((new TestCallback("arrow"))->init(this));
+				SceneNode* arrowTipNode = new SceneNode(arrowNode);
+					glm::mat4 tipTrans = glm::translate(glm::mat4(1.0f),glm::vec3(0,0.25,0));
+					tipTrans = glm::scale(tipTrans,glm::vec3(0.25f));
+					arrowTipNode->addComponent(new Transform(tipTrans));
+					arrowTipNode->addComponent(new Cylinder(20, 1.0f, 0.0f));
+					arrowTipNode->addComponent(new MeshRenderer());
+					arrowTipNode->addComponent(new Material());
 				SceneNode* cylNode = new SceneNode(arrowNode);
 					glm::mat4 cylTrans = glm::translate(glm::mat4(1.0f),glm::vec3(0,-1.0,0));
-					cylTrans = glm::scale(cylTrans,glm::vec3(0.5f, 1.0f, 0.5f));
+					cylTrans = glm::scale(cylTrans,glm::vec3(0.1f, 1.0f, 0.1f));
 					cylNode->addComponent(new Transform(cylTrans));
 					cylNode->addComponent(new Cylinder(20));
 					//cylNode->addComponent((new TestCallback("cyl"))->init(this));
@@ -84,15 +97,16 @@ public:
 			SceneNode* functionViewNode = new SceneNode(graphicsNode);				
 				functionViewNode->addComponent(new PercentViewport(glm::vec4(0.0, 0.0, 0.5, 1.0)));
 				functionViewNode->addComponent(new Transform(glm::translate(glm::mat4(1.0f),glm::vec3(4,3,3))));
+				//functionViewNode->addComponent(new Transform(glm::translate(glm::mat4(1.0f),glm::vec3(0,0,3))));
 				functionViewNode->addComponent(new Camera());
 				functionViewNode->addComponent(new MaterialShader());
 				SceneNode* functionNode = new SceneNode(functionViewNode);
-					functionNode->addComponent(new Transform(glm::rotate(glm::mat4(1.0f), -3.1415f/2.0f, glm::vec3(1.0f,0.0,0))*glm::scale(glm::mat4(1.0f), glm::vec3(2.0f))));
+					functionNode->addComponent(new Transform(glm::rotate(glm::mat4(1.0f), -3.1415f*1.0f/2.0f, glm::vec3(1.0f,0.0,0))*glm::scale(glm::mat4(1.0f), glm::vec3(2.0f,2.0f,1.0f*2.0f))));
 					functionNode->addComponent(new NodeRenderer(gridNode));
 				SceneNode* pointsNode = new SceneNode(functionViewNode);
-					pointsNode->addComponent(new Transform(glm::rotate(glm::mat4(1.0f), -3.1415f/2.0f, glm::vec3(1.0f,0.0,0))*glm::scale(glm::mat4(1.0f), glm::vec3(2.0f))));
-					pointsNode->addComponent(new NodeRenderer(sampleNode));
-			functionViewNode = new SceneNode(graphicsNode);				
+					pointsNode->addComponent(new Transform(glm::rotate(glm::mat4(1.0f), -3.1415f*1.0f/2.0f, glm::vec3(1.0f,0.0,0))*glm::scale(glm::mat4(1.0f), glm::vec3(2.0f,2.0f,1.0f*2.0f))));
+					//pointsNode->addComponent(new NodeRenderer(sampleNode));
+			functionViewNode = new SceneNode(graphicsNode);		
 				functionViewNode->addComponent(new PercentViewport(glm::vec4(0.5, 0.5, 0.5, 0.5)));
 				functionViewNode->addComponent(new Transform(glm::translate(glm::mat4(1.0f),glm::vec3(0,0,3))));
 				functionViewNode->addComponent(new Camera());
@@ -120,12 +134,14 @@ public:
 
 		std::vector<glm::vec3> samplePoints;
 		std::vector<glm::vec3> sampleNormals;
+		std::vector<glm::vec2> gradients;
 		std::vector<unsigned int> sampleIndices;
-		for (int f = 0; f < 100; f++) {
+		for (int f = 0; f < 500; f++) {
 			float x = float(std::rand())/RAND_MAX;
 			float y = float(std::rand())/RAND_MAX;
 			float z = function(x, y);
 			samplePoints.push_back(glm::vec3(x-0.5, y-0.5, z));
+			gradients.push_back(glm::vec2(fx(x,y),fy(x,y)));
 			sampleNormals.push_back(glm::vec3(0.0f,0.0f,1.0f));
 			sampleIndices.push_back(f);
 		}
@@ -135,11 +151,54 @@ public:
 
 		for (int f = 0; f < samplePoints.size(); f++) {
 			SceneNode* pointNode = new SceneNode(pointsNode);
-			pointNode->addComponent(new Transform(glm::translate(glm::mat4(1.0f),samplePoints[f])*glm::scale(glm::mat4(1.0f),glm::vec3(0.02,0.075,0.02)*0.5f)));
+			//glm::vec3 EulerAngles(0, -3.14159f/4.0, 3.14159f/4.0);
+			glm::vec2 grad = glm::normalize(gradients[f]);
+			glm::vec3 gradientDisp = glm::vec3(grad.x,grad.y, 1.0f*glm::dot(gradients[f], grad));
+			gradientDisp = glm::normalize(gradientDisp);
+			glm::quat myQuat = rotationBetweenVectors(glm::vec3(1.0,0.0,0.0), gradientDisp);
+			//glm::quat myQuat = glm::quat(EulerAngles);
+			glm::mat4 rotMat = glm::mat4_cast(myQuat);
+			pointNode->addComponent(new Transform(glm::translate(glm::mat4(1.0f),samplePoints[f])*
+				rotMat*
+				glm::rotate(glm::mat4(1.0f),float(-3.14159f/2.0),glm::vec3(0.0f, 0.0f, 1.0f))*
+				glm::scale(glm::mat4(1.0f),glm::vec3(1.0f, glm::dot(gradients[f], grad), 1.0f)*0.03f)));
 			pointNode->addComponent(new NodeRenderer(arrowNode));
 		}
 
     	resizeEvent(Eigen::Vector2i(width(), height()));
+	}
+
+	glm::quat rotationBetweenVectors(glm::vec3 start, glm::vec3 dest){
+		start = normalize(start);
+		dest = normalize(dest);
+
+		float cosTheta = dot(start, dest);
+		glm::vec3 rotationAxis;
+
+		if (cosTheta < -1 + 0.001f){
+			// special case when vectors in opposite directions:
+			// there is no "ideal" rotation axis
+			// So guess one; any will do as long as it's perpendicular to start
+			rotationAxis = glm::cross(glm::vec3(0.0f, 0.0f, 1.0f), start);
+			if (glm::length(rotationAxis) < 0.01 ) // bad luck, they were parallel, try again!
+				rotationAxis = glm::cross(glm::vec3(1.0f, 0.0f, 0.0f), start);
+
+			rotationAxis = glm::normalize(rotationAxis);
+			return glm::angleAxis(glm::radians(180.0f), rotationAxis);
+		}
+
+		rotationAxis = glm::cross(start, dest);
+
+		float s = sqrt( (1+cosTheta)*2 );
+		float invs = 1 / s;
+
+		return glm::quat(
+			s * 0.5f, 
+			rotationAxis.x * invs,
+			rotationAxis.y * invs,
+			rotationAxis.z * invs
+		);
+
 	}
 
 	~TestApp() {
