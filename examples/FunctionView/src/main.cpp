@@ -16,6 +16,7 @@
 #include "sandbox/base/Camera.h"
 #include "sandbox/base/NodeRenderer.h"
 #include "sandbox/geometry/algorithms/SmoothNormals.h"
+#include "sandbox/geometry/shapes/Cylinder.h"
 #include "sandbox/geometry/shapes/Grid.h"
 #include "sandbox/geometry/Material.h"
 #include "sandbox/graphics/MeshRenderer.h"
@@ -43,6 +44,22 @@ public:
 			resize->subscribe(resizeCallback);
 			eventNode->addComponent(resizeCallback);
 		SceneNode* geometryNode = new SceneNode(&scene);
+			SceneNode* arrowNode = new SceneNode(geometryNode);
+				arrowNode->addComponent(new Cylinder(20, 0.75f, 0.01f));
+				//arrowNode->addComponent(new Transform(glm::scale(glm::mat4(1.0f),glm::vec3(0.5f, 1.0f, 0.5f))));
+				//arrowNode->addComponent(new Cylinder(10, 1.0f, 1.0));
+
+				//arrowNode->addComponent(new SmoothNormals());
+				arrowNode->addComponent(new MeshRenderer());
+				arrowNode->addComponent(new Material());
+				SceneNode* cylNode = new SceneNode(arrowNode);
+					glm::mat4 cylTrans = glm::translate(glm::mat4(1.0f),glm::vec3(0,-0.75,0));
+					cylTrans = glm::scale(cylTrans,glm::vec3(0.5f, 1.0f, 0.5f));
+					cylNode->addComponent(new Transform(cylTrans));
+					cylNode->addComponent(new Cylinder(20));
+					//cylNode->addComponent(new SmoothNormals());
+					cylNode->addComponent(new MeshRenderer());
+					cylNode->addComponent(new Material());
 			SceneNode* gridNode = new SceneNode(geometryNode);
 				gridNode->addComponent(grid);
 				gridNode->addComponent(new SmoothNormals());
@@ -53,19 +70,26 @@ public:
 			graphicsNode->addComponent((new OpenGLCallback())->init(this));
 			SceneNode* functionViewNode = new SceneNode(graphicsNode);				
 				functionViewNode->addComponent(new PercentViewport(glm::vec4(0.0, 0.0, 0.5, 1.0)));
-				functionViewNode->addComponent(new Transform(glm::translate(glm::mat4(1.0f),glm::vec3(4,1,3))));
+				functionViewNode->addComponent(new Transform(glm::translate(glm::mat4(1.0f),glm::vec3(4,3,3))));
 				functionViewNode->addComponent(new Camera());
+				functionViewNode->addComponent(new MaterialShader());
 				SceneNode* functionNode = new SceneNode(functionViewNode);
-					functionNode->addComponent(new MaterialShader());
 					functionNode->addComponent(new Transform(glm::rotate(glm::mat4(1.0f), -3.1415f/4.0f, glm::vec3(1.0f,0.0,0))*glm::scale(glm::mat4(1.0f), glm::vec3(1.5f,1.5,1.5))));
 					functionNode->addComponent(new NodeRenderer(gridNode));
 			functionViewNode = new SceneNode(graphicsNode);				
-				functionViewNode->addComponent(new PercentViewport(glm::vec4(0.5, 0.0, 0.5, 1.0)));
+				functionViewNode->addComponent(new PercentViewport(glm::vec4(0.5, 0.5, 0.5, 0.5)));
+				functionViewNode->addComponent(new Transform(glm::translate(glm::mat4(1.0f),glm::vec3(4,3,3))));
+				functionViewNode->addComponent(new Camera());
+				functionNode = new SceneNode(functionViewNode);
+					functionNode->addComponent(new MaterialShader());
+					functionNode->addComponent(new NodeRenderer(arrowNode));
+			functionViewNode = new SceneNode(graphicsNode);				
+				functionViewNode->addComponent(new PercentViewport(glm::vec4(0.5, 0.0, 0.5, 0.5)));
 				functionViewNode->addComponent(new Transform(glm::translate(glm::mat4(1.0f),glm::vec3(4,1,3))));
 				functionViewNode->addComponent(new Camera());
 				functionNode = new SceneNode(functionViewNode);
 					functionNode->addComponent(new MaterialShader());
-					functionNode->addComponent(new Transform(glm::rotate(glm::mat4(1.0f), -3.1415f/4.0f, glm::vec3(1.0f,0.0,0))*glm::scale(glm::mat4(1.0f), glm::vec3(1.0f,1.0,1.0))));
+					functionNode->addComponent(new Transform(glm::rotate(glm::mat4(1.0f), -3.1415f/4.0f, glm::vec3(1.0f,0.0,0))*glm::scale(glm::mat4(1.0f), glm::vec3(1.5f,1.5,1.5))));
 					functionNode->addComponent(new NodeRenderer(gridNode));
 
 

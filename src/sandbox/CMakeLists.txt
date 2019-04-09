@@ -17,6 +17,7 @@ set (SOURCEFILES
   geometry/Material.cpp
   geometry/MeshLoader.cpp
   geometry/algorithms/SmoothNormals.cpp
+  geometry/shapes/Cylinder.cpp
   geometry/shapes/Grid.cpp
   geometry/shapes/Quad.cpp
   graphics/Blend.cpp
@@ -45,6 +46,7 @@ set (HEADERFILES
   geometry/Material.h
   geometry/MeshLoader.h
   geometry/algorithms/SmoothNormals.h
+  geometry/shapes/Cylinder.h
   geometry/shapes/Grid.h
   geometry/shapes/Quad.h
   graphics/Blend.h
