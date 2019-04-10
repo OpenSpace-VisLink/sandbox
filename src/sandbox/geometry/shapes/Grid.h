@@ -14,6 +14,10 @@ public:
 		return nodes[y*width + x];
 	}
 
+	glm::vec2& getCoord(int x, int y) {
+		return coords[y*width + x];
+	}
+
 	int getWidth() const { return width; }
 	int getHeight() const { return height; }
 

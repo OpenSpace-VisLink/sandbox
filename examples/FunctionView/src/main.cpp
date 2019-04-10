@@ -164,10 +164,11 @@ public:
 		std::vector<glm::vec2> gradients;
 		std::vector<unsigned int> sampleIndices;
 
-		int baseSamples = 500;
-		int numAdditionalSamples = 0;
-		int numSmoothSamples = 0;
-		int numGridSamples = 100;
+		int baseSamples = 300;
+		int numAdditionalSamples = 50;
+		int numSmoothSamples = 1000;
+		//int numGridSamples = 500;
+		int numGridSamples = grid->getWidth()*grid->getHeight();
 		int startShown = 0;
 		int numShown = baseSamples;
 		//int numShown = baseSamples + 5*numAdditionalSamples + numSmoothSamples + numGridSamples;
@@ -210,13 +211,13 @@ public:
 				y = 0.1*2.0f*(y-0.5)+1.0f*(f-baseSamples-5*numAdditionalSamples)/numSmoothSamples;	
 			}
 			else if (f > baseSamples && f < baseSamples + 5*numAdditionalSamples + numSmoothSamples + numGridSamples) {
-				float dt = 1.0f/std::sqrt(numGridSamples) + 0.5;
-				float rowCalc = 1.0f*(f-baseSamples - 5*numAdditionalSamples - numSmoothSamples)/std::sqrt(numGridSamples);
+				float rowCalc = 1.0f*(f-baseSamples - 5*numAdditionalSamples - numSmoothSamples)/std::sqrt(numGridSamples+1);
+				//std::cout << rowCalc << std::endl;
 				int row = rowCalc;
-				x = dt*rowCalc;
-				y = x;
-				//x = 0.1*2.0f*(x-0.5)+1.0f*(f-baseSamples-5*numAdditionalSamples)/numSmoothSamples;
-				//y = 0.1*2.0f*(y-0.5)+1.0f*(f-baseSamples-5*numAdditionalSamples)/numSmoothSamples;	
+				//x = 1.0f*row/std::sqrt(numGridSamples) + 1.0f/std::sqrt(numGridSamples)/2.0f;
+				//y = 1.0f*(rowCalc-row) + 1.0f/std::sqrt(numGridSamples)/2.0f;
+				x = 1.0f*row/std::sqrt(numGridSamples+1);
+				y = 1.0f*(rowCalc-row);
 			}
 
 			float z = function(x, y);
@@ -279,27 +280,28 @@ public:
 
 
 		std::vector<glm::vec2> estGradients;
+		std::vector<float> estResiduals;
 
 		for (int i = 0; i < samplePoints.size(); i++) {
 			sampleNum = i;
 			std::vector<float> point;
 			point.push_back(samplePoints[sampleNum][0]);
 			point.push_back(samplePoints[sampleNum][1]);
-			std::cout << point[0] << ", " << point[1] << std::endl;
+			//std::cout << point[0] << ", " << point[1] << std::endl;
 			std::vector<KdTree<float>::KdValue> nearest = kdTree.getNearestSorted(point, numNearest);
 			for (int f = 1; f < nearest.size(); f++) {
-				std::cout << nearest[f].index << " " << nearest[f].distance << " : ";
-				std::cout << samplePoints[nearest[f].index][0] << ", " << samplePoints[nearest[f].index][1] << std::endl;
+				//std::cout << nearest[f].index << " " << nearest[f].distance << " : ";
+				//std::cout << samplePoints[nearest[f].index][0] << ", " << samplePoints[nearest[f].index][1] << std::endl;
 
 				glm::vec3 diff = samplePoints[nearest[f].index]-samplePoints[sampleNum];
 				glm::vec2 dir = normalize(glm::vec2(diff));
 				float dirDeriv = diff.z/(glm::length(glm::vec2(diff)));
-				std::cout << dirDeriv << " " << glm::dot(gradients[sampleNum],dir) << std::endl;
+				//std::cout << dirDeriv << " " << glm::dot(gradients[sampleNum],dir) << std::endl;
 
 				Eigen::VectorXf d(2);
 				d[0] = dir[0];
 				d[1] = dir[1];
-				std::cout <<" d " << d << std::endl;
+				//std::cout <<" d " << d << std::endl;
 				b[f-1] = dirDeriv;
 				A.block(f-1, 0, 1, 2) = d.transpose();
 			}
@@ -308,19 +310,37 @@ public:
 	//		std::cout << b << std::endl;
 
 	//		Eigen::MatrixXf A = Eigen::MatrixXf::Random(3, 2);
-		   std::cout << "Here is the matrix A:\n" << A << std::endl;
+		   //std::cout << "Here is the matrix A:\n" << A << std::endl;
 	//	   Eigen::VectorXf b = VectorXf::Random(3);
-		   std::cout << "Here is the right hand side b:\n" << b << std::endl;
+		   //std::cout << "Here is the right hand side b:\n" << b << std::endl;
 		   //Eigen::VectorXf sol = A.bdcSvd(Eigen::ComputeThinU | Eigen::ComputeThinV).solve(b);
 		   Eigen::VectorXf sol = calculateLeastSquares(A,b);
-		   std::cout << "The least-squares solution is:\n"
-		        << sol << std::endl;
+		   float residual = (A * sol - b).norm();
+		   estResiduals.push_back(residual);
+		   //std::cout << residual << std::endl;
+		  // std::cout << "The least-squares solution is:\n"
+		   //     << sol << std::endl;
 
 		   estGradients.push_back(glm::vec2(sol[0], sol[1]));
 
-		   std::cout << gradients[sampleNum].x << " " << gradients[sampleNum].y << std::endl;
+		   //std::cout << gradients[sampleNum].x << " " << gradients[sampleNum].y << std::endl;
 
 		}
+
+		glm::vec2 minMax;
+
+
+		for (int f = startShown; f < startShown+numShown; f++) {
+			if (f == startShown) {
+				minMax = glm::vec2(estResiduals[f]);
+			}
+			else {
+				minMax.x = minMax.x < estResiduals[f] ? minMax.x : estResiduals[f];
+				minMax.y = minMax.y > estResiduals[f] ? minMax.y : estResiduals[f];
+			}
+		}
+		std::cout << minMax.x << ", "<< minMax.y << std::endl;
+		minMax = glm::vec2(0.0100613, 2.06081);
 
 		for (int f = startShown; f < startShown+numShown; f++) {
 			SceneNode* pointNode = new SceneNode(estPointsNode);
@@ -343,6 +363,12 @@ public:
 				glm::rotate(glm::mat4(1.0f),float(-3.14159f/2.0),glm::vec3(0.0f, 0.0f, 1.0f))*
 				glm::scale(glm::mat4(1.0f),glm::vec3(1.0f, glm::length(gradient), 1.0f)*0.03f)));
 			flatPointNode->addComponent(new NodeRenderer(arrowNode));
+
+			float rowCalc = 1.0f*(f-startShown)/std::sqrt(numShown+1);
+			int row = rowCalc;
+			int column = (rowCalc-row)*std::sqrt(numGridSamples+1);
+			//std::cout << row << ", " << column << std::endl;
+			grid->getCoord(row, column) = glm::vec2((estResiduals[f]-minMax.x)/(minMax.y-minMax.x));
 		}
 
     	resizeEvent(Eigen::Vector2i(width(), height()));
