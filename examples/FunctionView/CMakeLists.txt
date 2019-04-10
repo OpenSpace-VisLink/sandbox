@@ -6,6 +6,7 @@ include(${CMAKE_FRAMEWORK_DIR}/project/project.cmake)
 
 set (SOURCEFILES
   src/main.cpp
+  src/LeastSquares.cpp
 )
 
 set (HEADERFILES
