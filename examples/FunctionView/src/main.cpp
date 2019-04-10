@@ -52,7 +52,7 @@ float fy(float x, float y) {
 
 class TestApp : public NanoguiScreen {
 public:
-	TestApp() : NanoguiScreen(Eigen::Vector2i(1024, 768), "Test App") {
+	TestApp() : NanoguiScreen(Eigen::Vector2i(1180, 980), "Test App") {
 		using namespace nanogui;
 
 		Grid* grid = new Grid(30, 30);
@@ -163,10 +163,64 @@ public:
 		std::vector<glm::vec3> sampleNormals;
 		std::vector<glm::vec2> gradients;
 		std::vector<unsigned int> sampleIndices;
-		for (int f = 0; f < 1000; f++) {
+
+		int baseSamples = 500;
+		int numAdditionalSamples = 0;
+		int numSmoothSamples = 0;
+		int numGridSamples = 100;
+		int startShown = 0;
+		int numShown = baseSamples;
+		//int numShown = baseSamples + 5*numAdditionalSamples + numSmoothSamples + numGridSamples;
+		int startTrain = 0;
+		int numTrain = baseSamples + 5*numAdditionalSamples + numSmoothSamples + numGridSamples;
+
+		if (true) { // show grid vectors
+			startShown = baseSamples + 5*numAdditionalSamples + numSmoothSamples+1;
+			numShown = numGridSamples;
+
+			startTrain = 0;
+			numTrain = baseSamples + 5*numAdditionalSamples + numSmoothSamples;
+		}
+
+		for (int f = 0; f < baseSamples + 5*numAdditionalSamples + numSmoothSamples + numGridSamples; f++) {
 			float x = float(std::rand())/RAND_MAX;
 			float y = float(std::rand())/RAND_MAX;
+			if (f > baseSamples && f < baseSamples+numAdditionalSamples) {		
+				x = 0.5+0.1*2.0f*(x-0.5);
+				y = 0.5+0.1*2.0f*(y-0.5);	
+			}
+			else if (f > baseSamples && f < baseSamples + 2*numAdditionalSamples) {		
+				x = 0.95+0.05*2.0f*(x-0.5);
+				y = 0.05+0.05*2.0f*(y-0.5);	
+			}
+			else if (f > baseSamples && f < baseSamples + 3*numAdditionalSamples) {		
+				x = 0.05+0.05*2.0f*(x-0.5);
+				y = 0.05+0.05*2.0f*(y-0.5);	
+			}
+			else if (f > baseSamples && f < baseSamples + 4*numAdditionalSamples) {		
+				x = 0.95+0.05*2.0f*(x-0.5);
+				y = 0.95+0.05*2.0f*(y-0.5);	
+			}
+			else if (f > baseSamples && f < baseSamples + 5*numAdditionalSamples) {		
+				x = 0.05+0.05*2.0f*(x-0.5);
+				y = 0.95+0.05*2.0f*(y-0.5);	
+			}
+			else if (f > baseSamples && f < baseSamples + 5*numAdditionalSamples + numSmoothSamples) {		
+				x = 0.1*2.0f*(x-0.5)+1.0f*(f-baseSamples-5*numAdditionalSamples)/numSmoothSamples;
+				y = 0.1*2.0f*(y-0.5)+1.0f*(f-baseSamples-5*numAdditionalSamples)/numSmoothSamples;	
+			}
+			else if (f > baseSamples && f < baseSamples + 5*numAdditionalSamples + numSmoothSamples + numGridSamples) {
+				float dt = 1.0f/std::sqrt(numGridSamples) + 0.5;
+				float rowCalc = 1.0f*(f-baseSamples - 5*numAdditionalSamples - numSmoothSamples)/std::sqrt(numGridSamples);
+				int row = rowCalc;
+				x = dt*rowCalc;
+				y = x;
+				//x = 0.1*2.0f*(x-0.5)+1.0f*(f-baseSamples-5*numAdditionalSamples)/numSmoothSamples;
+				//y = 0.1*2.0f*(y-0.5)+1.0f*(f-baseSamples-5*numAdditionalSamples)/numSmoothSamples;	
+			}
+
 			float z = function(x, y);
+			//float z = function(0.1*2.0*(x-0.5), 0.1*2.0*(y-0.5));
 			samplePoints.push_back(glm::vec3(x-0.5, y-0.5, z));
 			gradients.push_back(glm::vec2(fx(x,y),fy(x,y)));
 			sampleNormals.push_back(glm::vec3(0.0f,0.0f,1.0f));
@@ -176,7 +230,8 @@ public:
 		sampleMesh->setNormals(sampleNormals);
 		sampleMesh->setIndices(sampleIndices);
 
-		for (int f = 0; f < samplePoints.size(); f++) {
+
+		for (int f = startShown; f < startShown+numShown; f++) {
 			SceneNode* pointNode = new SceneNode(pointsNode);
 			//glm::vec3 EulerAngles(0, -3.14159f/4.0, 3.14159f/4.0);
 			glm::vec2 grad = glm::normalize(gradients[f]);
@@ -207,7 +262,11 @@ public:
 	        << A.bdcSvd(Eigen::ComputeThinU | Eigen::ComputeThinV).solve(b) << std::endl;*/
 
 		// create kdTree;
-		PointCollection pc(samplePoints);
+		std::vector<glm::vec3> trainPoints;
+		for (int f = startTrain; f < startTrain + numTrain; f++) {
+			trainPoints.push_back(samplePoints[f]);
+		}
+		PointCollection pc(trainPoints);
 		std::vector<unsigned int> dimensions;
 		dimensions.push_back(0);
 		dimensions.push_back(1);
@@ -263,7 +322,7 @@ public:
 
 		}
 
-		for (int f = 0; f < samplePoints.size(); f++) {
+		for (int f = startShown; f < startShown+numShown; f++) {
 			SceneNode* pointNode = new SceneNode(estPointsNode);
 			//glm::vec3 EulerAngles(0, -3.14159f/4.0, 3.14159f/4.0);
 			glm::vec2 gradient = estGradients[f];
