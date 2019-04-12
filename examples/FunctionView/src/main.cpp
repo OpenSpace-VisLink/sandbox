@@ -92,7 +92,7 @@ public:
 				gridNode->addComponent(grid);
 				gridNode->addComponent(new SmoothNormals());
 				gridNode->addComponent(new MeshRenderer());
-				gridNode->addComponent(new Material());
+				//gridNode->addComponent(new Material());
 			SceneNode* sampleNode = new SceneNode(geometryNode);
 				Mesh* sampleMesh = new Mesh();
 				sampleNode->addComponent(sampleMesh);
@@ -164,23 +164,27 @@ public:
 		std::vector<glm::vec2> gradients;
 		std::vector<unsigned int> sampleIndices;
 
-		int baseSamples = 300;
-		int numAdditionalSamples = 50;
-		int numSmoothSamples = 1000;
+		int baseSamples = 1000;
+		int numAdditionalSamples = 0;
+		int numSmoothSamples = 0;
 		//int numGridSamples = 500;
 		int numGridSamples = grid->getWidth()*grid->getHeight();
 		int startShown = 0;
-		int numShown = baseSamples;
-		//int numShown = baseSamples + 5*numAdditionalSamples + numSmoothSamples + numGridSamples;
+		//int numShown = baseSamples;
+		int numShown = baseSamples + 5*numAdditionalSamples + numSmoothSamples;// + numGridSamples;
 		int startTrain = 0;
-		int numTrain = baseSamples + 5*numAdditionalSamples + numSmoothSamples + numGridSamples;
+		int numTrain = baseSamples + 5*numAdditionalSamples + numSmoothSamples;
+
+		//bool recalculateZ = false;
 
 		if (true) { // show grid vectors
-			startShown = baseSamples + 5*numAdditionalSamples + numSmoothSamples+1;
+			startShown = baseSamples + 5*numAdditionalSamples + numSmoothSamples+0;
 			numShown = numGridSamples;
 
 			startTrain = 0;
 			numTrain = baseSamples + 5*numAdditionalSamples + numSmoothSamples;
+
+			//recalculateZ = true;
 		}
 
 		for (int f = 0; f < baseSamples + 5*numAdditionalSamples + numSmoothSamples + numGridSamples; f++) {
@@ -221,6 +225,7 @@ public:
 			}
 
 			float z = function(x, y);
+
 			//float z = function(0.1*2.0*(x-0.5), 0.1*2.0*(y-0.5));
 			samplePoints.push_back(glm::vec3(x-0.5, y-0.5, z));
 			gradients.push_back(glm::vec2(fx(x,y),fy(x,y)));
@@ -245,7 +250,7 @@ public:
 				rotMat*
 				glm::rotate(glm::mat4(1.0f),float(-3.14159f/2.0),glm::vec3(0.0f, 0.0f, 1.0f))*
 				glm::scale(glm::mat4(1.0f),glm::vec3(1.0f, glm::length(gradients[f]), 1.0f)*0.03f)));
-			pointNode->addComponent(new NodeRenderer(arrowNode));
+			//pointNode->addComponent(new NodeRenderer(arrowNode));
 			SceneNode* flatPointNode = new SceneNode(flatPointsNode);
 			flatPointNode->addComponent(new Transform(glm::translate(glm::mat4(1.0f),samplePoints[f])*
 				rotMat*
@@ -275,25 +280,116 @@ public:
 
 		int sampleNum = 75;
 		int numNearest = 6;
-		Eigen::MatrixXf A = Eigen::MatrixXf(numNearest-1, 2);
-		Eigen::VectorXf b = VectorXf::Random(numNearest-1);
 
 
 		std::vector<glm::vec2> estGradients;
 		std::vector<float> estResiduals;
 
 		for (int i = 0; i < samplePoints.size(); i++) {
+			bool recalculateZ = (i > baseSamples + 5*numAdditionalSamples + numSmoothSamples && i < baseSamples + 5*numAdditionalSamples + numSmoothSamples + numGridSamples);
+			bool recalculateZ_FirstHalf = (i > baseSamples + 5*numAdditionalSamples + numSmoothSamples && i < baseSamples + 5*numAdditionalSamples + numSmoothSamples + numGridSamples/2.0);
+
+			if (recalculateZ) {
+				//samplePoints[i].z = 0.0f;
+			}
+
+			Eigen::MatrixXf A = Eigen::MatrixXf(numNearest-(recalculateZ ? 0 : 1), 2);
+			Eigen::VectorXf b = VectorXf::Random(numNearest-(recalculateZ ? 0 : 1));
+
 			sampleNum = i;
 			std::vector<float> point;
 			point.push_back(samplePoints[sampleNum][0]);
 			point.push_back(samplePoints[sampleNum][1]);
 			//std::cout << point[0] << ", " << point[1] << std::endl;
 			std::vector<KdTree<float>::KdValue> nearest = kdTree.getNearestSorted(point, numNearest);
-			for (int f = 1; f < nearest.size(); f++) {
+			float realZ = samplePoints[i].z;
+			float zEstimate = 0.0f;
+			if (recalculateZ) {
+				float totalWeight = 0.0f;
+				for (int f = 0; f < nearest.size(); f++) {
+					totalWeight += 1.0f/nearest[f].distance;
+				}
+
+				int numAlgorithms = 0;
+				float finalEstimate = 0.0f;
+
+				if (false) { // derectional deriv knn
+					numAlgorithms++;
+					for (int f = 0; f < nearest.size(); f++) {
+						glm::vec3 diff = samplePoints[sampleNum]-samplePoints[nearest[f].index];
+						glm::vec2 dir = normalize(glm::vec2(diff));
+						float dirDeriv = glm::dot(estGradients[nearest[f].index],dir);
+						float weight = 1.0f/nearest[f].distance;
+						zEstimate += (weight/totalWeight)*(samplePoints[nearest[f].index].z + dirDeriv*glm::length(glm::vec2(diff)));
+					}
+					finalEstimate += zEstimate;
+				}
+
+				if (false) { // best derectional deriv (need to fix)
+					numAlgorithms++;
+					int bestNearestIndex = 0;
+					float maxDirDeriv = 0.0f;
+
+					for (int f = 0; f < nearest.size(); f++) {
+						glm::vec3 diff = samplePoints[sampleNum]-samplePoints[nearest[f].index];
+						glm::vec2 dir = normalize(glm::vec2(diff));
+						float dirDeriv = glm::dot(estGradients[nearest[f].index],dir);
+						if (f == 0) {
+							maxDirDeriv = dirDeriv;
+							bestNearestIndex = f;
+						}
+						else {
+							if (maxDirDeriv < dirDeriv) {
+								maxDirDeriv = dirDeriv;
+								bestNearestIndex = f;
+							}
+						}
+					}
+
+					glm::vec3 diff = samplePoints[sampleNum]-samplePoints[nearest[bestNearestIndex].index];
+					glm::vec2 dir = normalize(glm::vec2(diff));
+					float dirDeriv = glm::dot(estGradients[nearest[bestNearestIndex].index],dir);
+					zEstimate = samplePoints[nearest[bestNearestIndex].index].z + dirDeriv*glm::length(glm::vec2(diff));
+
+					finalEstimate += zEstimate;
+				}
+
+				if (true) {//recalculateZ_FirstHalf) { // nearest directional deriv
+					numAlgorithms++;
+					glm::vec3 diff = samplePoints[sampleNum]-samplePoints[nearest[0].index];
+					glm::vec2 dir = normalize(glm::vec2(diff));
+					float dirDeriv = glm::dot(estGradients[nearest[0].index],dir);
+					zEstimate = samplePoints[nearest[0].index].z + dirDeriv*glm::length(glm::vec2(diff));
+
+					finalEstimate += zEstimate;
+				}
+
+				//std::cout << nearest[0].index << " " << sampleNum << std::endl;
+
+				if (false) { //!recalculateZ_FirstHalf) { // knn
+					numAlgorithms++;
+					for (int f = 0; f < nearest.size(); f++) {
+						float weight = 1.0f/nearest[f].distance;
+						zEstimate += (weight/totalWeight)*samplePoints[nearest[f].index].z;
+					}
+					finalEstimate += zEstimate;
+				}
+
+				if (true) {
+					zEstimate = finalEstimate / numAlgorithms;
+				}
+
+				samplePoints[i].z = zEstimate;
+			}
+			for (int f = (recalculateZ ? 0 : 1); f < nearest.size(); f++) {
 				//std::cout << nearest[f].index << " " << nearest[f].distance << " : ";
 				//std::cout << samplePoints[nearest[f].index][0] << ", " << samplePoints[nearest[f].index][1] << std::endl;
 
+
 				glm::vec3 diff = samplePoints[nearest[f].index]-samplePoints[sampleNum];
+				if (recalculateZ) {
+					diff.z = samplePoints[nearest[f].index].z - zEstimate;
+				}
 				glm::vec2 dir = normalize(glm::vec2(diff));
 				float dirDeriv = diff.z/(glm::length(glm::vec2(diff)));
 				//std::cout << dirDeriv << " " << glm::dot(gradients[sampleNum],dir) << std::endl;
@@ -302,8 +398,8 @@ public:
 				d[0] = dir[0];
 				d[1] = dir[1];
 				//std::cout <<" d " << d << std::endl;
-				b[f-1] = dirDeriv;
-				A.block(f-1, 0, 1, 2) = d.transpose();
+				b[f-(recalculateZ ? 0 : 1)] = dirDeriv;
+				A.block(f-(recalculateZ ? 0 : 1), 0, 1, 2) = d.transpose();
 			}
 
 	//		std::cout << A << std::endl;
@@ -311,11 +407,16 @@ public:
 
 	//		Eigen::MatrixXf A = Eigen::MatrixXf::Random(3, 2);
 		   //std::cout << "Here is the matrix A:\n" << A << std::endl;
-	//	   Eigen::VectorXf b = VectorXf::Random(3);
+	//	   Eigen::VectorXf b = VectorXf::Random(3cout <<cout <<);
 		   //std::cout << "Here is the right hand side b:\n" << b << std::endl;
 		   //Eigen::VectorXf sol = A.bdcSvd(Eigen::ComputeThinU | Eigen::ComputeThinV).solve(b);
 		   Eigen::VectorXf sol = calculateLeastSquares(A,b);
 		   float residual = (A * sol - b).norm();
+		   if (recalculateZ) {
+		   		//std::cout << zEstimate << " " << samplePoints[sampleNum].z << std::endl;
+		   		residual = std::fabs(zEstimate - realZ);
+		   		//residual = glm::length(glm::vec2(sol[0], sol[1]) - gradients[sampleNum]);
+		   }
 		   estResiduals.push_back(residual);
 		   //std::cout << residual << std::endl;
 		  // std::cout << "The least-squares solution is:\n"
@@ -338,9 +439,13 @@ public:
 				minMax.x = minMax.x < estResiduals[f] ? minMax.x : estResiduals[f];
 				minMax.y = minMax.y > estResiduals[f] ? minMax.y : estResiduals[f];
 			}
+
+		   	std::cout << minMax.x << std::endl;
 		}
 		std::cout << minMax.x << ", "<< minMax.y << std::endl;
-		minMax = glm::vec2(0.0100613, 2.06081);
+		//minMax = glm::vec2(0.0100613, 2.06081);
+		//minMax = glm::vec2(0.0285562, 4.09108);
+		//minMax = glm::vec2(0.0, 4.72171);
 
 		for (int f = startShown; f < startShown+numShown; f++) {
 			SceneNode* pointNode = new SceneNode(estPointsNode);
@@ -368,7 +473,7 @@ public:
 			int row = rowCalc;
 			int column = (rowCalc-row)*std::sqrt(numGridSamples+1);
 			//std::cout << row << ", " << column << std::endl;
-			grid->getCoord(row, column) = glm::vec2((estResiduals[f]-minMax.x)/(minMax.y-minMax.x));
+			grid->getCoord(column, row) = glm::vec2((estResiduals[f]-minMax.x)/(minMax.y-minMax.x));
 		}
 
     	resizeEvent(Eigen::Vector2i(width(), height()));
