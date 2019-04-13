@@ -38,20 +38,23 @@
 
 using namespace sandbox;
 
-float function(float x, float y) {
-	return 0.5*std::cos(2.0f*3.1415*y)*std::cos(2.0f*2.0f*3.1415*x);
+float xFrequency = 1.0;
+
+float function(float x, float y, float t) {
+	return 0.5*std::cos(2.0f*3.1415*y)*std::cos(xFrequency*2.0f*3.1415*(x+t));
 }
 
 float fx(float x, float y) {
-	return 0.5*std::cos(2.0f*3.1415*y)*std::sin(2.0f*2.0f*3.1415*x)*-2.0f*2.0f*3.1415;
+	return 0.5*std::cos(2.0f*3.1415*y)*std::sin(xFrequency*2.0f*3.1415*x)*-xFrequency*2.0f*3.1415;
 }
 
 float fy(float x, float y) {
-	return 0.5*std::sin(2.0f*3.1415*y)*std::cos(2.0f*2.0f*3.1415*x)*-2.0f*3.1415;
+	return 0.5*std::sin(2.0f*3.1415*y)*std::cos(xFrequency*2.0f*3.1415*x)*-xFrequency*3.1415;
 }
 
 class TestApp : public NanoguiScreen {
 public:
+
 	TestApp() : NanoguiScreen(Eigen::Vector2i(1180, 980), "Test App") {
 		using namespace nanogui;
 
@@ -94,7 +97,7 @@ public:
 				estGridNode->addComponent(estGrid);
 				estGridNode->addComponent(new SmoothNormals());
 				estGridNode->addComponent(new MeshRenderer());
-				estGridNode->addComponent(new Material());
+				//estGridNode->addComponent(new Material());
 			SceneNode* sampleNode = new SceneNode(geometryNode);
 				Mesh* sampleMesh = new Mesh();
 				sampleNode->addComponent(sampleMesh);
@@ -145,10 +148,54 @@ public:
 
 		for (int x = 0; x < grid->getWidth(); x++) {
 			for (int y = 0; y < grid->getHeight(); y++) {
-				grid->getNode(x,y).z = function(1.0f*x/(grid->getWidth()-1), 1.0f*y/(grid->getHeight()-1));
+				grid->getNode(x,y).z = function(1.0f*x/(grid->getWidth()-1), 1.0f*y/(grid->getHeight()-1), 0.25);
 			}
 		}
 
+		int numSamples = 10000;
+		std::vector<glm::vec4> samplePoints;
+		for (int f = 0; f < numSamples; f++) {
+			float x = float(std::rand())/RAND_MAX;
+			float y = float(std::rand())/RAND_MAX;
+			float t = float(std::rand())/RAND_MAX;
+			float z = function(x,y,t);
+			samplePoints.push_back(glm::vec4(x,y,t,z));
+		}
+
+		PointCollection pc(samplePoints);
+
+		for (int x = 0; x < grid->getWidth(); x++) {
+			for (int y = 0; y < grid->getHeight(); y++) {
+				//estGrid->getNode(x,y).z = function(1.0f*x/(grid->getWidth()-1), 1.0f*y/(grid->getHeight()-1));
+				float residual;
+				estGrid->getNode(x,y).z = calculateFromSamples(pc, glm::vec3(1.0f*x/(grid->getWidth()-1), 1.0f*y/(grid->getHeight()-1), 0.25f), &residual);
+				estGrid->getCoord(x,y).x = residual;
+			}
+		}
+
+		glm::vec2 minMax;
+		for (int f = 0; f < pc.getPoints().size(); f++) {
+			if (f == 0) {
+				minMax = glm::vec2(pc.getEstResiduals()[f]);
+			}
+			else {
+				minMax.x = minMax.x < pc.getEstResiduals()[f] ? minMax.x : pc.getEstResiduals()[f];
+				minMax.y = minMax.y > pc.getEstResiduals()[f] ? minMax.y : pc.getEstResiduals()[f];
+			}
+
+		}
+		std::cout << minMax.x << ", "<< minMax.y << std::endl;
+
+		for (int x = 0; x < grid->getWidth(); x++) {
+			for (int y = 0; y < grid->getHeight(); y++) {
+				//estGrid->getNode(x,y).z = function(1.0f*x/(grid->getWidth()-1), 1.0f*y/(grid->getHeight()-1));
+				estGrid->getCoord(x,y).x = (estGrid->getCoord(x,y).x - minMax.x)/(minMax.y-minMax.x);
+			}
+		}
+
+		//minMax = glm::vec2(0.0100613, 2.06081);
+		//minMax = glm::vec2(0.0285562, 4.09108);
+		//minMax = glm::vec2(0.0, 4.72171);
 
 		/*std::vector<glm::vec3> samplePoints;
 		std::vector<glm::vec3> sampleNormals;
@@ -467,17 +514,108 @@ public:
 
 	class PointCollection : public KdSearchable<float> {
 	public:
-		PointCollection(const std::vector<glm::vec3>& points) : points(points) {
+		PointCollection(const std::vector<glm::vec4>& points) : points(points) {
 			for (int f = 0; f < points.size(); f++) {
 				indices.push_back(f);
 			}
+
+			std::vector<unsigned int> dimensions;
+			dimensions.push_back(0);
+			dimensions.push_back(1);
+			dimensions.push_back(2);
+			dimensions.push_back(3);
+			kdTree = new KdTree<float>(dimensions, *this, new EuclideanDistance<float>());
+
+			int numNearest = 11;
+			Eigen::MatrixXf A = Eigen::MatrixXf(numNearest-1, 3);
+			Eigen::VectorXf b = Eigen::VectorXf(numNearest-1);
+
+			for (int sampleNum = 0; sampleNum < points.size(); sampleNum++) {	
+			
+				std::vector<float> point;
+				point.push_back(points[sampleNum][0]);
+				point.push_back(points[sampleNum][1]);
+				point.push_back(points[sampleNum][2]);
+				point.push_back(points[sampleNum][3]);
+				std::vector<KdTree<float>::KdValue> nearest = kdTree->getNearestSorted(point, numNearest);
+
+				for (int f = 1; f < nearest.size(); f++) {
+					glm::vec4 diff = points[nearest[f].index]-points[sampleNum];
+					glm::vec3 dir = normalize(glm::vec3(diff));
+					float dirDeriv = diff.w/(glm::length(glm::vec3(diff)));
+
+					Eigen::VectorXf d(3);
+					d[0] = dir[0];
+					d[1] = dir[1];
+					d[2] = dir[2];
+
+					b[f-1] = dirDeriv;
+					A.block(f-1, 0, 1, 3) = d.transpose();
+				}
+
+
+				Eigen::VectorXf sol = calculateLeastSquares(A,b);
+				float residual = (A * sol - b).norm();
+				estGradients.push_back(glm::vec3(sol[0], sol[1], sol[2]));
+				estResiduals.push_back(residual);
+			}
+
+			delete kdTree;
+			dimensions.clear();
+			dimensions.push_back(0);
+			dimensions.push_back(1);
+			dimensions.push_back(2);
+			kdTree = new KdTree<float>(dimensions, *this, new EuclideanDistance<float>());
+
+		}
+		~PointCollection() {
+			delete kdTree;
 		}
 		const std::vector<unsigned int>& getPoints() const { return indices; }
 		float getDimension(unsigned int index, unsigned int dimension) const { return points[index][dimension]; }
+		const std::vector<glm::vec4>& getActualPoints() const { return points; }
+		const std::vector<glm::vec3>& getEstGradients() const { return estGradients; }
+		const std::vector<float>& getEstResiduals() const { return estResiduals; }
+		const KdTree<float>& getKdTree() const { return *kdTree; }
 	private:
-		std::vector<glm::vec3> points;
+		std::vector<glm::vec4> points;
 		std::vector<unsigned int> indices;
+		std::vector<glm::vec3> estGradients;
+		std::vector<float> estResiduals;
+		KdTree<float>* kdTree;
 	};
+
+
+	float calculateFromSamples(const PointCollection& pc, const glm::vec3& pos, float* residual) {
+		//return 0.0f;
+				/*if (true) {//recalculateZ_FirstHalf) { // nearest directional deriv
+					numAlgorithms++;
+					glm::vec3 diff = samplePoints[sampleNum]-samplePoints[nearest[0].index];
+					glm::vec2 dir = normalize(glm::vec2(diff));
+					float dirDeriv = glm::dot(estGradients[nearest[0].index],dir);
+					zEstimate = samplePoints[nearest[0].index].z + dirDeriv*glm::length(glm::vec2(diff));
+
+					finalEstimate += zEstimate;
+				}*/
+		int numNearest = 1;
+
+		std::vector<float> point;
+		point.push_back(pos[0]);
+		point.push_back(pos[1]);
+		point.push_back(pos[2]);
+
+		std::vector<KdTree<float>::KdValue> nearest = pc.getKdTree().getNearestSorted(point, numNearest);
+
+		glm::vec3 diff = pos-glm::vec3(pc.getActualPoints()[nearest[0].index]);
+		glm::vec3 dir = normalize(diff);
+		float dirDeriv = glm::dot(pc.getEstGradients()[nearest[0].index],dir);
+
+		*residual = pc.getEstResiduals()[nearest[0].index];
+
+		return pc.getActualPoints()[nearest[0].index].w + dirDeriv*glm::length(diff);
+
+//		return 0.0f;
+	}
 
 	glm::quat rotationBetweenVectors(glm::vec3 start, glm::vec3 dest){
 		start = normalize(start);
