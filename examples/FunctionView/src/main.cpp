@@ -145,12 +145,12 @@ public:
 
 		for (int x = 0; x < grid->getWidth(); x++) {
 			for (int y = 0; y < grid->getHeight(); y++) {
-				grid->getNode(y,x).z = function(1.0f*x/(grid->getWidth()-1), 1.0f*y/(grid->getHeight()-1));
+				grid->getNode(x,y).z = function(1.0f*x/(grid->getWidth()-1), 1.0f*y/(grid->getHeight()-1));
 			}
 		}
 
 
-		std::vector<glm::vec3> samplePoints;
+		/*std::vector<glm::vec3> samplePoints;
 		std::vector<glm::vec3> sampleNormals;
 		std::vector<glm::vec2> gradients;
 		std::vector<unsigned int> sampleIndices;
@@ -458,9 +458,9 @@ public:
 			int row = rowCalc;
 			int column = (rowCalc-row)*std::sqrt(numGridSamples+1);
 			//std::cout << row << ", " << column << std::endl;
-			estGrid->getCoord(column, row) = glm::vec2((estResiduals[f]-minMax.x)/(minMax.y-minMax.x));
-			estGrid->getNode(column, row) = samplePoints[f];
-		}
+			estGrid->getCoord(row, column) = glm::vec2((estResiduals[f]-minMax.x)/(minMax.y-minMax.x));
+			estGrid->getNode(row, column) = samplePoints[f];
+		}*/
 
     	resizeEvent(Eigen::Vector2i(width(), height()));
 	}

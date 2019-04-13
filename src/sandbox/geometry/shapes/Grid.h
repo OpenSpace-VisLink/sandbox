@@ -11,11 +11,11 @@ public:
 	virtual ~Grid() {}
 
 	glm::vec3& getNode(int x, int y) {
-		return nodes[y*width + x];
+		return nodes[x*height + y];
 	}
 
 	glm::vec2& getCoord(int x, int y) {
-		return coords[y*width + x];
+		return coords[x*height + y];
 	}
 
 	int getWidth() const { return width; }
