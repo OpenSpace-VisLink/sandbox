@@ -152,8 +152,9 @@ public:
 			}
 		}
 
-		int numSamples = 10000;
+		int numSamples = 100;
 		std::vector<glm::vec4> samplePoints;
+
 		for (int f = 0; f < numSamples; f++) {
 			float x = float(std::rand())/RAND_MAX;
 			float y = float(std::rand())/RAND_MAX;
@@ -162,34 +163,47 @@ public:
 			samplePoints.push_back(glm::vec4(x,y,t,z));
 		}
 
-		PointCollection pc(samplePoints);
 
-		for (int x = 0; x < grid->getWidth(); x++) {
-			for (int y = 0; y < grid->getHeight(); y++) {
-				//estGrid->getNode(x,y).z = function(1.0f*x/(grid->getWidth()-1), 1.0f*y/(grid->getHeight()-1));
-				float residual;
-				estGrid->getNode(x,y).z = calculateFromSamples(pc, glm::vec3(1.0f*x/(grid->getWidth()-1), 1.0f*y/(grid->getHeight()-1), 0.25f), &residual);
-				estGrid->getCoord(x,y).x = residual;
-			}
-		}
+		for (int iteration = 0; iteration < 1; iteration++) {
 
-		glm::vec2 minMax;
-		for (int f = 0; f < pc.getPoints().size(); f++) {
-			if (f == 0) {
-				minMax = glm::vec2(pc.getEstResiduals()[f]);
-			}
-			else {
-				minMax.x = minMax.x < pc.getEstResiduals()[f] ? minMax.x : pc.getEstResiduals()[f];
-				minMax.y = minMax.y > pc.getEstResiduals()[f] ? minMax.y : pc.getEstResiduals()[f];
+			PointCollection pc(samplePoints);
+
+			for (int x = 0; x < grid->getWidth(); x++) {
+				for (int y = 0; y < grid->getHeight(); y++) {
+					//estGrid->getNode(x,y).z = function(1.0f*x/(grid->getWidth()-1), 1.0f*y/(grid->getHeight()-1));
+					float residual;
+					estGrid->getNode(x,y).z = calculateFromSamples(pc, glm::vec3(1.0f*x/(grid->getWidth()-1), 1.0f*y/(grid->getHeight()-1), 0.25f), &residual);
+					estGrid->getCoord(x,y).x = residual;
+				}
 			}
 
-		}
-		std::cout << minMax.x << ", "<< minMax.y << std::endl;
+			glm::vec2 minMax;
+			for (int f = 0; f < pc.getPoints().size(); f++) {
+				if (f == 0) {
+					minMax = glm::vec2(pc.getEstResiduals()[f]);
+				}
+				else {
+					minMax.x = minMax.x < pc.getEstResiduals()[f] ? minMax.x : pc.getEstResiduals()[f];
+					minMax.y = minMax.y > pc.getEstResiduals()[f] ? minMax.y : pc.getEstResiduals()[f];
+				}
 
-		for (int x = 0; x < grid->getWidth(); x++) {
-			for (int y = 0; y < grid->getHeight(); y++) {
-				//estGrid->getNode(x,y).z = function(1.0f*x/(grid->getWidth()-1), 1.0f*y/(grid->getHeight()-1));
-				estGrid->getCoord(x,y).x = (estGrid->getCoord(x,y).x - minMax.x)/(minMax.y-minMax.x);
+			}
+			std::cout << minMax.x << ", "<< minMax.y << std::endl;
+
+			for (int x = 0; x < grid->getWidth(); x++) {
+				for (int y = 0; y < grid->getHeight(); y++) {
+					//estGrid->getNode(x,y).z = function(1.0f*x/(grid->getWidth()-1), 1.0f*y/(grid->getHeight()-1));
+					estGrid->getCoord(x,y).x = (estGrid->getCoord(x,y).x - minMax.x)/(minMax.y-minMax.x);
+				}
+			}
+
+
+			for (int f = 0; f < numSamples; f++) {
+				float x = float(std::rand())/RAND_MAX;
+				float y = float(std::rand())/RAND_MAX;
+				float t = float(std::rand())/RAND_MAX;
+				float z = function(x,y,t);
+				samplePoints.push_back(glm::vec4(x,y,t,z));
 			}
 		}
 
