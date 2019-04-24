@@ -99,7 +99,7 @@ public:
 				estGridNode->addComponent(estGrid);
 				estGridNode->addComponent(new SmoothNormals());
 				estGridNode->addComponent(new MeshRenderer());
-				//estGridNode->addComponent(new Material());
+				estGridNode->addComponent(new Material());
 			SceneNode* sampleNode = new SceneNode(geometryNode);
 				Mesh* sampleMesh = new Mesh();
 				sampleNode->addComponent(sampleMesh);
@@ -157,7 +157,7 @@ public:
 			}
 		}
 
-		int numSamples = 1000;
+		int numSamples = 4000;
 		std::vector<glm::vec4> samplePoints;
 
 		/*std::vector<int> xDim;
@@ -202,7 +202,7 @@ public:
 		}
 
 
-		for (int iteration = 0; iteration < 40; iteration++) {
+		for (int iteration = 0; iteration < 1; iteration++) {
 
 			PointCollection pc(samplePoints);
 
@@ -581,7 +581,7 @@ public:
 
 		//return pc.getActualPoints()[nearest[0].index].w;
 
-		//return pc.getActualPoints()[nearest[0].index].w + glm::dot(pc.getEstGradients()[nearest[0].index],diff);
+		return pc.getActualPoints()[nearest[0].index].w + glm::dot(pc.getEstGradients()[nearest[0].index],diff);
 
 
 
@@ -589,14 +589,30 @@ public:
 		return pc.getActualPoints()[nearest[0].index].w + glm::dot(pc.getEstGradients()[nearest[0].index],diff)
 		 + 0.5*glm::dot(diff, pc.getEstHessians()[nearest[0].index]*diff);
 
+		// mean gradient
+		float value = 0.0f;
+		for (int f = 0; f < nearest.size(); f++) {
+			diff = pos-glm::vec3(pc.getActualPoints()[nearest[f].index]);
+			value += (pc.getActualPoints()[nearest[f].index].w + glm::dot(pc.getEstGradients()[nearest[f].index],diff));
+		}		
+		return value/nearest.size();
 
-		// inverse weighted
+		// inverse weighted 
 		float totalWeight = 0.0f;
 		for (int f = 0; f < nearest.size(); f++) {
 			totalWeight += 1.0f/nearest[f].distance;
 		}
 
-		float value = 0.0f;
+		// inverse weighted gradient
+		value = 0.0f;
+		for (int f = 0; f < nearest.size(); f++) {
+			diff = pos-glm::vec3(pc.getActualPoints()[nearest[f].index]);
+			value += (pc.getActualPoints()[nearest[f].index].w + glm::dot(pc.getEstGradients()[nearest[f].index],diff)) * ((1.0f/nearest[f].distance)/totalWeight);
+		}		
+		return value;
+
+		// inverse weighted distance
+		value = 0.0f;
 		for (int f = 0; f < nearest.size(); f++) {
 			value += pc.getActualPoints()[nearest[f].index].w * ((1.0f/nearest[f].distance)/totalWeight);
 		}		
