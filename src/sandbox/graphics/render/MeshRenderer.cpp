@@ -87,7 +87,18 @@ void MeshRenderer::updateContext(const GraphicsContext& context) {
 	}
 }
 
-void MeshRenderer::render(const GraphicsContext& context) {
+void MeshRenderer::startRender(const GraphicsContext& context) {
+	RenderState& renderState = RenderState::get(context);
+	ShaderProgram* shader = renderState.getShaderProgram().get();
+	GraphicsContextRenderer* renderer = renderState.getRenderer().get();
+	if (shader) {
+		std::cout << renderer << std::endl;
+		std::cout << "Render mesh" << std::endl;	
+	}
+	//if (shader) {
+		
+	//}
+
 	/*MeshState& state = *contextHandler.getState(sceneContext);
 
 	if (state.initialized) {

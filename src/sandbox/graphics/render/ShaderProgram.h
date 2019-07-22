@@ -15,7 +15,7 @@ public:
 	void updateContext(const GraphicsContext& context);
 	void use(const GraphicsContext& context);
 	void release(const GraphicsContext& context);
-	void render(const GraphicsContext& context);
+	void startRender(const GraphicsContext& context);
 	void finishRender(const GraphicsContext& context);
 	bool setForceShader(bool forceShader) { this->forceShader = forceShader; }
 

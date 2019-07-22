@@ -13,6 +13,7 @@
 #include "sandbox/geometry/shapes/QuadLoader.h"
 #include "sandbox/graphics/GraphicsContextRenderer.h"
 #include "sandbox/graphics/RenderCallback.h"
+#include "sandbox/graphics/render/EntityRenderer.h"
 #include "sandbox/graphics/render/MeshRenderer.h"
 #include "sandbox/graphics/render/shaders/MaterialShader.h"
 
@@ -43,7 +44,9 @@ public:
 			shader->addComponent(new MaterialShader());
 
 		EntityNode* view = new EntityNode(&scene);
-			view->addChild(new ReadOnlyEntityReference(quad));
+			//view->addComponent(new MaterialShader());
+			view->addComponent(new EntityRenderer(shader));
+			view->addComponent(new EntityRenderer(quad));
 
 		renderer.addComponent(new GraphicsContextRenderer());
 		renderer.addComponent((new OpenGLCallback())->init(this));

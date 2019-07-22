@@ -41,7 +41,7 @@ void ShaderProgram::release(const GraphicsContext& sceneContext) {
 }
 
 
-void ShaderProgram::render(const GraphicsContext& sceneContext) {
+void ShaderProgram::startRender(const GraphicsContext& sceneContext) {
 	ShaderProgramState& state = *contextHandler.getState(sceneContext);
 
 	if (state.initialized) {

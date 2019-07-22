@@ -15,7 +15,7 @@ public:
 	void update();
 	void updateSharedContext(const GraphicsContext& sceneContext);
 	void updateContext(const GraphicsContext& sceneContext);
-	void render(const GraphicsContext& sceneContext);
+	void startRender(const GraphicsContext& sceneContext);
 
 private:
 	class MeshSharedState : public ContextState {

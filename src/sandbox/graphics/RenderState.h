@@ -4,6 +4,7 @@
 #include "glm/glm.hpp"
 #include "sandbox/StateContainer.h"
 #include "sandbox/graphics/GraphicsContext.h"
+#include "sandbox/graphics/GraphicsContextRenderer.h"
 #include "sandbox/Entity.h"
 #include "sandbox/graphics/render/ShaderProgram.h"
 
@@ -18,6 +19,7 @@ public:
 		modelMatrix.set(glm::mat4(1.0));
 		shaderProgram.set(NULL);
 		entity.set(NULL);
+		renderer.set(NULL);
 	}
 
 	virtual ~RenderState() {}
@@ -28,6 +30,7 @@ public:
 	StateContainerItemStack<glm::mat4>& getModelMatrix() { return modelMatrix; }
 	StateContainerItemStack<ShaderProgram*>& getShaderProgram() { return shaderProgram; }
 	StateContainerItemStack<const Entity*>& getEntity() { return entity; }
+	StateContainerItemStack<GraphicsContextRenderer*>& getRenderer() { return renderer; }
 
 	static RenderState& get(const GraphicsContext& context) { return context.getRenderState()->getItem<RenderState>(); }
 
@@ -38,6 +41,7 @@ private:
 	StateContainerItemStack<glm::mat4> modelMatrix;
 	StateContainerItemStack<ShaderProgram*> shaderProgram;
 	StateContainerItemStack<const Entity*> entity;
+	StateContainerItemStack<GraphicsContextRenderer*> renderer;
 };
 
 }

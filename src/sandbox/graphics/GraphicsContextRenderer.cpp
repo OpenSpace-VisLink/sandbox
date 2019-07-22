@@ -22,12 +22,15 @@ void GraphicsContextRenderer::update() {
 			entityStack.push_back(entity.getChildren()[f]);
 		}
 	}*/
-	updateRecursive(getEntity());
+	update(getEntity());
 
-	render();
+	RenderState& renderState = RenderState::get(context);
+	renderState.getRenderer().push(this);
+	render(getEntity());
+	renderState.getRenderer().pop();
 }
 
-void GraphicsContextRenderer::updateRecursive(const Entity& entity) {
+void GraphicsContextRenderer::update(const Entity& entity) {
 	std::vector<GraphicsComponent*> components = entity.getComponents<GraphicsComponent>();
 	for (int f = 0; f < components.size(); f++) {
 		components[f]->updateSharedContext(context);
@@ -35,15 +38,17 @@ void GraphicsContextRenderer::updateRecursive(const Entity& entity) {
 	}
 
 	for (int f = 0; f < entity.getChildren().size(); f++) {
-		updateRecursive(*entity.getChildren()[f]);
+		update(*entity.getChildren()[f]);
 	}
 }
 
-void GraphicsContextRenderer::render() {
-	renderRecursive(getEntity());
+void GraphicsContextRenderer::render(const Entity& entity) {
+	startRender(entity);
+	renderChildren(entity);
+	finishRender(entity);
 }
 
-void GraphicsContextRenderer::renderRecursive(const Entity& entity) {
+void GraphicsContextRenderer::startRender(const Entity& entity) {
 	RenderState& renderState = RenderState::get(context);
 	renderState.getEntity().push(&entity);
 
@@ -56,15 +61,23 @@ void GraphicsContextRenderer::renderRecursive(const Entity& entity) {
 	for (int f = 0; f < components.size(); f++) {
 		components[f]->startRender(context);
 	}
+}
 
+void GraphicsContextRenderer::renderChildren(const Entity& entity) {
 	for (int f = 0; f < entity.getChildren().size(); f++) {
-		renderRecursive(*entity.getChildren()[f]);
+		render(*entity.getChildren()[f]);
 	}
+}
 
+void GraphicsContextRenderer::finishRender(const Entity& entity) {
+	RenderState& renderState = RenderState::get(context);
+	
+	std::vector<GraphicsComponent*> components = entity.getComponents<GraphicsComponent>();
 	for (int f = 0; f < components.size(); f++) {
 		components[f]->finishRender(context);
 	}
 
+	std::vector<Transform*> transforms = entity.getComponents<Transform>();
 	for (int f = 0; f < transforms.size(); f++) {
 		renderState.getModelMatrix().pop();
 	}
