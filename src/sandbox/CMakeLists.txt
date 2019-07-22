@@ -8,6 +8,7 @@ include_directories(${CMAKE_CURRENT_SOURCE_DIR}/..)
 
 set (SOURCEFILES
   Entity.cpp
+  base/Transform.cpp
   graphics/GraphicsContextRenderer.cpp
 )
 
@@ -17,11 +18,11 @@ set (HEADERFILES
   Entity.h
   StateContainer.h
   Context.h
+  base/Transform.h
   graphics/GraphicsComponent.h
   graphics/GraphicsContext.h
   graphics/GraphicsContextRenderer.h
   graphics/RenderCallback.h
-
 )
 
 # --------------------- Dependencies -----------------------

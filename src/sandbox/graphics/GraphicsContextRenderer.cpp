@@ -1,4 +1,6 @@
 #include "sandbox/graphics/GraphicsContextRenderer.h"
+#include "sandbox/graphics/RenderState.h"
+#include "sandbox/base/Transform.h"
 
 namespace sandbox {
 
@@ -27,6 +29,14 @@ void GraphicsContextRenderer::render() {
 }
 
 void GraphicsContextRenderer::renderRecursive(const Entity& entity) {
+	RenderState& renderState = RenderState::get(context);
+	renderState.getEntity().push(&entity);
+
+	std::vector<Transform*> transforms = entity.getComponents<Transform>();
+	for (int f = 0; f < transforms.size(); f++) {
+		renderState.getModelMatrix().push(renderState.getModelMatrix().get()*transforms[f]->getTransform());
+	}
+
 	std::vector<GraphicsComponent*> components = entity.getComponents<GraphicsComponent>();
 	for (int f = 0; f < components.size(); f++) {
 		components[f]->startRender(context);
@@ -39,6 +49,24 @@ void GraphicsContextRenderer::renderRecursive(const Entity& entity) {
 	for (int f = 0; f < components.size(); f++) {
 		components[f]->finishRender(context);
 	}
+
+	for (int f = 0; f < transforms.size(); f++) {
+		renderState.getModelMatrix().pop();
+	}
+
+	renderState.getEntity().pop();
 }
+
+
+/*void Transform::render(const SceneContext& sceneContext) {
+	RenderState& renderState = RenderState::get(sceneContext);
+	renderState.getModelMatrix().push(renderState.getModelMatrix().get()*transform);
+}
+
+void Transform::finishRender(const SceneContext& sceneContext) {
+	RenderState& renderState = RenderState::get(sceneContext);
+	renderState.getModelMatrix().pop();
+}*/
+
 
 }
