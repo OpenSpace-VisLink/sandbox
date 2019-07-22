@@ -16,6 +16,7 @@
 #include "sandbox/graphics/render/EntityRenderer.h"
 #include "sandbox/graphics/render/MeshRenderer.h"
 #include "sandbox/graphics/render/shaders/MaterialShader.h"
+#include "sandbox/graphics/view/Camera.h"
 
 using namespace sandbox;
 
@@ -44,6 +45,7 @@ public:
 			shader->addComponent(new MaterialShader());
 
 		EntityNode* view = new EntityNode(&scene);
+			view->addComponent(new Camera());
 			//view->addComponent(new MaterialShader());
 			view->addComponent(new EntityRenderer(shader));
 			view->addComponent(new EntityRenderer(quad));

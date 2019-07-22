@@ -16,6 +16,7 @@ set (SOURCEFILES
   graphics/render/MeshRenderer.cpp
   graphics/render/ShaderProgram.cpp
   graphics/render/shaders/MaterialShader.cpp
+  graphics/view/Camera.cpp
 )
 
 set (HEADERFILES
@@ -35,6 +36,7 @@ set (HEADERFILES
   graphics/render/MeshRenderer.h
   graphics/render/ShaderProgram.h
   graphics/render/shaders/MaterialShader.h
+  graphics/view/Camera.h
 )
 
 # --------------------- Dependencies -----------------------

@@ -90,25 +90,20 @@ void MeshRenderer::updateContext(const GraphicsContext& context) {
 void MeshRenderer::startRender(const GraphicsContext& context) {
 	RenderState& renderState = RenderState::get(context);
 	ShaderProgram* shader = renderState.getShaderProgram().get();
-	GraphicsContextRenderer* renderer = renderState.getRenderer().get();
-	if (shader) {
-		std::cout << renderer << std::endl;
-		std::cout << "Render mesh" << std::endl;	
+	if (!shader) {
+		return;
 	}
-	//if (shader) {
-		
-	//}
 
-	/*MeshState& state = *contextHandler.getState(sceneContext);
+	MeshState& state = *contextHandler.getState(context);
 
 	if (state.initialized) {
 		//std::cout << "Render Mesh" << state.vao << " " << mesh->getIndices().size() << std::endl;
 	    glBindVertexArray(state.vao);
 
-	    RenderState& renderState = RenderState::get(sceneContext);
+	    RenderState& renderState = RenderState::get(context);
 	    ShaderProgram* shader = renderState.getShaderProgram().get();
 	    if (shader) {
-	    	shader->use(sceneContext);
+	    	shader->use(context);
 	    }
 
 	    //glDrawElements(GL_PATCHES, mesh.indices.size(), GL_UNSIGNED_INT, (void*)0);
@@ -122,9 +117,9 @@ void MeshRenderer::startRender(const GraphicsContext& context) {
 	    glBindVertexArray(0);
 
 	    if (shader) {
-	    	shader->release(sceneContext);
+	    	shader->release(context);
 	    }
-	}*/
+	}
 }
 
 }

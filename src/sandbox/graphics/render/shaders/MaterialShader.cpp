@@ -90,6 +90,7 @@ void MaterialShader::create(const GraphicsContext& context, ShaderProgramState& 
             "    vec4 texColor = texture(tex, uv);"
             "	 colorOut = vec4(colorOut.xyz*texColor.xyz,texColor.a); "
             "  } "
+            ""
             "}";
 
     state.addShader(compileShader(fragmentShader, GL_FRAGMENT_SHADER));
