@@ -22,6 +22,8 @@ void GraphicsContextRenderer::update() {
 			entityStack.push_back(entity.getChildren()[f]);
 		}
 	}
+
+	render();
 }
 
 void GraphicsContextRenderer::render() {

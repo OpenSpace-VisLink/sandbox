@@ -13,6 +13,7 @@ set (SOURCEFILES
   geometry/MeshLoader.cpp
   geometry/shapes/QuadLoader.cpp
   graphics/GraphicsContextRenderer.cpp
+  graphics/render/MeshRenderer.cpp
 )
 
 set (HEADERFILES
@@ -29,6 +30,7 @@ set (HEADERFILES
   graphics/GraphicsContext.h
   graphics/GraphicsContextRenderer.h
   graphics/RenderCallback.h
+  graphics/render/MeshRenderer.h
 )
 
 # --------------------- Dependencies -----------------------

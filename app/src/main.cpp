@@ -13,6 +13,7 @@
 #include "sandbox/geometry/shapes/QuadLoader.h"
 #include "sandbox/graphics/GraphicsContextRenderer.h"
 #include "sandbox/graphics/RenderCallback.h"
+#include "sandbox/graphics/render/MeshRenderer.h"
 
 using namespace sandbox;
 
@@ -35,7 +36,7 @@ public:
 		EntityNode* quad = new EntityNode(&objects);
 			quad->addComponent(new sandbox::Object<Mesh>());
 			quad->addComponent(new QuadLoader());
-			//quad->addComponent(new QuadLoader());
+			quad->addComponent(new MeshRenderer());
 
 		renderer.addComponent(new GraphicsContextRenderer());
 		renderer.addComponent((new OpenGLCallback())->init(this));
@@ -43,9 +44,7 @@ public:
 	}
 
 	void drawContents() {
-		objects.update();
 		renderer.update();
-		renderer.getComponent<GraphicsContextRenderer>()->render();
 	}
 
 private:
