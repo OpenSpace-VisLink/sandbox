@@ -11,7 +11,7 @@
 #include <nanogui/glutil.h>
 #include "sandbox/SceneNode.h"
 #include "sandbox/base/Image.h"
-#include "sandbox/base/RenderCallback.h"
+#include "sandbox/graphics/RenderCallback.h"
 #include "sandbox/geometry/shapes/Quad.h"
 #include "sandbox/geometry/MeshLoader.h"
 #include "sandbox/graphics/MeshRenderer.h"
@@ -85,7 +85,7 @@ public:
 
 		graphicsNode = new SceneNode();
 		scene.addNode(graphicsNode);
-		graphicsNode->addComponent((new OpenGLCallback())->init(this));
+		//graphicsNode->addComponent((new OpenGLCallback())->init(this));
 
 		//graphicsNode->addComponent(new Transform(glm::translate(glm::mat4(1.0f),glm::vec3(4,3,3))));
 		graphicsNode->addComponent(new Transform(glm::translate(glm::mat4(1.0f),glm::vec3(0,0,3))));
@@ -100,21 +100,22 @@ public:
 		std::cout << pos.x << " " << pos.y << " " << pos.z << std::endl;
 
 		renderer.addComponent(new GraphicsContextRenderer());
+		renderer.addComponent((new OpenGLCallback())->init(this));
 	}
 
 	void drawContents() {
+		renderer.getComponent<GraphicsContextRenderer>()->update();
+		renderer.getComponent<GraphicsContextRenderer>()->render();
 		scene.updateModel();
 		scene.updateSharedContext(context);
 		scene.updateContext(context);
 		graphicsNode->render(context);
-		renderer.getComponent<GraphicsContextRenderer>()->update();
-		renderer.getComponent<GraphicsContextRenderer>()->render();
 	}
 
 private:
 	class OpenGLCallback : public RenderCallback<TestApp> {
-		void renderCallback(const SceneContext& sceneContext, TestApp* app) {
-			//std::cout << "Clear screen" << std::endl;
+		void renderCallback(const GraphicsContext& sceneContext, TestApp* app) {
+			std::cout << "Clear screen" << std::endl;
 			glClearColor(app->r,app->g,app->b,1);
 			glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
 			glEnable(GL_DEPTH_TEST);
