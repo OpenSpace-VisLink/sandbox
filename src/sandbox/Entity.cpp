@@ -3,15 +3,15 @@
 
 namespace sandbox {
 
-Entity::Entity(Entity* parent) : parent(parent), visible(true) {
+EntityNode::EntityNode(Entity* parent) : parent(parent) {
 	parent->addChild(this);
 }
 
-Entity::Entity() : parent(NULL), visible(true) {
+EntityNode::EntityNode() : parent(NULL) {
 
 }
 
-Entity::~Entity() {
+EntityNode::~EntityNode() {
 	for (int f = 0; f < components.size(); f++) {
 		delete components[f];
 	}	
@@ -21,12 +21,22 @@ Entity::~Entity() {
 	}
 }
 
-void Entity::addChild(Entity* entity) {
-	entity->parent = this;
+void EntityNode::update() {
+	for (int f = 0; f < components.size(); f++) {
+		components[f]->update();
+	}
+
+	for (int f = 0; f < children.size(); f++) {
+		children[f]->update();
+	}
+}
+
+void EntityNode::addChild(Entity* entity) {
+	entity->setParent(this);
 	children.push_back(entity);
 }
 
-void Entity::addComponent(Component* component) {
+void EntityNode::addComponent(Component* component) {
 	component->setEntity(this);
 	for (int f = 0; f < component->getTypes().size(); f++) {
 
@@ -41,12 +51,12 @@ void Entity::addComponent(Component* component) {
 	components.push_back(component);
 }
 
-void Entity::deleteComponent(Component* component) {
+void EntityNode::deleteComponent(Component* component) {
 	// TODO: make work
 }
 
-Component* Entity::getComponentByType(const std::type_info& type) const {
-	const std::vector<Component*>& components = Entity::getComponentsByType(type);
+Component* EntityNode::getComponentByType(const std::type_info& type) const {
+	const std::vector<Component*>& components = EntityNode::getComponentsByType(type);
 	if(components.size() == 0) {
 		return NULL;
 	}
@@ -54,7 +64,7 @@ Component* Entity::getComponentByType(const std::type_info& type) const {
 	return components[0];
 }
 
- const std::vector<Component*>& Entity::getComponentsByType(const std::type_info& type) const {
+ const std::vector<Component*>& EntityNode::getComponentsByType(const std::type_info& type) const {
 	static std::vector<Component*> emptyArray;
 
 	std::map<const std::type_info*, std::vector<Component*>, type_compare>::const_iterator it = typed_components.find(&type);
@@ -64,5 +74,6 @@ Component* Entity::getComponentByType(const std::type_info& type) const {
 
 	return it->second;
 }
+
 
 }

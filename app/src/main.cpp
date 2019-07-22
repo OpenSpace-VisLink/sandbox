@@ -9,6 +9,8 @@
 #include <nanogui/glcanvas.h>
 #include <nanogui/opengl.h>
 #include <nanogui/glutil.h>
+#include "sandbox/base/Object.h"
+#include "sandbox/geometry/shapes/QuadLoader.h"
 #include "sandbox/graphics/GraphicsContextRenderer.h"
 #include "sandbox/graphics/RenderCallback.h"
 
@@ -30,12 +32,19 @@ public:
 		addVariableSlider(panel, g, "Green");
 		addVariableSlider(panel, b, "Blue");
 
+		EntityNode* quad = new EntityNode(&objects);
+			quad->addComponent(new sandbox::Object<Mesh>());
+			quad->addComponent(new QuadLoader());
+			//quad->addComponent(new QuadLoader());
+
 		renderer.addComponent(new GraphicsContextRenderer());
 		renderer.addComponent((new OpenGLCallback())->init(this));
+		renderer.addChild(new EntityReference(&objects));
 	}
 
 	void drawContents() {
-		renderer.getComponent<GraphicsContextRenderer>()->update();
+		objects.update();
+		renderer.update();
 		renderer.getComponent<GraphicsContextRenderer>()->render();
 	}
 
@@ -68,7 +77,8 @@ private:
 
 	float r, g, b, a;
 
-	Entity renderer;
+	EntityNode renderer;
+	EntityNode objects;
 };
 
 int main(int argc, char**argv) {
