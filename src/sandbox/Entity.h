@@ -35,6 +35,18 @@ public:
 		return NULL;
 	}
 
+	template<typename T>
+	std::vector<T*> getComponents() const {
+		static const std::type_info& type = typeid(T);
+		const std::vector<Component*>& components = getComponentsByType(type);
+		std::vector<T*> typed;
+		for (int f = 0; f < components.size(); f++) {
+			typed.push_back(static_cast<T*>(components[f]));
+		}
+
+		return typed;
+	}
+
 protected:
 	Component* getComponentByType(const std::type_info& type) const;
 	const std::vector<Component*>& getComponentsByType(const std::type_info& type) const;

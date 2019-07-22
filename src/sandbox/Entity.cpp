@@ -50,7 +50,7 @@ void Entity::deleteComponent(Component* component) {
 
 Component* Entity::getComponentByType(const std::type_info& type) const {
 	const std::vector<Component*>& components = Entity::getComponentsByType(type);
-	if(components.size() > 0) {
+	if(components.size() == 0) {
 		return NULL;
 	}
 

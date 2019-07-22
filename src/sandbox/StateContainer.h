@@ -48,13 +48,13 @@ private:
 };
 
 template<typename T>
-class StateItemStack {
+class StateContainerItemStack {
 public:
-	StateItemStack() : finalIndex(-1) {
+	StateContainerItemStack() : finalIndex(-1) {
 		items.push_back(T());
 	}
 
-	virtual ~StateItemStack() {}
+	virtual ~StateContainerItemStack() {}
 
 	void set(const T& item) {
 		items[items.size() - 1] = item;

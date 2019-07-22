@@ -26,6 +26,7 @@
 #include <glm/gtc/matrix_access.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
+#include "sandbox/graphics/GraphicsContextRenderer.h"
 
 using namespace sandbox;
 
@@ -98,6 +99,7 @@ public:
 		glm::vec3 pos = graphicsNode->getWorldPosition();
 		std::cout << pos.x << " " << pos.y << " " << pos.z << std::endl;
 
+		renderer.addComponent(new GraphicsContextRenderer());
 	}
 
 	void drawContents() {
@@ -105,6 +107,8 @@ public:
 		scene.updateSharedContext(context);
 		scene.updateContext(context);
 		graphicsNode->render(context);
+		renderer.getComponent<GraphicsContextRenderer>()->update();
+		renderer.getComponent<GraphicsContextRenderer>()->render();
 	}
 
 private:
@@ -151,6 +155,7 @@ private:
 	SceneNode scene;
 	SceneNode* graphicsNode;
 	SceneNode* obj;
+	Entity renderer;
 };
 
 int main(int argc, char**argv) {

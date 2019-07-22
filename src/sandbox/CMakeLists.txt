@@ -8,6 +8,7 @@ include_directories(${CMAKE_CURRENT_SOURCE_DIR}/..)
 
 set (SOURCEFILES
   Entity.cpp
+  graphics/GraphicsContextRenderer.cpp
   SceneNode.cpp
   base/Camera.cpp
   base/Image.cpp
