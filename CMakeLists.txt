@@ -15,5 +15,5 @@ include(${CMAKE_FRAMEWORK_DIR}/project/MainProject.cmake)
 
 add_subdirectory(src/sandbox)
 add_subdirectory(app)
-add_subdirectory(examples/ScatterPlot)
-add_subdirectory(examples/FunctionView)
+#add_subdirectory(examples/ScatterPlot)
+#add_subdirectory(examples/FunctionView)

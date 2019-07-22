@@ -7,6 +7,7 @@ include(${CMAKE_FRAMEWORK_DIR}/project/project.cmake)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/..)
 
 set (SOURCEFILES
+  Entity.cpp
   SceneNode.cpp
   base/Camera.cpp
   base/Image.cpp
@@ -33,6 +34,7 @@ set (SOURCEFILES
 )
 
 set (HEADERFILES
+  Entity.h
   Context.h
   SceneContext.h
   SceneNode.h
