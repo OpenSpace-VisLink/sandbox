@@ -9,59 +9,19 @@ include_directories(${CMAKE_CURRENT_SOURCE_DIR}/..)
 set (SOURCEFILES
   Entity.cpp
   graphics/GraphicsContextRenderer.cpp
-  SceneNode.cpp
-  base/Camera.cpp
-  base/Image.cpp
-  base/Transform.cpp
-  data/CSVLoader.cpp
-  data/FloatDataSet.cpp
-  geometry/Mesh.cpp
-  geometry/Material.cpp
-  geometry/MeshLoader.cpp
-  geometry/algorithms/SmoothNormals.cpp
-  geometry/shapes/Cylinder.cpp
-  geometry/shapes/Grid.cpp
-  geometry/shapes/Quad.cpp
-  graphics/Blend.cpp
-  graphics/FloatDataRenderer.cpp
-  graphics/MeshRenderer.cpp
-  graphics/ShaderProgram.cpp
-  graphics/Texture.cpp
-  graphics/shaders/MaterialShader.cpp
-  graphics/shaders/PointShader.cpp
-  graphics/shaders/Shader2D.cpp
-  graphics/Viewport.cpp
-  graphics/Window.cpp
 )
 
 set (HEADERFILES
-  Entity.h
+  Component.h
   Context.h
-  SceneContext.h
-  SceneNode.h
-  SceneComponent.h
-  base/Camera.h
-  base/Image.h
-  base/Transform.h
-  data/CSVLoader.h
-  data/FloatDataSet.h
-  geometry/Mesh.h
-  geometry/Material.h
-  geometry/MeshLoader.h
-  geometry/algorithms/SmoothNormals.h
-  geometry/shapes/Cylinder.h
-  geometry/shapes/Grid.h
-  geometry/shapes/Quad.h
-  graphics/Blend.h
-  graphics/FloatDataRenderer.h
-  graphics/MeshRenderer.h
-  graphics/ShaderProgram.h
-  graphics/Texture.h
-  graphics/shaders/MaterialShader.h
-  graphics/shaders/PointShader.h
-  graphics/shaders/Shader2D.h
-  graphics/Viewport.h
-  graphics/Window.h
+  Entity.h
+  StateContainer.h
+  Context.h
+  graphics/GraphicsComponent.h
+  graphics/GraphicsContext.h
+  graphics/GraphicsContextRenderer.h
+  graphics/RenderCallback.h
+
 )
 
 # --------------------- Dependencies -----------------------

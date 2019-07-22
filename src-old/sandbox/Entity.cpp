@@ -1,5 +1,8 @@
 #include "sandbox/Entity.h"
 #include "sandbox/Component.h"
+#include "sandbox/base/Transform.h"
+#include <iostream>
+#include "sandbox/graphics/RenderState.h"
 
 namespace sandbox {
 
