@@ -112,21 +112,28 @@ public:
 	EntityReference(Entity* entity) : entity(entity), parent(NULL) {}
 	EntityReference(Entity* entity, Entity* parent) : entity(entity), parent(parent) {}
 	virtual ~EntityReference() {}
-	virtual void addChild(Entity* entity) { entity->addChild(entity); }
-	virtual const std::vector<Entity*>& getChildren() const { return entity->getChildren(); }
-	virtual const Entity* getParent() const  { return parent; }
-	virtual void addComponent(Component* component) { return entity->addComponent(component); }
-	virtual void deleteComponent(Component* component) { return entity->deleteComponent(component); }
-	virtual const std::vector<Component*>& getComponents() const { return entity->getComponents(); }
+	void addChild(Entity* entity) { entity->addChild(entity); }
+	const std::vector<Entity*>& getChildren() const { return entity->getChildren(); }
+	const Entity* getParent() const  { return parent; }
+	void addComponent(Component* component) { return entity->addComponent(component); }
+	void deleteComponent(Component* component) { return entity->deleteComponent(component); }
+	const std::vector<Component*>& getComponents() const { return entity->getComponents(); }
 	virtual void update() { return entity->update(); }
 protected:
-	virtual Component* getComponentByType(const std::type_info& type) const { return entity->getComponentByType(type); }
-	virtual const std::vector<Component*>& getComponentsByType(const std::type_info& type) const { return entity->getComponentsByType(type); }
-	virtual void setParent(Entity* entity) { parent = entity; }
+	Component* getComponentByType(const std::type_info& type) const { return entity->getComponentByType(type); }
+	const std::vector<Component*>& getComponentsByType(const std::type_info& type) const { return entity->getComponentsByType(type); }
+	void setParent(Entity* entity) { parent = entity; }
 
 private:
 	Entity* entity;
 	Entity* parent;
+};
+
+class ReadOnlyEntityReference : public EntityReference {
+public:
+	ReadOnlyEntityReference(Entity* entity) : EntityReference(entity) {}
+	ReadOnlyEntityReference(Entity* entity, Entity* parent) : EntityReference(entity, parent) {}
+	virtual void update() {}
 };
 
 }

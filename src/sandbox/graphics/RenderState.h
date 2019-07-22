@@ -5,7 +5,7 @@
 #include "sandbox/StateContainer.h"
 #include "sandbox/graphics/GraphicsContext.h"
 #include "sandbox/Entity.h"
-//#include "sandbox/graphics/ShaderProgram.h"
+#include "sandbox/graphics/render/ShaderProgram.h"
 
 namespace sandbox {
 
@@ -16,7 +16,7 @@ public:
 		projectionMatrix.set(glm::mat4(1.0));
 		viewMatrix.set(glm::mat4(1.0));
 		modelMatrix.set(glm::mat4(1.0));
-		//shaderProgram.set(NULL);
+		shaderProgram.set(NULL);
 		entity.set(NULL);
 	}
 
@@ -26,7 +26,7 @@ public:
 	StateContainerItemStack<glm::mat4>& getProjectionMatrix() { return projectionMatrix; }
 	StateContainerItemStack<glm::mat4>& getViewMatrix() { return viewMatrix; }
 	StateContainerItemStack<glm::mat4>& getModelMatrix() { return modelMatrix; }
-	//StateItemStack<ShaderProgram*>& getShaderProgram() { return shaderProgram; }
+	StateContainerItemStack<ShaderProgram*>& getShaderProgram() { return shaderProgram; }
 	StateContainerItemStack<const Entity*>& getEntity() { return entity; }
 
 	static RenderState& get(const GraphicsContext& context) { return context.getRenderState()->getItem<RenderState>(); }
@@ -36,7 +36,7 @@ private:
 	StateContainerItemStack<glm::mat4> projectionMatrix;
 	StateContainerItemStack<glm::mat4> viewMatrix;
 	StateContainerItemStack<glm::mat4> modelMatrix;
-	//StateItemStack<ShaderProgram*> shaderProgram;
+	StateContainerItemStack<ShaderProgram*> shaderProgram;
 	StateContainerItemStack<const Entity*> entity;
 };
 

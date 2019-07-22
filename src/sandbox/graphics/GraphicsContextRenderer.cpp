@@ -5,7 +5,7 @@
 namespace sandbox {
 
 void GraphicsContextRenderer::update() {
-	std::vector<const Entity*> entityStack;
+	/*std::vector<const Entity*> entityStack;
 	entityStack.push_back(&getEntity());
 
 	while (entityStack.size() > 0) {
@@ -21,9 +21,22 @@ void GraphicsContextRenderer::update() {
 		for (int f = entity.getChildren().size()-1; f >= 0; f--) {
 			entityStack.push_back(entity.getChildren()[f]);
 		}
-	}
+	}*/
+	updateRecursive(getEntity());
 
 	render();
+}
+
+void GraphicsContextRenderer::updateRecursive(const Entity& entity) {
+	std::vector<GraphicsComponent*> components = entity.getComponents<GraphicsComponent>();
+	for (int f = 0; f < components.size(); f++) {
+		components[f]->updateSharedContext(context);
+		components[f]->updateContext(context);
+	}
+
+	for (int f = 0; f < entity.getChildren().size(); f++) {
+		updateRecursive(*entity.getChildren()[f]);
+	}
 }
 
 void GraphicsContextRenderer::render() {

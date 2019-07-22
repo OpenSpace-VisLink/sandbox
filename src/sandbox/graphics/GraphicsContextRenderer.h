@@ -16,6 +16,7 @@ public:
 	void render();
 
 private:
+	void updateRecursive(const Entity& entity);
 	void renderRecursive(const Entity& entity);
 	GraphicsContext context;
 };
