@@ -21,6 +21,7 @@
 #include "sandbox/graphics/render/shaders/BasicShader.h"
 #include "sandbox/graphics/view/Camera.h"
 #include "sandbox/input/MouseInput.h"
+#include "sandbox/input/interaction/ArcBall.h"
 #include "sandbox/io/File.h"
 #include "sandbox/io/FileMonitor.h"
 #include "glm/glm.hpp"
@@ -78,6 +79,7 @@ public:
 			//view->addComponent(new EntityRenderer(materialShader));
 			EntityNode* world = new EntityNode(view);			
 				world->addComponent(new Transform(glm::translate(glm::mat4(1.0f),glm::vec3(-2,0,0))));
+				world->addComponent(new ArcBall(&input));
 				world->addComponent(new EntityRenderer(quad));
 
 		renderer.addComponent(new GraphicsContextRenderer());
@@ -91,10 +93,6 @@ public:
 	}
 
 	void drawContents() {
-		/*if (action == GLFW_PRESS)
-            mMouseState |= 1 << button;
-        else
-            mMouseState &= ~(1 << button);*/
 		input.update();
 		MouseInput* mouse = input.getComponent<MouseInput>();
 		if (mouse) {
