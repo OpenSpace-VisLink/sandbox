@@ -18,6 +18,7 @@
 #include "sandbox/graphics/render/EntityRenderer.h"
 #include "sandbox/graphics/render/MeshRenderer.h"
 #include "sandbox/graphics/render/shaders/MaterialShader.h"
+#include "sandbox/graphics/render/shaders/BasicShader.h"
 #include "sandbox/graphics/view/Camera.h"
 #include "sandbox/io/File.h"
 #include "sandbox/io/FileMonitor.h"
@@ -44,11 +45,13 @@ public:
 		addVariableSlider(panel, g, "Green");
 		addVariableSlider(panel, b, "Blue");
 
-		//files.addComponent(new FileMonitor(1000));
+		files.addComponent(new FileMonitor(1000));
+		EntityNode* defaultVsh = new EntityNode(&files);
+			defaultVsh->addComponent(new File("app/src/shaders/default.vsh"));
+		EntityNode* defaultFsh = new EntityNode(&files);
+			defaultFsh->addComponent(new File("app/src/shaders/default.fsh"));
 		EntityNode* textFile = new EntityNode(&files);
 			//textFile->addComponent(new File("CMakeLists.txt"));
-		EntityNode* imageFile = new EntityNode(&files);
-			//imageFile->addComponent(new File("CMakeLists2.txt"));
 			//imageFile->addComponent(new File());
 
 		EntityNode* quad = new EntityNode(&objects);
@@ -57,7 +60,9 @@ public:
 			quad->addComponent(new MeshRenderer());
 
 		EntityNode* shader = new EntityNode(&shaders);
-			shader->addComponent(new MaterialShader());
+			shader->addComponent(new BasicShader());
+			shader->addComponent(new EntityComponent(defaultVsh));
+			shader->addComponent(new EntityComponent(defaultFsh));
 
 		EntityNode* view = new EntityNode(&scene);
 			//view->addComponent(new EntityComponent(textFile));

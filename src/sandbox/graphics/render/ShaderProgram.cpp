@@ -5,12 +5,19 @@
 
 namespace sandbox {
 
-ShaderProgram::ShaderProgram() : forceShader(false) {
+ShaderProgram::ShaderProgram() : forceShader(false), version(-1) {
 	addType<ShaderProgram>();
 }
 
 void ShaderProgram::updateContext(const GraphicsContext& sceneContext) {
+    //std::cout << "updateContext" << std::endl;
 	ShaderProgramState& state = *contextHandler.getState(sceneContext);
+
+    if (state.initialized && state.version != version) {
+        state.reset();
+        state.initialized = false;
+        state.version = version;
+    }
 
 	if (!state.initialized) {
         std::cout << "INitialize shader context" << std::endl;

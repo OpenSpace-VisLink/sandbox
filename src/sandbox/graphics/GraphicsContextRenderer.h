@@ -14,6 +14,7 @@ public:
 
 	void update();
 	void render();
+	bool forceUpdate() { return true; }
 
 	void update(const Entity& entity);
 	void render(const Entity& entity);

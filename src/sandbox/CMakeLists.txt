@@ -15,6 +15,7 @@ set (SOURCEFILES
   graphics/GraphicsContextRenderer.cpp
   graphics/render/MeshRenderer.cpp
   graphics/render/ShaderProgram.cpp
+  graphics/render/shaders/BasicShader.cpp
   graphics/render/shaders/MaterialShader.cpp
   graphics/view/Camera.cpp
   io/File.cpp
@@ -37,6 +38,7 @@ set (HEADERFILES
   graphics/RenderCallback.h
   graphics/render/MeshRenderer.h
   graphics/render/ShaderProgram.h
+  graphics/render/shaders/BasicShader.h
   graphics/render/shaders/MaterialShader.h
   graphics/view/Camera.h
   io/File.h

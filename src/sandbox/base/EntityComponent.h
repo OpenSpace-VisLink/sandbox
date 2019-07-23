@@ -7,7 +7,7 @@ namespace sandbox {
 
 class EntityComponent : public Component {
 public:
-	EntityComponent(Entity* entity) : entity(entity), lastUpdateVersion(entity->getVersion()) { addType<EntityReference>(); }
+	EntityComponent(Entity* entity) : entity(entity), lastUpdateVersion(entity->getVersion()) { addType<EntityComponent>(); }
 	virtual ~EntityComponent() {}
 
 	Entity* getEntityReference() const { return entity; }

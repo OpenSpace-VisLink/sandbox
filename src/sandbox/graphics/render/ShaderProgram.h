@@ -12,6 +12,10 @@ public:
 	ShaderProgram();
 	virtual ~ShaderProgram() {}
 
+	void update() {
+		version++;
+	}
+
 	void updateContext(const GraphicsContext& context);
 	void use(const GraphicsContext& context);
 	void release(const GraphicsContext& context);
@@ -23,6 +27,7 @@ protected:
 
 	class ShaderProgramState : public ContextState {
 	public:
+		ShaderProgramState() : version(0) {}
 	    virtual ~ShaderProgramState() {
 	    	reset();
 	    }
@@ -38,12 +43,15 @@ protected:
 	    	shaders.clear();
 
 	        glDeleteProgram(shaderProgram);
+	        initialized = false;
 	    }
 
 	    void addShader(GLuint shader) {
 		    glAttachShader(shaderProgram, shader);
 	    	shaders.push_back(shader);
 	    }
+
+	    int version;
 
 	private:
 	    std::vector<GLuint> shaders;
@@ -57,6 +65,7 @@ protected:
 private:
 	GraphicsContextHandler<ContextState,ShaderProgramState> contextHandler;
 	bool forceShader;
+	int version;
 };
 
 }
