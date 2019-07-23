@@ -59,16 +59,20 @@ public:
 			quad->addComponent(new QuadLoader());
 			quad->addComponent(new MeshRenderer());
 
-		EntityNode* shader = new EntityNode(&shaders);
-			shader->addComponent(new BasicShader());
-			shader->addComponent(new EntityComponent(defaultVsh));
-			shader->addComponent(new EntityComponent(defaultFsh));
+		EntityNode* defaultShader = new EntityNode(&shaders);
+			defaultShader->addComponent(new BasicShader());
+			defaultShader->addComponent(new EntityComponent(defaultVsh));
+			defaultShader->addComponent(new EntityComponent(defaultFsh));
+		EntityNode* materialShader = new EntityNode(&shaders);
+			materialShader->addComponent(new MaterialShader());
+
 
 		EntityNode* view = new EntityNode(&scene);
 			//view->addComponent(new EntityComponent(textFile));
 			view->addComponent(new Transform(glm::translate(glm::mat4(1.0f),glm::vec3(4,3,3))));
 			view->addComponent(new Camera());
-			view->addComponent(new EntityRenderer(shader));
+			view->addComponent(new EntityRenderer(defaultShader));
+			//view->addComponent(new EntityRenderer(materialShader));
 			EntityNode* world = new EntityNode(view);			
 				world->addComponent(new Transform(glm::translate(glm::mat4(1.0f),glm::vec3(-2,0,0))));
 				world->addComponent(new EntityRenderer(quad));
