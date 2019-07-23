@@ -13,6 +13,7 @@ public:
 	virtual ~GraphicsContextRenderer() {}
 
 	void update();
+	void render();
 
 	void update(const Entity& entity);
 	void render(const Entity& entity);

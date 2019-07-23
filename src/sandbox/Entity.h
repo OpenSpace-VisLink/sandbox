@@ -22,6 +22,8 @@ public:
 	virtual void deleteComponent(Component* component) = 0;
 	virtual const std::vector<Component*>& getComponents() const = 0;
 	virtual void update() = 0;
+	virtual void incrementVersion() = 0;
+	virtual int getVersion() = 0;
 
 	template<typename T>
 	T* getComponent() const {
@@ -66,6 +68,8 @@ public:
 	const std::vector<Component*>& getComponents() const { return components; }
 
 	void update();
+	void incrementVersion() { version++; }
+	int getVersion() { return version; }
 
 	template<typename T>
 	T* getComponent() const {
@@ -105,6 +109,8 @@ private:
 	std::vector<Component*> components;
 	std::vector<Entity*> children;
 	Entity* parent;
+	int version;
+	int lastUpdateVersion;
 };
 
 class EntityReference : public Entity {
@@ -118,7 +124,9 @@ public:
 	void addComponent(Component* component) { return entity->addComponent(component); }
 	void deleteComponent(Component* component) { return entity->deleteComponent(component); }
 	const std::vector<Component*>& getComponents() const { return entity->getComponents(); }
-	virtual void update() { return entity->update(); }
+	void update() { return entity->update(); }
+	void incrementVersion() { entity->incrementVersion(); }
+	int getVersion() { return entity->getVersion(); }
 protected:
 	Component* getComponentByType(const std::type_info& type) const { return entity->getComponentByType(type); }
 	const std::vector<Component*>& getComponentsByType(const std::type_info& type) const { return entity->getComponentsByType(type); }
@@ -133,7 +141,8 @@ class ReadOnlyEntityReference : public EntityReference {
 public:
 	ReadOnlyEntityReference(Entity* entity) : EntityReference(entity) {}
 	ReadOnlyEntityReference(Entity* entity, Entity* parent) : EntityReference(entity, parent) {}
-	virtual void update() {}
+	void update() {}
+	void incrementVersion() {}
 };
 
 }

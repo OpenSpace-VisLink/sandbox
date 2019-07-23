@@ -13,7 +13,9 @@ public:
 	virtual ~Transform();
 
 	const glm::mat4& getTransform() const { return transform; }
-	void setTransform(const glm::mat4& transform) { this->transform = transform; }
+	void setTransform(const glm::mat4& transform) { this->transform = transform; getEntity().incrementVersion(); }
+
+	glm::vec3 getLocation() const;
 
 private:
 	glm::mat4 transform;

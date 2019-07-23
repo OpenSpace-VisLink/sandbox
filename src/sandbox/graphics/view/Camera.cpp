@@ -4,6 +4,7 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
 #include <iostream>
+#include "sandbox/base/Transform.h"
 
 namespace sandbox {
 
@@ -15,13 +16,18 @@ Camera::~Camera() {
 }
 
 void Camera::update() {
-		glm::vec3 pos = glm::vec3(0.0);//getSceneNode().getWorldPosition();
+		std::cout << "Update position." << std::endl;
+		glm::vec3 pos = glm::vec3(0.0);
+		Transform* transform = getEntity().getComponent<Transform>();
+		if (transform) {
+			pos = transform->getLocation();
+		}
 
 		// Camera matrix
 		view = glm::lookAt(
-		    glm::vec3(4,3,3), // Camera is at (4,3,3), in World Space
+		    //glm::vec3(4,3,3), // Camera is at (4,3,3), in World Space
 		    //glm::vec3(0,0,3), // Camera is at (4,3,3), in World Space
-		    //pos,
+		    pos,
 		    glm::vec3(0,0,0), // and looks at the origin
 		    glm::vec3(0,1,0)  // Head is up (set to 0,-1,0 to look upside-down)
 		    );

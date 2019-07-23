@@ -10,6 +10,7 @@
 #include <nanogui/opengl.h>
 #include <nanogui/glutil.h>
 #include "sandbox/base/Object.h"
+#include "sandbox/base/Transform.h"
 #include "sandbox/geometry/shapes/QuadLoader.h"
 #include "sandbox/graphics/GraphicsContextRenderer.h"
 #include "sandbox/graphics/RenderCallback.h"
@@ -17,6 +18,10 @@
 #include "sandbox/graphics/render/MeshRenderer.h"
 #include "sandbox/graphics/render/shaders/MaterialShader.h"
 #include "sandbox/graphics/view/Camera.h"
+#include "glm/glm.hpp"
+#include <glm/gtc/matrix_access.hpp>
+#include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtc/type_ptr.hpp>
 
 using namespace sandbox;
 
@@ -45,10 +50,12 @@ public:
 			shader->addComponent(new MaterialShader());
 
 		EntityNode* view = new EntityNode(&scene);
+			view->addComponent(new Transform(glm::translate(glm::mat4(1.0f),glm::vec3(4,3,3))));
 			view->addComponent(new Camera());
-			//view->addComponent(new MaterialShader());
 			view->addComponent(new EntityRenderer(shader));
-			view->addComponent(new EntityRenderer(quad));
+			EntityNode* world = new EntityNode(view);			
+				world->addComponent(new Transform(glm::translate(glm::mat4(1.0f),glm::vec3(-2,0,0))));
+				world->addComponent(new EntityRenderer(quad));
 
 		renderer.addComponent(new GraphicsContextRenderer());
 		renderer.addComponent((new OpenGLCallback())->init(this));
@@ -60,6 +67,7 @@ public:
 	void drawContents() {
 		objects.update();
 		renderer.update();
+		renderer.getComponent<GraphicsContextRenderer>()->render();
 	}
 
 private:

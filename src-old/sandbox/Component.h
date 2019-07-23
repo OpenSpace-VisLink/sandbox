@@ -24,7 +24,7 @@ public:
 	const std::vector<const std::type_info*> getTypes() { return types; }
 
 protected:
-	const Entity& getEntity() const { return *entity; }
+	Entity& getEntity() { return *entity; }
 
 private:
 	std::vector<const std::type_info*> types;

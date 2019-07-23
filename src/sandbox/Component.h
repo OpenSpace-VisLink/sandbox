@@ -26,7 +26,7 @@ public:
 	virtual void update() {}
 
 protected:
-	const Entity& getEntity() const { return *entity; }
+	Entity& getEntity() const { return *entity; }
 
 private:
 	std::vector<const std::type_info*> types;

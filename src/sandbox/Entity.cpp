@@ -3,11 +3,11 @@
 
 namespace sandbox {
 
-EntityNode::EntityNode(Entity* parent) : parent(parent) {
+EntityNode::EntityNode(Entity* parent) : parent(parent), version(0), lastUpdateVersion(-1) {
 	parent->addChild(this);
 }
 
-EntityNode::EntityNode() : parent(NULL) {
+EntityNode::EntityNode() : parent(NULL), version(0), lastUpdateVersion(-1) {
 
 }
 
@@ -22,8 +22,16 @@ EntityNode::~EntityNode() {
 }
 
 void EntityNode::update() {
-	for (int f = 0; f < components.size(); f++) {
-		components[f]->update();
+	if (lastUpdateVersion != version) {
+		for (int f = 0; f < components.size(); f++) {
+			components[f]->update();
+		}
+
+		for (int f = 0; f < children.size(); f++) {
+			children[f]->incrementVersion();
+		}
+
+		lastUpdateVersion = version;
 	}
 
 	for (int f = 0; f < children.size(); f++) {
@@ -34,6 +42,7 @@ void EntityNode::update() {
 void EntityNode::addChild(Entity* entity) {
 	entity->setParent(this);
 	children.push_back(entity);
+	incrementVersion();
 }
 
 void EntityNode::addComponent(Component* component) {
@@ -49,10 +58,12 @@ void EntityNode::addComponent(Component* component) {
 	}
 
 	components.push_back(component);
+	incrementVersion();
 }
 
 void EntityNode::deleteComponent(Component* component) {
 	// TODO: make work
+	incrementVersion();
 }
 
 Component* EntityNode::getComponentByType(const std::type_info& type) const {

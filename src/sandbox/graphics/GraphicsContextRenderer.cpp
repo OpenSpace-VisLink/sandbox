@@ -24,6 +24,10 @@ void GraphicsContextRenderer::update() {
 	}*/
 	update(getEntity());
 
+}
+
+
+void GraphicsContextRenderer::render() {
 	RenderState& renderState = RenderState::get(context);
 	renderState.getRenderer().push(this);
 	render(getEntity());
