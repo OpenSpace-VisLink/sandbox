@@ -41,6 +41,7 @@ set (HEADERFILES
   graphics/render/shaders/BasicShader.h
   graphics/render/shaders/MaterialShader.h
   graphics/view/Camera.h
+  input/MouseInput.h
   io/File.h
   io/FileMonitor.h
 )

@@ -20,6 +20,7 @@
 #include "sandbox/graphics/render/shaders/MaterialShader.h"
 #include "sandbox/graphics/render/shaders/BasicShader.h"
 #include "sandbox/graphics/view/Camera.h"
+#include "sandbox/input/MouseInput.h"
 #include "sandbox/io/File.h"
 #include "sandbox/io/FileMonitor.h"
 #include "glm/glm.hpp"
@@ -30,6 +31,7 @@
 using namespace sandbox;
 
 class TestApp : public nanogui::Screen {
+friend class NanoGUIMouseInput<TestApp>;
 public:
 	TestApp() : nanogui::Screen(Eigen::Vector2i(1024, 768), "Test App"), r(0), g(0), b(0), a(1) {
 		using namespace nanogui;
@@ -66,6 +68,7 @@ public:
 		EntityNode* materialShader = new EntityNode(&shaders);
 			materialShader->addComponent(new MaterialShader());
 
+		input.addComponent(new NanoGUIMouseInput<TestApp>(this));
 
 		EntityNode* view = new EntityNode(&scene);
 			//view->addComponent(new EntityComponent(textFile));
@@ -84,13 +87,25 @@ public:
 		renderer.addChild(new EntityReference(&scene));
 
 		files.update();
+		objects.update();
 	}
 
 	void drawContents() {
-		objects.update();
+		/*if (action == GLFW_PRESS)
+            mMouseState |= 1 << button;
+        else
+            mMouseState &= ~(1 << button);*/
+		input.update();
+		MouseInput* mouse = input.getComponent<MouseInput>();
+		if (mouse) {
+			if (mouse->isDragging()) {
+				std::cout << mouse->getButtonState(0) << " " << mouse->getPosition().x << " " << mouse->getPosition().y << std::endl;
+			}
+		}
 		renderer.update();
 		renderer.getComponent<GraphicsContextRenderer>()->render();
 	}
+
 
 private:
 	class OpenGLCallback : public RenderCallback<TestApp> {
@@ -126,7 +141,9 @@ private:
 	EntityNode shaders;
 	EntityNode scene;
 	EntityNode files;
+	EntityNode input;
 };
+
 
 int main(int argc, char**argv) {
 	nanogui::init();
@@ -142,5 +159,6 @@ int main(int argc, char**argv) {
 
 	return 0;
 }
+
 
 
