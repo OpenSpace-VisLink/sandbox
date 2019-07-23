@@ -22,17 +22,26 @@ EntityNode::~EntityNode() {
 }
 
 void EntityNode::update() {
-	if (lastUpdateVersion != version) {
-		for (int f = 0; f < components.size(); f++) {
+	for (int f = 0; f < components.size(); f++) {
+		components[f]->prepareUpdate();
+	}
+
+	bool updated = lastUpdateVersion != version;
+
+	for (int f = 0; f < components.size(); f++) {
+		if (updated || components[f]->forceUpdate()) {
 			components[f]->update();
 		}
+	}
 
+	if (updated) {
 		for (int f = 0; f < children.size(); f++) {
 			children[f]->incrementVersion();
 		}
 
 		lastUpdateVersion = version;
 	}
+
 
 	for (int f = 0; f < children.size(); f++) {
 		children[f]->update();

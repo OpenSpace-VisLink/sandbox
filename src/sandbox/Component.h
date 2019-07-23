@@ -23,9 +23,9 @@ public:
 	}
 	const std::vector<const std::type_info*> getTypes() { return types; }
 
+	virtual void prepareUpdate() {}
 	virtual void update() {}
-
-protected:
+	virtual bool forceUpdate() { return false; }
 	Entity& getEntity() const { return *entity; }
 
 private:

@@ -5,6 +5,7 @@
 #include <map>
 #include <vector>
 #include "glm/glm.hpp"
+#include <mutex>
 
 namespace sandbox {
 
@@ -68,7 +69,9 @@ public:
 	const std::vector<Component*>& getComponents() const { return components; }
 
 	void update();
-	void incrementVersion() { version++; }
+	void incrementVersion() { 
+		version++; 
+	}
 	int getVersion() { return version; }
 
 	template<typename T>

@@ -25,6 +25,7 @@ public:
 
 protected:
 	Entity& getEntity() { return *entity; }
+	virtual bool forceUpdate() { return false; }
 
 private:
 	std::vector<const std::type_info*> types;

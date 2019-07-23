@@ -9,6 +9,7 @@
 #include <nanogui/glcanvas.h>
 #include <nanogui/opengl.h>
 #include <nanogui/glutil.h>
+#include "sandbox/base/EntityComponent.h"
 #include "sandbox/base/Object.h"
 #include "sandbox/base/Transform.h"
 #include "sandbox/geometry/shapes/QuadLoader.h"
@@ -18,6 +19,8 @@
 #include "sandbox/graphics/render/MeshRenderer.h"
 #include "sandbox/graphics/render/shaders/MaterialShader.h"
 #include "sandbox/graphics/view/Camera.h"
+#include "sandbox/io/File.h"
+#include "sandbox/io/FileMonitor.h"
 #include "glm/glm.hpp"
 #include <glm/gtc/matrix_access.hpp>
 #include <glm/gtc/matrix_transform.hpp>
@@ -41,6 +44,13 @@ public:
 		addVariableSlider(panel, g, "Green");
 		addVariableSlider(panel, b, "Blue");
 
+		//files.addComponent(new FileMonitor(1000));
+		EntityNode* textFile = new EntityNode(&files);
+			//textFile->addComponent(new File("CMakeLists.txt"));
+		EntityNode* imageFile = new EntityNode(&files);
+			//imageFile->addComponent(new File("CMakeLists2.txt"));
+			//imageFile->addComponent(new File());
+
 		EntityNode* quad = new EntityNode(&objects);
 			quad->addComponent(new sandbox::Object<Mesh>());
 			quad->addComponent(new QuadLoader());
@@ -50,6 +60,7 @@ public:
 			shader->addComponent(new MaterialShader());
 
 		EntityNode* view = new EntityNode(&scene);
+			//view->addComponent(new EntityComponent(textFile));
 			view->addComponent(new Transform(glm::translate(glm::mat4(1.0f),glm::vec3(4,3,3))));
 			view->addComponent(new Camera());
 			view->addComponent(new EntityRenderer(shader));
@@ -62,6 +73,8 @@ public:
 		renderer.addChild(new EntityReference(&objects));
 		renderer.addChild(new EntityReference(&shaders));
 		renderer.addChild(new EntityReference(&scene));
+
+		files.update();
 	}
 
 	void drawContents() {
@@ -103,6 +116,7 @@ private:
 	EntityNode objects;
 	EntityNode shaders;
 	EntityNode scene;
+	EntityNode files;
 };
 
 int main(int argc, char**argv) {
