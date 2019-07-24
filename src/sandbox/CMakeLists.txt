@@ -20,6 +20,7 @@ set (SOURCEFILES
   graphics/view/Camera.cpp
   input/interaction/ArcBall.cpp
   input/interaction/MouseZoom.cpp
+  input/interaction/MouseTranslate.cpp
   io/File.cpp
   io/FileMonitor.cpp
 )
@@ -46,6 +47,7 @@ set (HEADERFILES
   input/MouseInput.h
   input/interaction/ArcBall.h
   input/interaction/MouseZoom.h
+  input/interaction/MouseTranslate.h
   io/File.h
   io/FileMonitor.h
 )

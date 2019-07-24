@@ -37,7 +37,7 @@ void ArcBall::update() {
 }
 
 glm::vec3 ArcBall::get3DPoint(glm::vec2 point) {
-	glm::vec3 p((point-glm::vec2(0.5))*2.0f,0);
+	glm::vec3 p(point,0);//((point-glm::vec2(0.5))*2.0f,0);
 	float mag = p.x*p.x + p.y*p.y;
 	float r2 = radius*radius;
 	if (mag <= r2/2.0) {

@@ -19,7 +19,7 @@ void MouseZoom::update() {
 			glm::vec2 p1 = mouse->getLastPosition();
 			glm::vec2 p2 = mouse->getPosition();
 			bool zoomIn = p2.y-p1.y > 0.0f;
-			float scaleRate = 1.0+2.0*std::abs(p2.y-p1.y);
+			float scaleRate = 1.0+1.0*std::abs(p2.y-p1.y);
 			scaleRate = zoomIn ? scaleRate : 1.0f/scaleRate;
 			glm::mat4 scale = glm::scale(glm::mat4(1.0f), glm::vec3(scaleRate));
 			transform->setTransform(transform->getTransform()*scale);
