@@ -19,6 +19,7 @@ set (SOURCEFILES
   graphics/render/shaders/MaterialShader.cpp
   graphics/view/Camera.cpp
   input/interaction/ArcBall.cpp
+  input/interaction/MouseZoom.cpp
   io/File.cpp
   io/FileMonitor.cpp
 )
@@ -44,6 +45,7 @@ set (HEADERFILES
   graphics/view/Camera.h
   input/MouseInput.h
   input/interaction/ArcBall.h
+  input/interaction/MouseZoom.h
   io/File.h
   io/FileMonitor.h
 )

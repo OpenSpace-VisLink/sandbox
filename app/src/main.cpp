@@ -22,6 +22,7 @@
 #include "sandbox/graphics/view/Camera.h"
 #include "sandbox/input/MouseInput.h"
 #include "sandbox/input/interaction/ArcBall.h"
+#include "sandbox/input/interaction/MouseZoom.h"
 #include "sandbox/io/File.h"
 #include "sandbox/io/FileMonitor.h"
 #include "glm/glm.hpp"
@@ -81,6 +82,7 @@ public:
 				world->addComponent(new Transform());
 				//world->addComponent(new Transform(glm::translate(glm::mat4(1.0f),glm::vec3(-2,0,0))));
 				world->addComponent(new ArcBall(&input));
+				world->addComponent(new MouseZoom(&input));
 				world->addComponent(new EntityRenderer(quad));
 
 		renderer.addComponent(new GraphicsContextRenderer());
