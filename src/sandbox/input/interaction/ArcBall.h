@@ -13,40 +13,22 @@ namespace sandbox {
 
 class ArcBall : public Component {
 public:
-	ArcBall(Entity* input) : input(input), mouse(NULL), transform(NULL), dragging(false) { addType<ArcBall>(); }
+	ArcBall(Entity* input, float radius = 1.0f) : input(input), radius(radius), mouse(NULL), transform(NULL) { addType<ArcBall>(); }
 	virtual ~ArcBall() {}
 
-	void update() {
-		if (!mouse) {
-			mouse = input->getComponent<MouseInput>();
-		}
-
-		if (!transform) {
-			transform = getEntity().getComponent<Transform>();
-		}
-
-		if (mouse) {
-			bool drag = mouse->isDragging();
-			if (drag && !dragging) {
-				prevTransform = transform->getTransform();
-			}
-			dragging = drag;
-			if (drag) {
-				transform->setTransform(glm::translate(prevTransform,glm::vec3(mouse->getPosition()-mouse->getDragStartPosition(),0)));
-			}
-		}
-	}
+	void update();
 
 	bool forceUpdate() {
 		return true;
 	}
 
 private:
+	glm::vec3 get3DPoint(glm::vec2 point);
+
 	Entity* input;
 	MouseInput* mouse;
 	Transform* transform;
-	bool dragging;
-	glm::mat4 prevTransform;
+	float radius;
 };
 
 

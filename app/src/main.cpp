@@ -73,12 +73,13 @@ public:
 
 		EntityNode* view = new EntityNode(&scene);
 			//view->addComponent(new EntityComponent(textFile));
-			view->addComponent(new Transform(glm::translate(glm::mat4(1.0f),glm::vec3(4,3,3))));
+			view->addComponent(new Transform(glm::translate(glm::mat4(1.0f),glm::vec3(0,0,3))));
 			view->addComponent(new Camera());
 			view->addComponent(new EntityRenderer(defaultShader));
 			//view->addComponent(new EntityRenderer(materialShader));
 			EntityNode* world = new EntityNode(view);			
-				world->addComponent(new Transform(glm::translate(glm::mat4(1.0f),glm::vec3(-2,0,0))));
+				world->addComponent(new Transform());
+				//world->addComponent(new Transform(glm::translate(glm::mat4(1.0f),glm::vec3(-2,0,0))));
 				world->addComponent(new ArcBall(&input));
 				world->addComponent(new EntityRenderer(quad));
 
@@ -94,12 +95,12 @@ public:
 
 	void drawContents() {
 		input.update();
-		MouseInput* mouse = input.getComponent<MouseInput>();
+		/*MouseInput* mouse = input.getComponent<MouseInput>();
 		if (mouse) {
 			if (mouse->isDragging()) {
 				std::cout << mouse->getButtonState(0) << " " << mouse->getPosition().x << " " << mouse->getPosition().y << std::endl;
 			}
-		}
+		}*/
 		renderer.update();
 		renderer.getComponent<GraphicsContextRenderer>()->render();
 	}
