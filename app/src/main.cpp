@@ -21,9 +21,10 @@
 #include "sandbox/graphics/render/shaders/BasicShader.h"
 #include "sandbox/graphics/view/Camera.h"
 #include "sandbox/input/MouseInput.h"
-#include "sandbox/input/interaction/ArcBall.h"
-#include "sandbox/input/interaction/MouseZoom.h"
-#include "sandbox/input/interaction/MouseTranslate.h"
+#include "sandbox/input/interaction/MouseInteraction.h"
+//#include "sandbox/input/interaction/ArcBall.h"
+//#include "sandbox/input/interaction/MouseZoom.h"
+//#include "sandbox/input/interaction/MouseTranslate.h"
 #include "sandbox/io/File.h"
 #include "sandbox/io/FileMonitor.h"
 #include "glm/glm.hpp"
@@ -79,12 +80,8 @@ public:
 			view->addComponent(new Camera());
 			view->addComponent(new EntityRenderer(defaultShader));
 			//view->addComponent(new EntityRenderer(materialShader));
-			EntityNode* world = new EntityNode(view);			
-				world->addComponent(new Transform());
-				//world->addComponent(new Transform(glm::translate(glm::mat4(1.0f),glm::vec3(-2,0,0))));
-				world->addComponent(new ArcBall(&input));
-				world->addComponent(new MouseZoom(&input));
-				world->addComponent(new MouseTranslate(&input));
+			EntityNode* world = new EntityNode(view);
+				MouseInteraction::add(world, &input);	
 				world->addComponent(new EntityRenderer(quad));
 
 		renderer.addComponent(new GraphicsContextRenderer());
