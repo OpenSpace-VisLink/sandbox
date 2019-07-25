@@ -57,6 +57,7 @@ void GraphicsContextRenderer::startRender(const Entity& entity) {
 	renderState.getEntity().push(&entity);
 
 	std::vector<Transform*> transforms = entity.getComponents<Transform>();
+	int currentTransform = 0;
 	for (int f = 0; f < transforms.size(); f++) {
 		renderState.getModelMatrix().push(renderState.getModelMatrix().get()*transforms[f]->getTransform());
 	}
@@ -77,7 +78,7 @@ void GraphicsContextRenderer::finishRender(const Entity& entity) {
 	RenderState& renderState = RenderState::get(context);
 	
 	std::vector<GraphicsComponent*> components = entity.getComponents<GraphicsComponent>();
-	for (int f = 0; f < components.size(); f++) {
+	for (int f = components.size()-1; f >= 0; f--) {
 		components[f]->finishRender(context);
 	}
 

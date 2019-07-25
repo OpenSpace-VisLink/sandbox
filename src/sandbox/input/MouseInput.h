@@ -8,7 +8,7 @@ namespace sandbox {
 
 class MouseInput : public Component {
 public:
-	MouseInput() /*:dragging(false)*/ { addType<MouseInput>(); }
+	MouseInput() : pos(0.0f), lastPosition(0.0) /*:dragging(false)*/ { addType<MouseInput>(); }
 	virtual ~MouseInput() {} 
 
 	virtual bool getButtonState(int button) const = 0;
@@ -28,6 +28,7 @@ public:
 //			dragEndPosition = getPosition();
 //		}
 //		dragging = newDrag;
+
 		lastPosition = pos;
 		pos = getPosition();
 	}

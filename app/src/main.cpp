@@ -66,9 +66,12 @@ public:
 
 		EntityNode* quad = new EntityNode(&objects);
 			quad->addComponent(new sandbox::Object<Mesh>());
-			//quad->addComponent(new ShapeLoader(SHAPE_QUAD));
-			quad->addComponent(new ShapeLoader(SHAPE_CYLINDAR, 20));
+			quad->addComponent(new ShapeLoader(SHAPE_QUAD));
 			quad->addComponent(new MeshRenderer());
+		EntityNode* cylindar = new EntityNode(&objects);
+			cylindar->addComponent(new sandbox::Object<Mesh>());
+			cylindar->addComponent(new ShapeLoader(SHAPE_CYLINDAR, 20));
+			cylindar->addComponent(new MeshRenderer());
 
 		EntityNode* defaultShader = new EntityNode(&shaders);
 			defaultShader->addComponent(new BasicShader());
@@ -90,7 +93,12 @@ public:
 			view->addComponent(new EntityRenderer(materialShader));
 			EntityNode* cursor = new EntityNode(view);
 				cursor->addComponent(new EntityRenderer(vc->getVirtualCursor()));
-				cursor->addComponent(new EntityRenderer(quad));
+				EntityNode* cursorModel = new EntityNode(cursor);
+					glm::mat4 cursorTransform = glm::scale(glm::mat4(1.0f),glm::vec3(0.2,1.0,0.2));
+					cursorTransform = glm::translate(cursorTransform,glm::vec3(0,-0.5,0));
+					cursorModel->addComponent(new Transform(cursorTransform));
+					cursorModel->addComponent(new EntityRenderer(defaultShader));
+					//cursorModel->addComponent(new EntityRenderer(cylindar));
 			EntityNode* world = new EntityNode(view);
 				world->addComponent(new MouseInteraction(&input));
 				world->addComponent(new EntityRenderer(quad));
