@@ -23,6 +23,8 @@ public:
 	}
 	const std::vector<const std::type_info*> getTypes() { return types; }
 
+	virtual bool beforeAdd() { return true; }
+	virtual void afterAdd() {}
 	virtual void prepareUpdate() {}
 	virtual void update() {}
 	virtual bool forceUpdate() { return false; }

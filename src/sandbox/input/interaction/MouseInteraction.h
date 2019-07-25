@@ -10,22 +10,21 @@
 
 namespace sandbox {
 
-class MouseInteraction : public EntityNode {
+class MouseInteraction : public Component {
 public:
-	MouseInteraction(Entity* input) : EntityNode() { init(input); }
-	MouseInteraction(Entity* parent, Entity* input) : EntityNode(parent) { init(input); }
+	MouseInteraction(Entity* input) : input(input) {}
 
-	void init(Entity* input) {
-		add(this, input);
+	bool beforeAdd() { return false; }
+
+	void afterAdd() {
+		getEntity().addComponent(new Transform());
+		getEntity().addComponent(new ArcBall(input));
+		getEntity().addComponent(new MouseZoom(input));
+		getEntity().addComponent(new MouseTranslate(input));
 	}
 
-	static void add(Entity* entity, Entity* input) {
-		entity->addComponent(new Transform());
-		entity->addComponent(new ArcBall(input));
-		entity->addComponent(new MouseZoom(input));
-		entity->addComponent(new MouseTranslate(input));
-	}
-
+private:
+	Entity* input;
 };
 
 

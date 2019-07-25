@@ -82,7 +82,8 @@ public:
 			//view->addComponent(new EntityRenderer(defaultShader));
 			view->addComponent(new EntityRenderer(materialShader));
 			EntityNode* world = new EntityNode(view);
-				MouseInteraction::add(world, &input);	
+				world->addComponent(new MouseInteraction(&input));
+				//MouseInteraction::add(world, &input);	
 				world->addComponent(new EntityRenderer(quad));
 
 		renderer.addComponent(new GraphicsContextRenderer());

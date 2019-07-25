@@ -56,17 +56,28 @@ void EntityNode::addChild(Entity* entity) {
 
 void EntityNode::addComponent(Component* component) {
 	component->setEntity(this);
-	for (int f = 0; f < component->getTypes().size(); f++) {
 
-		std::map<const std::type_info*, std::vector<Component*>, type_compare>::const_iterator it = typed_components.find(component->getTypes()[f]);
-		if (it == typed_components.end()) {
-			typed_components[component->getTypes()[f]] = std::vector<Component*>();
+	bool componentIsAdded = component->beforeAdd();
+	if (componentIsAdded) {
+		for (int f = 0; f < component->getTypes().size(); f++) {
+
+			std::map<const std::type_info*, std::vector<Component*>, type_compare>::const_iterator it = typed_components.find(component->getTypes()[f]);
+			if (it == typed_components.end()) {
+				typed_components[component->getTypes()[f]] = std::vector<Component*>();
+			}
+
+			typed_components[component->getTypes()[f]].push_back(component);
 		}
 
-		typed_components[component->getTypes()[f]].push_back(component);
+		components.push_back(component);
+	}
+	
+	component->afterAdd();
+
+	if (!componentIsAdded) {
+		delete component;
 	}
 
-	components.push_back(component);
 	incrementVersion();
 }
 
