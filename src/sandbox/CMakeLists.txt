@@ -11,7 +11,8 @@ set (SOURCEFILES
   base/Transform.cpp
   geometry/Mesh.cpp
   geometry/MeshLoader.cpp
-  geometry/shapes/QuadLoader.cpp
+  geometry/loaders/QuadLoader.cpp
+  geometry/loaders/ShapeLoader.cpp
   graphics/GraphicsContextRenderer.cpp
   graphics/render/MeshRenderer.cpp
   graphics/render/ShaderProgram.cpp
@@ -34,7 +35,8 @@ set (HEADERFILES
   base/Transform.h
   geometry/Mesh.h
   geometry/MeshLoader.h
-  geometry/shapes/QuadLoader.h
+  geometry/loaders/QuadLoader.h
+  geometry/loaders/ShapeLoader.h
   graphics/GraphicsComponent.h
   graphics/GraphicsContext.h
   graphics/GraphicsContextRenderer.h

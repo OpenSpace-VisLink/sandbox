@@ -12,7 +12,7 @@
 #include "sandbox/base/EntityComponent.h"
 #include "sandbox/base/Object.h"
 #include "sandbox/base/Transform.h"
-#include "sandbox/geometry/shapes/QuadLoader.h"
+#include "sandbox/geometry/loaders/ShapeLoader.h"
 #include "sandbox/graphics/GraphicsContextRenderer.h"
 #include "sandbox/graphics/RenderCallback.h"
 #include "sandbox/graphics/render/EntityRenderer.h"
@@ -62,7 +62,8 @@ public:
 
 		EntityNode* quad = new EntityNode(&objects);
 			quad->addComponent(new sandbox::Object<Mesh>());
-			quad->addComponent(new QuadLoader());
+			quad->addComponent(new ShapeLoader(SHAPE_QUAD));
+			//quad->addComponent(new ShapeLoader(SHAPE_CYLINDAR, 20));
 			quad->addComponent(new MeshRenderer());
 
 		EntityNode* defaultShader = new EntityNode(&shaders);
@@ -78,8 +79,8 @@ public:
 			//view->addComponent(new EntityComponent(textFile));
 			view->addComponent(new Transform(glm::translate(glm::mat4(1.0f),glm::vec3(0,0,3))));
 			view->addComponent(new Camera());
-			view->addComponent(new EntityRenderer(defaultShader));
-			//view->addComponent(new EntityRenderer(materialShader));
+			//view->addComponent(new EntityRenderer(defaultShader));
+			view->addComponent(new EntityRenderer(materialShader));
 			EntityNode* world = new EntityNode(view);
 				MouseInteraction::add(world, &input);	
 				world->addComponent(new EntityRenderer(quad));
@@ -117,7 +118,7 @@ private:
             glClearDepth(1.0f);
             glDepthFunc(GL_LEQUAL);
             glPatchParameteri(GL_PATCH_VERTICES, 3);
-            glEnable(GL_CULL_FACE);
+            //glEnable(GL_CULL_FACE);
             glCullFace(GL_BACK);
 		}
 	};

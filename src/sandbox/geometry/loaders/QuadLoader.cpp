@@ -1,4 +1,4 @@
-#include "sandbox/geometry/shapes/QuadLoader.h"
+#include "sandbox/geometry/loaders/QuadLoader.h"
 #include<iostream>
 
 namespace sandbox {
