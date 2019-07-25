@@ -35,6 +35,23 @@ private:
 template<typename T>
 class ObjectRef : public Object<T*> {};
 
+template<typename T>
+class ObjectPtr : public Object<T*> {
+public:
+	ObjectPtr(T* ptr = NULL, bool deletePtr = true) : deletePtr(deletePtr) {
+		Object<T*>::set(ptr);
+	}
+	~ObjectPtr() {
+		if (deletePtr) {
+			delete Object<T*>::get();
+		}
+	}
+
+private:
+	bool deletePtr;
+
+};
+
 }
 
 #endif
