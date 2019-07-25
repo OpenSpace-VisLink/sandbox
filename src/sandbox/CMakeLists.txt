@@ -72,8 +72,8 @@ include_directories(
   ${external_dir}/stb/src
 )
 
-include(${external_dir}/Assimp/Assimp.cmake)
-useAssimp()
+#include(${external_dir}/Assimp/Assimp.cmake)
+#useAssimp()
 
 include(${external_dir}/OpenGL/OpenGL.cmake)
 useOpenGL()
