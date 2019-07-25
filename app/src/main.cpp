@@ -84,32 +84,28 @@ public:
 		VirtualCursor* vc = new VirtualCursor(&input);
 		input.addComponent(vc);
 
-
-		EntityNode* view = new EntityNode(&scene);
-			//view->addComponent(new EntityComponent(textFile));
-			view->addComponent(new Transform(glm::translate(glm::mat4(1.0f),glm::vec3(0,0,3))));
-			view->addComponent(new Camera());
-			//view->addComponent(new EntityRenderer(defaultShader));
-			view->addComponent(new EntityRenderer(materialShader));
-			EntityNode* cursor = new EntityNode(view);
-				cursor->addComponent(new EntityRenderer(vc->getVirtualCursor()));
-				EntityNode* cursorModel = new EntityNode(cursor);
-					glm::mat4 cursorTransform = glm::translate(glm::mat4(1.0),glm::vec3(0,0,0.25));
-					cursorTransform = glm::rotate(cursorTransform, 3.14159f/2.0f,glm::vec3(1.0,0,0));
-					cursorTransform = glm::scale(cursorTransform,glm::vec3(0.1,0.5,0.1));
-					cursorModel->addComponent(new Transform(cursorTransform));
-					cursorModel->addComponent(new EntityRenderer(defaultShader));
-					//cursorModel->addComponent(new EntityRenderer(cylindar));
-			EntityNode* world = new EntityNode(view);
-				world->addComponent(new MouseInteraction(&input));
-				world->addComponent(new EntityRenderer(quad));
-
+		EntityNode* cursor = new EntityNode(&scene);
+			cursor->addComponent(new EntityRenderer(vc->getVirtualCursor()));
+			EntityNode* cursorModel = new EntityNode(cursor);
+				glm::mat4 cursorTransform = glm::translate(glm::mat4(1.0),glm::vec3(0,0,0.25));
+				cursorTransform = glm::rotate(cursorTransform, 3.14159f/2.0f,glm::vec3(1.0,0,0));
+				cursorTransform = glm::scale(cursorTransform,glm::vec3(0.1,0.5,0.1));
+				cursorModel->addComponent(new Transform(cursorTransform));
+				cursorModel->addComponent(new EntityRenderer(defaultShader));
+				//cursorModel->addComponent(new EntityRenderer(cylindar));
+		EntityNode* world = new EntityNode(&scene);
+			world->addComponent(new MouseInteraction(&input));
+			world->addComponent(new EntityRenderer(quad));
 
 		renderer.addComponent(new GraphicsContextRenderer());
 		renderer.addComponent((new OpenGLCallback())->init(this));
 		renderer.addChild(new EntityReference(&objects));
 		renderer.addChild(new EntityReference(&shaders));
-		renderer.addChild(new EntityReference(&scene));
+		EntityNode* view = new EntityNode(&renderer);
+			view->addComponent(new Transform(glm::translate(glm::mat4(1.0f),glm::vec3(0,0,3))));
+			view->addComponent(new Camera());
+			view->addComponent(new EntityRenderer(materialShader));
+			view->addChild(new EntityReference(&scene));
 
 		files.update();
 		objects.update();
