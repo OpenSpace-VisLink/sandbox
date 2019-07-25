@@ -21,7 +21,9 @@
 #include "sandbox/graphics/render/shaders/BasicShader.h"
 #include "sandbox/graphics/view/Camera.h"
 #include "sandbox/input/MouseInput.h"
+#include "sandbox/input/NanoGUIMouseInput.h"
 #include "sandbox/input/interaction/MouseInteraction.h"
+#include "sandbox/input/interaction/VirtualCursor.h"
 //#include "sandbox/input/interaction/ArcBall.h"
 //#include "sandbox/input/interaction/MouseZoom.h"
 //#include "sandbox/input/interaction/MouseTranslate.h"
@@ -37,6 +39,8 @@ using namespace sandbox;
 class TestApp : public nanogui::Screen {
 friend class NanoGUIMouseInput<TestApp>;
 public:
+
+
 	TestApp() : nanogui::Screen(Eigen::Vector2i(1024, 768), "Test App"), r(0), g(0), b(0), a(1) {
 		using namespace nanogui;
 		Window* window = new Window(this);
@@ -62,8 +66,8 @@ public:
 
 		EntityNode* quad = new EntityNode(&objects);
 			quad->addComponent(new sandbox::Object<Mesh>());
-			quad->addComponent(new ShapeLoader(SHAPE_QUAD));
-			//quad->addComponent(new ShapeLoader(SHAPE_CYLINDAR, 20));
+			//quad->addComponent(new ShapeLoader(SHAPE_QUAD));
+			quad->addComponent(new ShapeLoader(SHAPE_CYLINDAR, 20));
 			quad->addComponent(new MeshRenderer());
 
 		EntityNode* defaultShader = new EntityNode(&shaders);
@@ -74,6 +78,9 @@ public:
 			materialShader->addComponent(new MaterialShader());
 
 		input.addComponent(new NanoGUIMouseInput<TestApp>(this));
+		VirtualCursor* vc = new VirtualCursor(&input);
+		input.addComponent(vc);
+
 
 		EntityNode* view = new EntityNode(&scene);
 			//view->addComponent(new EntityComponent(textFile));
@@ -81,10 +88,13 @@ public:
 			view->addComponent(new Camera());
 			//view->addComponent(new EntityRenderer(defaultShader));
 			view->addComponent(new EntityRenderer(materialShader));
+			EntityNode* cursor = new EntityNode(view);
+				cursor->addComponent(new EntityRenderer(vc->getVirtualCursor()));
+				cursor->addComponent(new EntityRenderer(quad));
 			EntityNode* world = new EntityNode(view);
 				world->addComponent(new MouseInteraction(&input));
-				//MouseInteraction::add(world, &input);	
 				world->addComponent(new EntityRenderer(quad));
+
 
 		renderer.addComponent(new GraphicsContextRenderer());
 		renderer.addComponent((new OpenGLCallback())->init(this));

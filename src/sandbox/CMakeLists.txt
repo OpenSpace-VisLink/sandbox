@@ -22,6 +22,7 @@ set (SOURCEFILES
   input/interaction/ArcBall.cpp
   input/interaction/MouseZoom.cpp
   input/interaction/MouseTranslate.cpp
+  input/interaction/VirtualCursor.cpp
   io/File.cpp
   io/FileMonitor.cpp
 )
@@ -50,6 +51,7 @@ set (HEADERFILES
   input/interaction/ArcBall.h
   input/interaction/MouseZoom.h
   input/interaction/MouseTranslate.h
+  input/interaction/VirtualCursor.h
   io/File.h
   io/FileMonitor.h
 )

@@ -1,5 +1,5 @@
-#ifndef SANDBOX_INPUT_INTERACTION_MOUSE_ZOOM_H_
-#define SANDBOX_INPUT_INTERACTION_MOUSE_ZOOM_H_
+#ifndef SANDBOX_INPUT_INTERACTION_VIRTUAL_CURSOR_H_
+#define SANDBOX_INPUT_INTERACTION_VIRTUAL_CURSOR_H_
 
 #include "glm/glm.hpp"
 #include <glm/gtc/matrix_access.hpp>
@@ -14,13 +14,14 @@ namespace sandbox {
 
 class VirtualCursor : public CursorInput {
 public:
-	VirtualCursor(Entity* input) : input(input), mouse(NULL), transform(NULL), initialized(false) { addType<VirtualCursor>(); }
+	VirtualCursor(Entity* input) : input(input), mouse(NULL), transform(NULL) { addType<VirtualCursor>(); }
 	virtual ~VirtualCursor() {}
 
-	virtual bool getButtonState(int button) const { return mouse->getButtonState(button); }
-	virtual glm::mat4 getTransform() const = 0;
+	bool getButtonState(int button) const { return mouse->getButtonState(button); }
+	glm::mat4 getTransform() const { return transform->getTransform(); }
+	Entity* getVirtualCursor() { return virtualCursorNode; }
 
-	void prepareUpdate();
+	void afterAdd();
 
 	void update();
 
@@ -33,7 +34,6 @@ private:
 	Entity* input;
 	MouseInput* mouse;
 	Transform* transform;
-	bool initialized;
 };
 
 

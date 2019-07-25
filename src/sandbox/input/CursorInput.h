@@ -1,5 +1,5 @@
-#ifndef SANDBOX_INPUT_MOUSE_INPUT_H_
-#define SANDBOX_INPUT_MOUSE_INPUT_H_
+#ifndef SANDBOX_INPUT_CURSOR_INPUT_H_
+#define SANDBOX_INPUT_CURSOR_INPUT_H_
 
 #include "glm/glm.hpp"
 #include "sandbox/Component.h"
