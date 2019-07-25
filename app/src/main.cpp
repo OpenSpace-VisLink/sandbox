@@ -94,8 +94,9 @@ public:
 			EntityNode* cursor = new EntityNode(view);
 				cursor->addComponent(new EntityRenderer(vc->getVirtualCursor()));
 				EntityNode* cursorModel = new EntityNode(cursor);
-					glm::mat4 cursorTransform = glm::scale(glm::mat4(1.0f),glm::vec3(0.2,1.0,0.2));
-					cursorTransform = glm::translate(cursorTransform,glm::vec3(0,-0.5,0));
+					glm::mat4 cursorTransform = glm::translate(glm::mat4(1.0),glm::vec3(0,0,0.25));
+					cursorTransform = glm::rotate(cursorTransform, 3.14159f/2.0f,glm::vec3(1.0,0,0));
+					cursorTransform = glm::scale(cursorTransform,glm::vec3(0.1,0.5,0.1));
 					cursorModel->addComponent(new Transform(cursorTransform));
 					cursorModel->addComponent(new EntityRenderer(defaultShader));
 					//cursorModel->addComponent(new EntityRenderer(cylindar));
