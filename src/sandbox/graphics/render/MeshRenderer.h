@@ -20,7 +20,12 @@ public:
 private:
 	class MeshSharedState : public ContextState {
 	public:
+		MeshSharedState() : version(0) {}
 	    virtual ~MeshSharedState() {
+	    	reset();
+	    }
+
+	    void reset() {
 	    	if (initialized) {
 		        glDeleteBuffers(1, &vbo);
 		        glDeleteBuffers(1, &elementBuffer);
@@ -29,22 +34,30 @@ private:
 
 	    GLuint vbo;
 	    GLuint elementBuffer;
+	    int version;
 	};
 
 	class MeshState : public ContextState {
 	public:
+		MeshState() : version(0) {}
 	    virtual ~MeshState() {
+	    	reset();
+	    }
+
+	    void reset() {
 	    	if (initialized) {
-	        	glDeleteVertexArrays(1, &vao);
-	        }
+		        glDeleteVertexArrays(1, &vao);
+	    	}
 	    }
 
 	    GLuint vao;
+	    int version;
 	};
 
 	Mesh* mesh;
 	GraphicsContextHandler<MeshSharedState,MeshState> contextHandler;
 	GLuint renderType;
+	int version;
 };
 
 }

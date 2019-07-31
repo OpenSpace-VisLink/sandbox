@@ -4,18 +4,27 @@
 
 namespace sandbox {
 
-MeshRenderer::MeshRenderer(GLuint renderType) : mesh(nullptr), renderType(renderType) {
+MeshRenderer::MeshRenderer(GLuint renderType) : mesh(nullptr), renderType(renderType), version(-1) {
 	addType<MeshRenderer>();
 }
 
 void MeshRenderer::update() {
+	std::cout << "mesh renderer item" << std::endl;
 	if (!mesh) {
 		mesh = &getEntity().getComponent< Object<Mesh> >()->get();
 	}
+
+	version++;
 }
 
 void MeshRenderer::updateSharedContext(const GraphicsContext& context) {
 	MeshSharedState& state = *contextHandler.getSharedState(context);
+
+	if (state.initialized && state.version != version) {
+        state.reset();
+        state.initialized = false;
+        state.version = version;
+    }
 
 	if (mesh && !state.initialized) {
 	    std::cout << "INitialize mesh shared context " << std::endl;
@@ -63,6 +72,12 @@ void MeshRenderer::updateSharedContext(const GraphicsContext& context) {
 void MeshRenderer::updateContext(const GraphicsContext& context) {
 	MeshSharedState& sharedState = *contextHandler.getSharedState(context);
 	MeshState& state = *contextHandler.getState(context);
+
+	if (state.initialized && state.version != version) {
+        state.reset();
+        state.initialized = false;
+        state.version = version;
+    }
 
 	if (mesh && !state.initialized) {
         std::cout << "INitialize mesh context" << std::endl;

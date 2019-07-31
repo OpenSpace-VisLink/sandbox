@@ -16,6 +16,8 @@ set (SOURCEFILES
   graphics/GraphicsContextRenderer.cpp
   graphics/render/MeshRenderer.cpp
   graphics/render/ShaderProgram.cpp
+  graphics/render/effects/Blend.cpp
+  graphics/render/effects/CullFace.cpp
   graphics/render/shaders/BasicShader.cpp
   graphics/render/shaders/MaterialShader.cpp
   graphics/view/Camera.cpp
@@ -44,6 +46,8 @@ set (HEADERFILES
   graphics/RenderCallback.h
   graphics/render/MeshRenderer.h
   graphics/render/ShaderProgram.h
+  graphics/render/effects/Blend.h
+  graphics/render/effects/CullFace.h
   graphics/render/shaders/BasicShader.h
   graphics/render/shaders/MaterialShader.h
   graphics/view/Camera.h
