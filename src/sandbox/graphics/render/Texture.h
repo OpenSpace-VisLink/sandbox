@@ -1,0 +1,53 @@
+#ifndef SANDBOX_GRAPHICS_RENDER_TEXTURE_H_
+#define SANDBOX_GRAPHICS_RENDER_TEXTURE_H_
+
+#include "sandbox/graphics/GraphicsComponent.h"
+#include "sandbox/image/Image.h"
+#include "OpenGL.h"
+
+namespace sandbox {
+
+class Texture : public GraphicsComponent {
+public:
+	Texture();
+	virtual ~Texture() {}
+
+	void update();
+	void updateSharedContext(const GraphicsContext& context);
+	void updateContext(const GraphicsContext& context);
+	void startRender(const GraphicsContext& context);
+
+	GLuint getTarget(const GraphicsContext& context);
+	GLuint getId(const GraphicsContext& context);
+
+	virtual GLuint getFormat() const;
+	virtual GLuint getInternalFormat() const;
+	virtual GLuint getType() const;
+
+private:
+	class TextureSharedState : public ContextState {
+	public:
+	    virtual ~TextureSharedState() {
+	    	reset();
+	    }
+
+	    void reset() {
+	    	if (initialized) {
+	    		glDeleteTextures(1, &texture);
+	    	}
+	    }
+
+		GLuint texture;
+		int width, height;
+		GLuint target;
+		long textureVersion;
+	};
+
+	Image* image;
+	GraphicsContextHandler<TextureSharedState,ContextState> contextHandler;
+	long textureVersion;
+};
+
+}
+
+#endif

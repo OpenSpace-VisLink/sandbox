@@ -5,8 +5,8 @@
 #include <glm/gtc/type_ptr.hpp>
 
 #include "sandbox/graphics/RenderState.h"
-//#include "sandbox/geometry/Material.h"
-//#include "sandbox/graphics/Texture.h"
+#include "sandbox/geometry/Material.h"
+#include "sandbox/graphics/render/Texture.h"
 #include <iostream>
 
 
@@ -117,41 +117,45 @@ void MaterialShader::setShaderParameters(const GraphicsContext& context, ShaderP
 	bool hasColor = false;
 	bool hasTexture = false;
 	glm::vec4 color;
-	//const SceneNode* node = renderState.getSceneNode().get();
-	/*Material* material = node->getComponent<Material>();
-	if (material) {
-		hasColor = material->hasColor();
-		color = material->getColor();
+	MaterialState& materialState = MaterialState::get(context);
+	const Entity* node = materialState.getEntity().get();
+	if (node) {
+		Material* material = node->getComponent<Material>();
+		if (material) {
+			hasColor = material->hasColor();
+			color = material->getColor();
 
-		if (material->getTexture()) {
-			Texture* texture = material->getTexture()->getComponent<Texture>();
-	    	if (texture) {
-		    		hasTexture = true;
-	    			glActiveTexture(GL_TEXTURE0+0);
-					glBindTexture(texture->getTarget(sceneContext), texture->getId(sceneContext));
+			if (material->getTexture()) {
+				Texture* texture = material->getTexture()->getComponent<Texture>();
+		    	if (texture) {
+			    		hasTexture = true;
+		    			glActiveTexture(GL_TEXTURE0+0);
+						glBindTexture(texture->getTarget(context), texture->getId(context));
 
-					loc = glGetUniformLocation(state.shaderProgram, "tex");
-					glUniform1i(loc, 0);
-	    	}
-	    }
+						loc = glGetUniformLocation(state.shaderProgram, "tex");
+						glUniform1i(loc, 0);
+		    	}
+		    }
 
-		glm::vec3 ambient = material->getAmbient();
-		loc = glGetUniformLocation(state.shaderProgram, "ambient");
-		glUniform3f(loc, ambient.r, ambient.g, ambient.b);
+			glm::vec3 ambient = material->getAmbient();
+			loc = glGetUniformLocation(state.shaderProgram, "ambient");
+			glUniform3f(loc, ambient.r, ambient.g, ambient.b);
 
-		glm::vec3 diffuse = material->getDiffuse();
-		loc = glGetUniformLocation(state.shaderProgram, "diffuse");
-		glUniform3f(loc, diffuse.r, diffuse.g, diffuse.b);
+			glm::vec3 diffuse = material->getDiffuse();
+			loc = glGetUniformLocation(state.shaderProgram, "diffuse");
+			glUniform3f(loc, diffuse.r, diffuse.g, diffuse.b);
 
-		glm::vec3 specular = material->getSpecular();
-		loc = glGetUniformLocation(state.shaderProgram, "specular");
-		glUniform3f(loc, specular.r, specular.g, specular.b);
+			glm::vec3 specular = material->getSpecular();
+			loc = glGetUniformLocation(state.shaderProgram, "specular");
+			glUniform3f(loc, specular.r, specular.g, specular.b);
 
-		loc = glGetUniformLocation(state.shaderProgram, "shininess");
-		glUniform1f(loc, material->getShininess());
+			loc = glGetUniformLocation(state.shaderProgram, "shininess");
+			glUniform1f(loc, material->getShininess());
 
-		hasMaterial = true;
-	}*/
+			hasMaterial = true;
+		}
+
+	}
 
 
 	loc = glGetUniformLocation(state.shaderProgram, "hasColor");

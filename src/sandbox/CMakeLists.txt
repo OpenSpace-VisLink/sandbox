@@ -9,6 +9,7 @@ include_directories(${CMAKE_CURRENT_SOURCE_DIR}/..)
 set (SOURCEFILES
   Entity.cpp
   base/Transform.cpp
+  geometry/Material.cpp
   geometry/Mesh.cpp
   geometry/MeshLoader.cpp
   geometry/loaders/QuadLoader.cpp
@@ -16,11 +17,13 @@ set (SOURCEFILES
   graphics/GraphicsContextRenderer.cpp
   graphics/render/MeshRenderer.cpp
   graphics/render/ShaderProgram.cpp
+  graphics/render/Texture.cpp
   graphics/render/effects/Blend.cpp
   graphics/render/effects/CullFace.cpp
   graphics/render/shaders/BasicShader.cpp
   graphics/render/shaders/MaterialShader.cpp
   graphics/view/Camera.cpp
+  image/Image.cpp
   input/interaction/ArcBall.cpp
   input/interaction/MouseZoom.cpp
   input/interaction/MouseTranslate.cpp
@@ -36,6 +39,7 @@ set (HEADERFILES
   StateContainer.h
   Context.h
   base/Transform.h
+  geometry/Material.h
   geometry/Mesh.h
   geometry/MeshLoader.h
   geometry/loaders/QuadLoader.h
@@ -46,11 +50,13 @@ set (HEADERFILES
   graphics/RenderCallback.h
   graphics/render/MeshRenderer.h
   graphics/render/ShaderProgram.h
+  graphics/render/Texture.h
   graphics/render/effects/Blend.h
   graphics/render/effects/CullFace.h
   graphics/render/shaders/BasicShader.h
   graphics/render/shaders/MaterialShader.h
   graphics/view/Camera.h
+  image/Image.h
   input/MouseInput.h
   input/interaction/ArcBall.h
   input/interaction/MouseZoom.h
