@@ -27,7 +27,7 @@ void ShaderProgram::updateContext(const GraphicsContext& sceneContext) {
 
 	    linkShaderProgram(state.shaderProgram);
 	    state.initialized = true;
-        //state.version = version;
+        state.version = version;
 	}
 }
 

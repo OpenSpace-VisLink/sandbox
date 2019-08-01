@@ -2,6 +2,7 @@
 #define SANDBOX_GRAPHICS_SHADERS_BASIC_SHADER_H_
 
 #include "sandbox/graphics/render/ShaderProgram.h"
+#include "sandbox/graphics/render/Texture.h"
 
 namespace sandbox {
 
@@ -14,6 +15,9 @@ public:
 
 protected:
 	void create(const GraphicsContext& context, ShaderProgramState& state);
+
+private:
+	Texture* texture;
 };
 
 }

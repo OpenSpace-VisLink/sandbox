@@ -17,7 +17,7 @@
 
 namespace sandbox {
 
-BasicShader::BasicShader() {
+BasicShader::BasicShader() : texture(NULL) {
 	addType<BasicShader>();
 }
 
@@ -51,6 +51,12 @@ void BasicShader::create(const GraphicsContext& context, ShaderProgramState& sta
 			}
 
 			state.addShader(compileShader(text, shaderType));
+		}
+
+		Texture* tex = entities[f]->getEntityReference()->getComponent<Texture>();
+		if (tex) {
+			std::cout << tex << std::endl;
+			texture = tex;
 		}
 	}
 
@@ -143,6 +149,13 @@ void BasicShader::setShaderParameters(const GraphicsContext& context, ShaderProg
 	glm::mat3 normalMatrix = glm::mat3(glm::transpose(glm::inverse(renderState.getViewMatrix().get()*renderState.getModelMatrix().get())));
 	loc = glGetUniformLocation(state.shaderProgram, "NormalMatrix");
 	glUniformMatrix3fv(loc, 1, GL_FALSE, glm::value_ptr(normalMatrix));
+
+	if (texture) {
+		glActiveTexture(GL_TEXTURE0+0);
+		glBindTexture(texture->getTarget(context), texture->getId(context));
+		loc = glGetUniformLocation(state.shaderProgram, "tex");
+		glUniform1i(loc, 0);
+	}
 }
 
 }
