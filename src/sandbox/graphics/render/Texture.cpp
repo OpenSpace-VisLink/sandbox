@@ -118,6 +118,14 @@ void Texture::startRender(const GraphicsContext& context) {
 	}*/
 }
 
+void Texture::use(const GraphicsContext& context) {
+	glBindTexture(getTarget(context), getId(context));
+}
+
+void Texture::release(const GraphicsContext& context) {
+	glBindTexture(getTarget(context), 0);
+}
+
 GLuint Texture::getFormat() const {
 	return GL_RGBA;
 }
@@ -128,6 +136,10 @@ GLuint Texture::getInternalFormat() const {
 
 GLuint Texture::getType() const {
 	return GL_UNSIGNED_BYTE;
+}
+
+GLuint Texture::getAttachmentType() const {
+	return GL_COLOR_ATTACHMENT0;
 }
 
 }

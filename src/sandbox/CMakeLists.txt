@@ -15,6 +15,7 @@ set (SOURCEFILES
   geometry/loaders/QuadLoader.cpp
   geometry/loaders/ShapeLoader.cpp
   graphics/GraphicsContextRenderer.cpp
+  graphics/render/FrameBuffer.cpp
   graphics/render/MeshRenderer.cpp
   graphics/render/ShaderProgram.cpp
   graphics/render/Texture.cpp
@@ -48,6 +49,7 @@ set (HEADERFILES
   graphics/GraphicsContext.h
   graphics/GraphicsContextRenderer.h
   graphics/RenderCallback.h
+  graphics/render/FrameBuffer.h
   graphics/render/MeshRenderer.h
   graphics/render/ShaderProgram.h
   graphics/render/Texture.h

@@ -16,6 +16,11 @@ public:
 	void updateSharedContext(const GraphicsContext& context);
 	void updateContext(const GraphicsContext& context);
 	void startRender(const GraphicsContext& context);
+	void use(const GraphicsContext& context);
+	void release(const GraphicsContext& context);
+
+	int getWidth() { return image->getWidth(); }
+	int getHeight() { return image->getHeight(); }
 
 	GLuint getTarget(const GraphicsContext& context);
 	GLuint getId(const GraphicsContext& context);
@@ -23,6 +28,7 @@ public:
 	virtual GLuint getFormat() const;
 	virtual GLuint getInternalFormat() const;
 	virtual GLuint getType() const;
+	virtual GLuint getAttachmentType() const;
 
 private:
 	class TextureSharedState : public ContextState {

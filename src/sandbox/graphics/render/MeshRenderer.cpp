@@ -39,6 +39,7 @@ void MeshRenderer::updateSharedContext(const GraphicsContext& context) {
 	    glBufferSubData(GL_ARRAY_BUFFER, 3*sizeof(float)*mesh->getNodes().size(), 3*sizeof(float)*mesh->getNormals().size(), &mesh->getNormals()[0]);
 	    glBufferSubData(GL_ARRAY_BUFFER, 3*sizeof(float)*mesh->getNodes().size()+3*sizeof(float)*mesh->getNormals().size(), 2*sizeof(float)*mesh->getCoords().size(), &mesh->getCoords()[0]);
 	    state.initialized = true;
+	    //state.version = version;
 	}
 	else if (!mesh && state.initialized) {
 		glDeleteBuffers(1, &state.vbo);
