@@ -11,8 +11,8 @@ Texture::Texture() : image(nullptr), textureVersion(-1) {
 void Texture::update() {
 	if (!image) {
 		image = getEntity().getComponent<Image>();
+		textureVersion++;
 	}
-	textureVersion++;
 }
 
 void Texture::updateSharedContext(const GraphicsContext& context) {
@@ -90,32 +90,15 @@ void SBTexture::renderSpecific(Context& sharedContext, Context& context, SBTextu
 */
 
 void Texture::startRender(const GraphicsContext& context) {
-	/*MeshState& state = *contextHandler.getState(sceneContext);
+	RenderState& renderState = RenderState::get(context);
+	renderState.getTexture().push(this);
+	//use(context);
+}
 
-	if (state.initialized) {
-		//std::cout << "Render Mesh" << state.vao << " " << mesh->getIndices().size() << std::endl;
-	    glBindVertexArray(state.vao);
-
-	    RenderState& renderState = RenderState::get(sceneContext);
-	    ShaderProgram* shader = renderState.getShaderProgram().get();
-	    if (shader) {
-	    	shader->use(sceneContext);
-	    }
-
-	    //glDrawElements(GL_PATCHES, mesh.indices.size(), GL_UNSIGNED_INT, (void*)0);
-	    //glDrawElements(GL_TRIANGLES, mesh->getIndices().size(), GL_UNSIGNED_INT, (void*)0);
-		glDrawElementsInstancedBaseVertex(GL_TRIANGLES,
-				mesh->getIndices().size(),
-				GL_UNSIGNED_INT,
-				(void*)(sizeof(unsigned int) * 0),
-				1, //numInstances,
-				0);
-	    glBindVertexArray(0);
-
-	    if (shader) {
-	    	shader->release(sceneContext);
-	    }
-	}*/
+void Texture::finishRender(const GraphicsContext& context) {
+	RenderState& renderState = RenderState::get(context);
+	//release(context);
+	renderState.getTexture().pop();
 }
 
 void Texture::use(const GraphicsContext& context) {

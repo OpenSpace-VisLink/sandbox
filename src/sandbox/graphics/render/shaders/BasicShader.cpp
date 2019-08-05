@@ -150,9 +150,22 @@ void BasicShader::setShaderParameters(const GraphicsContext& context, ShaderProg
 	loc = glGetUniformLocation(state.shaderProgram, "NormalMatrix");
 	glUniformMatrix3fv(loc, 1, GL_FALSE, glm::value_ptr(normalMatrix));
 
-	if (texture) {
+	Texture* tex = texture;
+
+	/*std::vector<Texture*> textureQueue = renderState.getTexture().getQueue();
+	if (textureQueue.size() > 1) {
+		//tex = textureQueue[0];
+		std::cout << textureQueue.size() << " " << textureQueue[1] << std::endl;
+	}*/
+
+	Texture* currentTexture = renderState.getTexture().get();
+	if (currentTexture) {
+		tex = currentTexture;
+	}
+
+	if (tex) {
 		glActiveTexture(GL_TEXTURE0+0);
-		glBindTexture(texture->getTarget(context), texture->getId(context));
+		glBindTexture(tex->getTarget(context), tex->getId(context));
 		loc = glGetUniformLocation(state.shaderProgram, "tex");
 		glUniform1i(loc, 0);
 	}

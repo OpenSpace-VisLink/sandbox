@@ -13,6 +13,14 @@ FrameBuffer::FrameBuffer() : version(-1) {
 void FrameBuffer::update() {
     textures.clear();
 
+    std::vector<Entity*> children = getEntity().getChildren();
+    for (int f = 0; f < children.size(); f++) {
+        Texture* texture = children[f]->getComponent<Texture>();
+        if (texture) {
+            textures.push_back(texture);
+        }
+    }
+
     std::vector<EntityComponent*> entities = getEntity().getComponents<EntityComponent>();
     for (int f = 0; f < entities.size(); f++) {
         Texture* texture = entities[f]->getEntityReference()->getComponent<Texture>();

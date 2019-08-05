@@ -4,14 +4,14 @@
 
 namespace sandbox {
 
-MeshRenderer::MeshRenderer(GLuint renderType) : mesh(nullptr), renderType(renderType), version(-1) {
+MeshRenderer::MeshRenderer(GLuint renderType, GLuint drawType) : mesh(nullptr), renderType(renderType), drawType(drawType), version(-1) {
 	addType<MeshRenderer>();
 }
 
 void MeshRenderer::update() {
-	std::cout << "mesh renderer item" << std::endl;
+	//std::cout << "mesh renderer item" << std::endl;
 	if (!mesh) {
-		mesh = &getEntity().getComponent< Object<Mesh> >()->get();
+		mesh = getEntity().getComponent<Mesh>();
 	}
 
 	version++;
@@ -20,17 +20,17 @@ void MeshRenderer::update() {
 void MeshRenderer::updateSharedContext(const GraphicsContext& context) {
 	MeshSharedState& state = *contextHandler.getSharedState(context);
 
-	if (state.initialized && state.version != version) {
+	/*if (state.initialized && state.version != version) {
         state.reset();
         state.initialized = false;
         state.version = version;
-    }
+    }*/
 
 	if (mesh && !state.initialized) {
 	    std::cout << "INitialize mesh shared context " << std::endl;
 	    glGenBuffers(1, &state.elementBuffer);
 	    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, state.elementBuffer);
-	    glBufferData(GL_ELEMENT_ARRAY_BUFFER, mesh->getIndices().size() * sizeof(unsigned int), &mesh->getIndices()[0], GL_STATIC_DRAW);
+	    glBufferData(GL_ELEMENT_ARRAY_BUFFER, mesh->getIndices().size() * sizeof(unsigned int), &mesh->getIndices()[0], drawType);
 
 		glGenBuffers(1, &state.vbo);
 	    glBindBuffer(GL_ARRAY_BUFFER, state.vbo);
@@ -39,12 +39,28 @@ void MeshRenderer::updateSharedContext(const GraphicsContext& context) {
 	    glBufferSubData(GL_ARRAY_BUFFER, 3*sizeof(float)*mesh->getNodes().size(), 3*sizeof(float)*mesh->getNormals().size(), &mesh->getNormals()[0]);
 	    glBufferSubData(GL_ARRAY_BUFFER, 3*sizeof(float)*mesh->getNodes().size()+3*sizeof(float)*mesh->getNormals().size(), 2*sizeof(float)*mesh->getCoords().size(), &mesh->getCoords()[0]);
 	    state.initialized = true;
+	    state.updateComponentVersions(mesh);
 	    //state.version = version;
 	}
 	else if (!mesh && state.initialized) {
 		glDeleteBuffers(1, &state.vbo);
 	    glDeleteBuffers(1, &state.elementBuffer);
 	    state.initialized = false;
+	}
+
+	if (mesh && state.initialized) {
+		bool changed = false;
+		if (state.componentVersions[Mesh::MESH_NODES] != mesh->getComponentVersion(Mesh::MESH_NODES)) {
+			//std::cout << "test " << state.componentVersions[Mesh::MESH_NODES] << " " << mesh->getComponentVersion(Mesh::MESH_NODES) << std::endl;
+			changed = true;
+			glBindBuffer(GL_ARRAY_BUFFER, state.vbo);
+			glBufferSubData(GL_ARRAY_BUFFER, 0, 3*sizeof(float)*(mesh->getNodes().size()), &mesh->getNodes()[0]);
+			glBindBuffer(GL_ARRAY_BUFFER, 0);
+		}
+
+		if (changed) {
+	    	state.updateComponentVersions(mesh);
+		}
 	}
 
 	/*if (!sharedState.initialized) {
@@ -74,11 +90,11 @@ void MeshRenderer::updateContext(const GraphicsContext& context) {
 	MeshSharedState& sharedState = *contextHandler.getSharedState(context);
 	MeshState& state = *contextHandler.getState(context);
 
-	if (state.initialized && state.version != version) {
+	/*if (state.initialized && state.version != version) {
         state.reset();
         state.initialized = false;
         state.version = version;
-    }
+    }*/
 
 	if (mesh && !state.initialized) {
         std::cout << "INitialize mesh context" << std::endl;

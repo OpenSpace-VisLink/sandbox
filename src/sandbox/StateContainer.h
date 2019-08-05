@@ -86,6 +86,10 @@ public:
 		}
 	}
 
+	const std::vector<T>& getQueue() {
+		return items;
+	}
+
 private:
 	std::vector<T> items;
 	int finalIndex;

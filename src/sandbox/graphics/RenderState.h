@@ -7,6 +7,7 @@
 #include "sandbox/graphics/GraphicsContextRenderer.h"
 #include "sandbox/Entity.h"
 #include "sandbox/graphics/render/ShaderProgram.h"
+#include "sandbox/graphics/render/Texture.h"
 
 namespace sandbox {
 
@@ -20,6 +21,7 @@ public:
 		shaderProgram.set(NULL);
 		entity.set(NULL);
 		renderer.set(NULL);
+		texture.set(NULL);
 	}
 
 	virtual ~RenderState() {}
@@ -31,6 +33,7 @@ public:
 	StateContainerItemStack<ShaderProgram*>& getShaderProgram() { return shaderProgram; }
 	StateContainerItemStack<const Entity*>& getEntity() { return entity; }
 	StateContainerItemStack<GraphicsContextRenderer*>& getRenderer() { return renderer; }
+	StateContainerItemStack<Texture*>& getTexture() { return texture; }
 
 	static RenderState& get(const GraphicsContext& context) { return context.getRenderState()->getItem<RenderState>(); }
 
@@ -42,6 +45,7 @@ private:
 	StateContainerItemStack<ShaderProgram*> shaderProgram;
 	StateContainerItemStack<const Entity*> entity;
 	StateContainerItemStack<GraphicsContextRenderer*> renderer;
+	StateContainerItemStack<Texture*> texture;
 };
 
 }

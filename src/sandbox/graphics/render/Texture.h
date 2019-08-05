@@ -16,6 +16,7 @@ public:
 	void updateSharedContext(const GraphicsContext& context);
 	void updateContext(const GraphicsContext& context);
 	void startRender(const GraphicsContext& context);
+	void finishRender(const GraphicsContext& context);
 	void use(const GraphicsContext& context);
 	void release(const GraphicsContext& context);
 

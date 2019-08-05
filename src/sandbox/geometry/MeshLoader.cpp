@@ -9,7 +9,7 @@ MeshLoader::MeshLoader() : isLoaded(false) {
 
 void MeshLoader::update() {
 	if (!isLoaded) {
-		Mesh* mesh = &getEntity().getComponent< Object<Mesh> >()->get();
+		Mesh* mesh = getEntity().getComponent<Mesh>();
 		if (mesh) {
 			load(mesh);
 			isLoaded = true;
