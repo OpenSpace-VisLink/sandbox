@@ -4,6 +4,7 @@
 #include "sandbox/graphics/GraphicsComponent.h"
 #include "OpenGL.h"
 #include <vector>
+#include <map>
 
 namespace sandbox {
 
@@ -38,6 +39,7 @@ protected:
 	    	for (int f = 0; f < shaders.size(); f++) {
 	            glDetachShader(shaderProgram, shaders[f]);
 	            glDeleteShader(shaders[f]);
+	            uniformMap.clear();
 	    	}
 
 	    	shaders.clear();
@@ -52,6 +54,7 @@ protected:
 	    }
 
 	    int version;
+		std::map<std::string, GLint> uniformMap;
 
 	private:
 	    std::vector<GLuint> shaders;
@@ -60,7 +63,7 @@ protected:
 	virtual void setShaderParameters(const GraphicsContext& context, ShaderProgramState& state) = 0;
 	virtual void create(const GraphicsContext& context, ShaderProgramState& state) = 0;
 	GLuint compileShader(const std::string& shaderText, GLuint shaderType) const;
-	void linkShaderProgram(GLuint shaderProgram) const;
+	bool linkShaderProgram(GLuint shaderProgram) const;
 
 private:
 	GraphicsContextHandler<ContextState,ShaderProgramState> contextHandler;

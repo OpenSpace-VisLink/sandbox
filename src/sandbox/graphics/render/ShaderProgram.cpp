@@ -1,5 +1,6 @@
 #include "sandbox/graphics/render/ShaderProgram.h"
 #include <iostream>
+#include <sstream>
 
 #include "sandbox/graphics/RenderState.h"
 
@@ -25,7 +26,35 @@ void ShaderProgram::updateContext(const GraphicsContext& sceneContext) {
 
         create(sceneContext, state);
 
-	    linkShaderProgram(state.shaderProgram);
+	    if (linkShaderProgram(state.shaderProgram)) {
+            GLint count;
+            GLchar name[50];
+            GLsizei length;
+            GLint size;
+            GLenum type;
+
+            glGetProgramiv(state.shaderProgram, GL_ACTIVE_UNIFORMS, &count);
+            for (int f = 0; f < count; f++) {
+                glGetActiveUniform(state.shaderProgram, f, 50, &length, &size, &type, name);
+
+                if (size > 1) {
+                    for (int i = 0; i < size; i++) {
+                        std::string n(name);
+                        std::stringstream ss;
+                        ss << n.substr(0, n.length()-2) << i << "]";
+                        n = ss.str();
+                        GLint loc = glGetUniformLocation(state.shaderProgram, n.c_str());
+                        state.uniformMap[n] = loc;
+                        std::cout << n << " " << loc << std::endl;
+                    }
+                }
+                else {
+                    GLint loc = glGetUniformLocation(state.shaderProgram, name);
+                    state.uniformMap[name] = loc;
+                    std::cout << name << " " << loc << std::endl;
+                }
+            }
+        }
 	    state.initialized = true;
         state.version = version;
 	}
@@ -87,7 +116,7 @@ GLuint ShaderProgram::compileShader(const std::string& shaderText, GLuint shader
 }
 
 /// links shader program
-void ShaderProgram::linkShaderProgram(GLuint shaderProgram) const {
+bool ShaderProgram::linkShaderProgram(GLuint shaderProgram) const {
     glLinkProgram(shaderProgram);
     GLint status;
     glGetProgramiv(shaderProgram, GL_LINK_STATUS, &status);
@@ -97,7 +126,10 @@ void ShaderProgram::linkShaderProgram(GLuint shaderProgram) const {
         std::vector<char> log(length);
         glGetProgramInfoLog(shaderProgram, length, &length, &log[0]);
         std::cerr << "Error compiling program: " << &log[0] << std::endl;
+        return false;
     }
+
+    return true;
 }
 
 
