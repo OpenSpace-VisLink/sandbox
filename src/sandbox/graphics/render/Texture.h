@@ -53,6 +53,8 @@ private:
 	Image* image;
 	GraphicsContextHandler<TextureSharedState,ContextState> contextHandler;
 	long textureVersion;
+	GLuint format;
+	GLuint internalFormat;
 };
 
 }

@@ -75,7 +75,7 @@ void ShapeLoader::load(Mesh* mesh) {
 			nodes.push_back(glm::vec3(x,y,0.0f));
 			normals.push_back(glm::vec3(glm::vec3(0, 0, 1)));
 			glm::vec2 uv(x,y);
-			uv = uv + glm::vec2(1.0f)/2.0f;
+			uv = uv/2.0f + glm::vec2(1.0f)/2.0f;
 			coords.push_back(uv);
 			indices.push_back(f+1);
 		}

@@ -4,13 +4,15 @@
 
 namespace sandbox {
 
-Texture::Texture() : image(nullptr), textureVersion(-1) {
+Texture::Texture() : image(nullptr), textureVersion(-1), format(GL_RGBA), internalFormat(GL_RGBA) {
 	addType<Texture>();
 }
 
 void Texture::update() {
 	if (!image) {
 		image = getEntity().getComponent<Image>();
+		format = image->getComponents() == 4 ? GL_RGBA : GL_RGB;
+		internalFormat = format;
 		textureVersion++;
 	}
 }
@@ -110,11 +112,11 @@ void Texture::release(const GraphicsContext& context) {
 }
 
 GLuint Texture::getFormat() const {
-	return GL_RGBA;
+	return format;
 }
 
 GLuint Texture::getInternalFormat() const {
-	return GL_RGBA;
+	return internalFormat;
 }
 
 GLuint Texture::getType() const {
