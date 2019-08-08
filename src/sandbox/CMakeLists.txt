@@ -23,6 +23,7 @@ set (SOURCEFILES
   graphics/render/effects/CullFace.cpp
   graphics/render/shaders/BasicShader.cpp
   graphics/render/shaders/MaterialShader.cpp
+  graphics/render/shaders/ShaderParameterTypes.cpp
   graphics/view/Camera.cpp
   image/Image.cpp
   input/interaction/ArcBall.cpp
@@ -57,6 +58,7 @@ set (HEADERFILES
   graphics/render/effects/CullFace.h
   graphics/render/shaders/BasicShader.h
   graphics/render/shaders/MaterialShader.h
+  graphics/render/shaders/ShaderParameterTypes.h
   graphics/view/Camera.h
   image/Image.h
   input/MouseInput.h

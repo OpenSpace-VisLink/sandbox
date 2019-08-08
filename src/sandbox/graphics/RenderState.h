@@ -22,6 +22,7 @@ public:
 		entity.set(NULL);
 		renderer.set(NULL);
 		texture.set(NULL);
+		shaderParameter.set(NULL);
 	}
 
 	virtual ~RenderState() {}
@@ -34,6 +35,7 @@ public:
 	StateContainerItemStack<const Entity*>& getEntity() { return entity; }
 	StateContainerItemStack<GraphicsContextRenderer*>& getRenderer() { return renderer; }
 	StateContainerItemStack<Texture*>& getTexture() { return texture; }
+	StateContainerItemStack<ShaderParameter*>& getShaderParameter() { return shaderParameter; }
 
 	static RenderState& get(const GraphicsContext& context) { return context.getRenderState()->getItem<RenderState>(); }
 
@@ -46,6 +48,7 @@ private:
 	StateContainerItemStack<const Entity*> entity;
 	StateContainerItemStack<GraphicsContextRenderer*> renderer;
 	StateContainerItemStack<Texture*> texture;
+	StateContainerItemStack<ShaderParameter*> shaderParameter;
 };
 
 }

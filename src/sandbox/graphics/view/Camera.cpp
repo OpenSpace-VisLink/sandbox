@@ -5,14 +5,23 @@
 #include <glm/gtc/type_ptr.hpp>
 #include <iostream>
 #include "sandbox/base/Transform.h"
+#include "sandbox/graphics/render/shaders/ShaderParameterTypes.h"
 
 namespace sandbox {
 
 Camera::Camera() : projection(1.0f), view(1.0f) {
 	addType<Camera>();
+	shaderParameters.push_back(new ProjectionMatrixShaderParameter("ProjectionMatrix"));
+	shaderParameters.push_back(new ViewMatrixShaderParameter("ViewMatrix"));
+	shaderParameters.push_back(new ModelMatrixShaderParameter("ModelMatrix"));
+	shaderParameters.push_back(new NormalMatrixShaderParameter("NormalMatrix"));
+	shaderParameters.push_back(new EyePositionShaderParameter("eyePosition"));
 }
 
 Camera::~Camera() {
+	for (int f = 0; f < shaderParameters.size(); f++) {
+		delete shaderParameters[f];
+	}
 }
 
 void Camera::update() {
@@ -49,6 +58,10 @@ void Camera::startRender(const GraphicsContext& context) {
 	renderState.getProjectionMatrix().push(projection);
 	renderState.getViewMatrix().push(view);
 	renderState.getModelMatrix().push(glm::mat4(1.0f));
+
+	for (int f = 0; f < shaderParameters.size(); f++) {
+		shaderParameters[f]->use(context);
+	}
 }
 
 void Camera::finishRender(const GraphicsContext& context) {
@@ -56,6 +69,10 @@ void Camera::finishRender(const GraphicsContext& context) {
 	renderState.getProjectionMatrix().pop();
 	renderState.getViewMatrix().pop();
 	renderState.getModelMatrix().pop();
+
+	for (int f = 0; f < shaderParameters.size(); f++) {
+		shaderParameters[f]->release(context);
+	}
 }
 
 }

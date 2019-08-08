@@ -60,7 +60,7 @@ protected:
 	    std::vector<GLuint> shaders;
 	};
 
-	virtual void setShaderParameters(const GraphicsContext& context, ShaderProgramState& state) = 0;
+	virtual void setShaderParameters(const GraphicsContext& context, ShaderProgramState& state);
 	virtual void create(const GraphicsContext& context, ShaderProgramState& state) = 0;
 	GLuint compileShader(const std::string& shaderText, GLuint shaderType) const;
 	bool linkShaderProgram(GLuint shaderProgram) const;
@@ -69,6 +69,23 @@ private:
 	GraphicsContextHandler<ContextState,ShaderProgramState> contextHandler;
 	bool forceShader;
 	int version;
+};
+
+class ShaderParameter : public GraphicsComponent {
+public:
+	ShaderParameter(const std::string& name) : name(name) {}
+	virtual ~ShaderParameter() {}
+
+	void startRender(const GraphicsContext& context);
+	void finishRender(const GraphicsContext& context);
+	void use(const GraphicsContext& context);
+	void release(const GraphicsContext& context);
+
+	const std::string& getName() const { return name; }
+	virtual void setParameter(const GraphicsContext& context, GLuint shaderProgram, GLuint location) const = 0;
+
+private:
+	std::string name;
 };
 
 }

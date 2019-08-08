@@ -97,21 +97,10 @@ void MaterialShader::create(const GraphicsContext& context, ShaderProgramState& 
 }
 
 void MaterialShader::setShaderParameters(const GraphicsContext& context, ShaderProgramState& state) {
+	ShaderProgram::setShaderParameters(context, state);
+
 	RenderState& renderState = RenderState::get(context);
-	GLint loc = glGetUniformLocation(state.shaderProgram, "ProjectionMatrix");
-	glUniformMatrix4fv(loc, 1, GL_FALSE, glm::value_ptr(renderState.getProjectionMatrix().get()));
-	loc = glGetUniformLocation(state.shaderProgram, "ViewMatrix");
-	glUniformMatrix4fv(loc, 1, GL_FALSE, glm::value_ptr(renderState.getViewMatrix().get()));
-	loc = glGetUniformLocation(state.shaderProgram, "ModelMatrix");
-	glUniformMatrix4fv(loc, 1, GL_FALSE, glm::value_ptr(renderState.getModelMatrix().get()));
-
-	glm::mat3 normalMatrix = glm::mat3(glm::transpose(glm::inverse(renderState.getViewMatrix().get()*renderState.getModelMatrix().get())));
-	loc = glGetUniformLocation(state.shaderProgram, "NormalMatrix");
-	glUniformMatrix3fv(loc, 1, GL_FALSE, glm::value_ptr(normalMatrix));
-
-	glm::vec3 eyePosition = glm::column(renderState.getViewMatrix().get(), 3);
-    loc = glGetUniformLocation(state.shaderProgram, "eyePosition");
-    glUniform3f(loc, eyePosition.x, eyePosition.y, eyePosition.z);
+	GLint loc;
 
 	bool hasMaterial = false;
 	bool hasColor = false;

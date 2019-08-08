@@ -3,6 +3,7 @@
 
 #include "glm/glm.hpp"
 #include "sandbox/graphics/GraphicsComponent.h"
+#include "sandbox/graphics/render/ShaderProgram.h"
 
 namespace sandbox {
 
@@ -18,6 +19,7 @@ public:
 private:
 	glm::mat4 projection;
 	glm::mat4 view;
+	std::vector<ShaderParameter*> shaderParameters;
 };
 
 }

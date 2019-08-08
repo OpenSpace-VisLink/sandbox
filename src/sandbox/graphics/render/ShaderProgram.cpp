@@ -1,6 +1,7 @@
 #include "sandbox/graphics/render/ShaderProgram.h"
 #include <iostream>
 #include <sstream>
+#include <set>
 
 #include "sandbox/graphics/RenderState.h"
 
@@ -96,6 +97,24 @@ void ShaderProgram::finishRender(const GraphicsContext& sceneContext) {
 	}
 }
 
+void ShaderProgram::setShaderParameters(const GraphicsContext& context, ShaderProgram::ShaderProgramState& state) {
+    std::set<std::string> keys;
+    RenderState& renderState = RenderState::get(context);
+    const std::vector<ShaderParameter*>& shaderParameters = renderState.getShaderParameter().getQueue();
+
+    for (int f = shaderParameters.size()-1; f >= 0; f--) {
+        ShaderParameter* param = shaderParameters[f];
+        if (param != NULL && keys.find(param->getName()) == keys.end()) {
+            std::map<std::string, GLint>::iterator it = state.uniformMap.find(param->getName());
+            if (it != state.uniformMap.end()) {
+                // Set parameter
+                param->setParameter(context, state.shaderProgram, it->second);
+                keys.insert(param->getName());
+            }
+        }
+    }
+}
+
 GLuint ShaderProgram::compileShader(const std::string& shaderText, GLuint shaderType) const {
     const char* source = shaderText.c_str();
     int length = (int)shaderText.size();
@@ -132,5 +151,17 @@ bool ShaderProgram::linkShaderProgram(GLuint shaderProgram) const {
     return true;
 }
 
-
+void ShaderParameter::startRender(const GraphicsContext& context) {
+    use(context);
+}
+void ShaderParameter::finishRender(const GraphicsContext& context) {
+    release(context);
+}
+void ShaderParameter::use(const GraphicsContext& context) {
+    RenderState& renderState = RenderState::get(context);
+    renderState.getShaderParameter().push(this);
+}
+void ShaderParameter::release(const GraphicsContext& context) {
+    RenderState::get(context).getShaderParameter().pop();
+}
 }
