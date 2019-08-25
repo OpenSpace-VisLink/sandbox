@@ -25,7 +25,7 @@ include(${external_dir}/OpenGL/OpenGL.cmake)
 #useOpenGL()
 
 find_package(Vulkan REQUIRED)
-#message("vk Found" ${Vulkan_FOUND} ${Vulkan_INCLUDE_DIRS} ${Vulkan_LIBRARIES})
+message("vk Found" ${Vulkan_FOUND} ${Vulkan_INCLUDE_DIRS} ${Vulkan_LIBRARIES})
 include_directories(${Vulkan_INCLUDE_DIRS})
 set(DEP_LIBS ${DEP_LIBS} ${Vulkan_LIBRARIES})
 
@@ -35,6 +35,7 @@ set(DEP_LIBS ${DEP_LIBS} glfw)
 set(PROJECT_DEPS ${PROJECT_DEPS} sandbox)
 set(DEP_LIBS ${DEP_LIBS} sandbox)
 
+#/home/dan/lib/1.1.114.0/x86_64/bin/glslc examples/VulkanExample/src/shaders/shader.frag -o examples/VulkanExample/src/shaders/frag.spv
 
 # --------------------- Executable -----------------------
 
