@@ -165,7 +165,17 @@ private:
 	}
 };
 
+class GlfwSurface : public Component {
+public:
+	GlfwSurface() { addType<GlfwSurface>(); }
+	virtual ~GlfwSurface() {
+	}
 
+	void update() {}
+
+private:
+	VkSurfaceKHR surface;
+};
 
 }
 
