@@ -12,13 +12,13 @@ EntityNode::EntityNode() : parent(NULL), version(0), lastUpdateVersion(-1) {
 }
 
 EntityNode::~EntityNode() {
-	for (int f = 0; f < components.size(); f++) {
-		delete components[f];
-	}	
-
 	for (int f = 0; f < children.size(); f++) {
 		delete children[f];
 	}
+
+	for (int f = components.size()-1; f >= 0; f--) {
+		delete components[f];
+	}	
 }
 
 void EntityNode::update() {
