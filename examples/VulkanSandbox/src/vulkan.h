@@ -10,6 +10,7 @@
 
 namespace sandbox {
 
+
 class VulkanInstance : public Component {
 public:
 	VulkanInstance() { addType<VulkanInstance>(); }
@@ -130,9 +131,13 @@ public:
 
 	VkInstance& getInstance() { return instance; }
 
+	bool validationLayersEnabled() { return enableValidationLayers; }
+	const std::vector<const char*>& getValidationLayers() { return validationLayers; }
+
 private:
 	VkInstance instance;
     VkDebugUtilsMessengerEXT debugMessenger;
+
 #ifdef NDEBUG
 	const bool enableValidationLayers = false;
 #else
@@ -142,6 +147,7 @@ private:
 	const std::vector<const char*> validationLayers = {
 	    "VK_LAYER_LUNARG_standard_validation"
 	};
+
 
 	static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity, VkDebugUtilsMessageTypeFlagsEXT messageType, const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData, void* pUserData) {
         std::cerr << "validation layer: " << pCallbackData->pMessage << std::endl;
