@@ -37,20 +37,20 @@ const std::vector<const char*> deviceExtensions = {
 };
 
 
-struct QueueFamilyIndices {
+/*struct QueueFamilyIndices {
     std::optional<uint32_t> graphicsFamily;
     std::optional<uint32_t> presentFamily;
 
     bool isComplete() {
         return graphicsFamily.has_value() && presentFamily.has_value();
     }
-};
+};*/
 
-struct SwapChainSupportDetails {
+/*struct SwapChainSupportDetails {
     VkSurfaceCapabilitiesKHR capabilities;
     std::vector<VkSurfaceFormatKHR> formats;
     std::vector<VkPresentModeKHR> presentModes;
-};
+};*/
 
 struct Vertex {
     glm::vec2 pos;

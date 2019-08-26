@@ -7,13 +7,42 @@
 #include <GLFW/glfw3.h>
 
 #include <iostream>
+#include <set>
 
 namespace sandbox {
 
+struct QueueFamilyIndices {
+    std::optional<uint32_t> graphicsFamily;
+    std::optional<uint32_t> presentFamily;
+
+    bool isComplete() {
+        return graphicsFamily.has_value() && presentFamily.has_value();
+    }
+};
+
+struct SwapChainSupportDetails {
+    VkSurfaceCapabilitiesKHR capabilities;
+    std::vector<VkSurfaceFormatKHR> formats;
+    std::vector<VkPresentModeKHR> presentModes;
+};
+
+class VulkanInstance;
+
+class VulkanPhysicalDeviceCriteria {
+public:
+	virtual ~VulkanPhysicalDeviceCriteria() {}
+	virtual bool isDeviceSuitable(const VulkanInstance& instance, VkPhysicalDevice device) const = 0;
+};
+
+class HasVulkanPhysicalDeviceCriteria {
+public:
+	virtual ~HasVulkanPhysicalDeviceCriteria() {}
+	virtual VulkanPhysicalDeviceCriteria* createCriteria() const = 0;
+};
 
 class VulkanInstance : public Component {
 public:
-	VulkanInstance() { addType<VulkanInstance>(); }
+	VulkanInstance() : initialized(false) { addType<VulkanInstance>(); }
 	virtual ~VulkanInstance() {
 		if (enableValidationLayers) {
             DestroyDebugUtilsMessengerEXT(instance, debugMessenger, nullptr);
@@ -23,6 +52,11 @@ public:
 	}
 
 	void update() {
+		if (initialized) {
+			return;
+		}
+		initialized = true;
+
         if (enableValidationLayers && !checkValidationLayerSupport()) {
             throw std::runtime_error("validation layers requested, but not available!");
         }
@@ -134,7 +168,59 @@ public:
 	bool validationLayersEnabled() { return enableValidationLayers; }
 	const std::vector<const char*>& getValidationLayers() { return validationLayers; }
 
+	VkPhysicalDevice pickPhysicalDevice(const VulkanPhysicalDeviceCriteria& criteria) {
+		VkPhysicalDevice physicalDevice = VK_NULL_HANDLE;
+
+        uint32_t deviceCount = 0;
+        vkEnumeratePhysicalDevices(instance, &deviceCount, nullptr);
+
+        if (deviceCount == 0) {
+            throw std::runtime_error("failed to find GPUs with Vulkan support!");
+        }
+
+        std::vector<VkPhysicalDevice> devices(deviceCount);
+        vkEnumeratePhysicalDevices(instance, &deviceCount, devices.data());
+
+        for (const auto& device : devices) {
+            if (criteria.isDeviceSuitable(*this, device)) {
+                physicalDevice = device;
+                break;
+            }
+        }
+
+        if (physicalDevice == VK_NULL_HANDLE) {
+            throw std::runtime_error("failed to find a suitable GPU!");
+        }
+
+        return physicalDevice;
+    }
+
+    SwapChainSupportDetails querySwapChainSupport(VkPhysicalDevice device, VkSurfaceKHR surface) const {
+        SwapChainSupportDetails details;
+
+        vkGetPhysicalDeviceSurfaceCapabilitiesKHR(device, surface, &details.capabilities);
+
+        uint32_t formatCount;
+        vkGetPhysicalDeviceSurfaceFormatsKHR(device, surface, &formatCount, nullptr);
+
+        if (formatCount != 0) {
+            details.formats.resize(formatCount);
+            vkGetPhysicalDeviceSurfaceFormatsKHR(device, surface, &formatCount, details.formats.data());
+        }
+
+        uint32_t presentModeCount;
+        vkGetPhysicalDeviceSurfacePresentModesKHR(device, surface, &presentModeCount, nullptr);
+
+        if (presentModeCount != 0) {
+            details.presentModes.resize(presentModeCount);
+            vkGetPhysicalDeviceSurfacePresentModesKHR(device, surface, &presentModeCount, details.presentModes.data());
+        }
+
+        return details;
+    }
+
 private:
+	bool initialized;
 	VkInstance instance;
     VkDebugUtilsMessengerEXT debugMessenger;
 
@@ -165,15 +251,167 @@ private:
 	}
 };
 
-
-class GlfwSurface : public Component {
+class PhysicalDeviceCriteriaComposite : public VulkanPhysicalDeviceCriteria {
 public:
-	GlfwSurface(GLFWwindow* window, Entity* instanceEntity = NULL) : window(window), instanceEntity(instanceEntity) { addType<GlfwSurface>(); }
+	~PhysicalDeviceCriteriaComposite() {
+		for (int f = 0; f < criteriaList.size(); f++) {
+			delete criteriaList[f];
+		}
+	}
+	void add(VulkanPhysicalDeviceCriteria* criteria) {
+		criteriaList.push_back(criteria);
+	}
+	bool isDeviceSuitable(const VulkanInstance& instance, VkPhysicalDevice device) const {
+		for (int f = 0; f < criteriaList.size(); f++) {
+			if (!criteriaList[f]->isDeviceSuitable(instance, device)) {
+				return false;
+			}
+		}
+
+		return true;
+	}
+private:
+	std::vector<VulkanPhysicalDeviceCriteria*> criteriaList;
+};
+
+
+class DeviceExtensionSupport : public VulkanPhysicalDeviceCriteria {
+public:
+	DeviceExtensionSupport() : deviceExtensions(defaultDeviceExtensions) {}
+	DeviceExtensionSupport(std::vector<const char*> deviceExtensions) : deviceExtensions(deviceExtensions) {}
+
+	bool isDeviceSuitable(const VulkanInstance& instance, VkPhysicalDevice device) const {
+		uint32_t extensionCount;
+        vkEnumerateDeviceExtensionProperties(device, nullptr, &extensionCount, nullptr);
+
+        std::vector<VkExtensionProperties> availableExtensions(extensionCount);
+        vkEnumerateDeviceExtensionProperties(device, nullptr, &extensionCount, availableExtensions.data());
+
+        std::set<std::string> requiredExtensions(deviceExtensions.begin(), deviceExtensions.end());
+
+        for (const auto& extension : availableExtensions) {
+            requiredExtensions.erase(extension.extensionName);
+        }
+
+        return requiredExtensions.empty();
+	}
+private:
+	const std::vector<const char*> defaultDeviceExtensions = {
+	    VK_KHR_SWAPCHAIN_EXTENSION_NAME
+	};
+
+	std::vector<const char*> deviceExtensions;
+};
+
+class DeviceSwapChainSupport : public VulkanPhysicalDeviceCriteria {
+public:
+    DeviceSwapChainSupport(const VkSurfaceKHR& surface) : surface(surface) {}
+    bool isDeviceSuitable(const VulkanInstance& instance, VkPhysicalDevice device) const {
+        SwapChainSupportDetails swapChainSupport = instance.querySwapChainSupport(device, surface);
+        return !swapChainSupport.formats.empty() && !swapChainSupport.presentModes.empty();
+    }
+private:
+    VkSurfaceKHR surface;
+};
+
+class DeviceQueueFamilySupport : public VulkanPhysicalDeviceCriteria {
+public:
+	bool isDeviceSuitable(const VulkanInstance& instance, VkPhysicalDevice device) const {
+        uint32_t queueFamilyCount = 0;
+        vkGetPhysicalDeviceQueueFamilyProperties(device, &queueFamilyCount, nullptr);
+
+        std::vector<VkQueueFamilyProperties> queueFamilies(queueFamilyCount);
+        vkGetPhysicalDeviceQueueFamilyProperties(device, &queueFamilyCount, queueFamilies.data());
+
+        int i = 0;
+        for (const VkQueueFamilyProperties& queueFamily : queueFamilies) {
+        	if (isDeviceSuitable(instance, device, queueFamily, i)) {
+        		return true;
+        	}
+
+        	i++;
+        }
+
+        return false;
+	}
+
+protected:
+	virtual bool isDeviceSuitable(const VulkanInstance& instance, VkPhysicalDevice device, const VkQueueFamilyProperties& queueFamily, int index) const = 0;
+};
+
+class DeviceGraphicsSupport : public DeviceQueueFamilySupport {
+protected:
+	bool isDeviceSuitable(const VulkanInstance& instance, VkPhysicalDevice device, const VkQueueFamilyProperties& queueFamily, int index) const {
+		return queueFamily.queueCount > 0 && queueFamily.queueFlags & VK_QUEUE_GRAPHICS_BIT;
+	}
+};
+
+class DevicePresentSupport : public DeviceQueueFamilySupport {
+public:
+	DevicePresentSupport(const VkSurfaceKHR& surface) : surface(surface) {}
+protected:
+	bool isDeviceSuitable(const VulkanInstance& instance, VkPhysicalDevice device, const VkQueueFamilyProperties& queueFamily, int index) const {
+		VkBool32 presentSupport = false;
+        vkGetPhysicalDeviceSurfaceSupportKHR(device, index, surface, &presentSupport);
+        return queueFamily.queueCount > 0 && presentSupport;
+	}
+private:
+	VkSurfaceKHR surface;
+};
+
+class DeviceFeatureSupport : public VulkanPhysicalDeviceCriteria {
+public:
+	bool isDeviceSuitable(const VulkanInstance& instance, VkPhysicalDevice device) const {
+		VkPhysicalDeviceFeatures supportedFeatures;
+        vkGetPhysicalDeviceFeatures(device, &supportedFeatures);
+        return isDeviceSuitable(supportedFeatures);
+	}
+protected:
+	virtual bool isDeviceSuitable(const VkPhysicalDeviceFeatures& features) const = 0;
+};
+
+
+class DeviceSamplerAnisotropySupport : public VulkanPhysicalDeviceCriteria {
+protected:
+	bool isDeviceSuitable(const VkPhysicalDeviceFeatures& features) const {
+        return features.samplerAnisotropy;
+	}
+};
+
+
+class VulkanSurface : public Component, public HasVulkanPhysicalDeviceCriteria {
+public:
+	VulkanSurface() { 
+		addType<VulkanSurface>();
+		addType<HasVulkanPhysicalDeviceCriteria>();
+	}
+
+	virtual ~VulkanSurface() {}
+
+	VulkanPhysicalDeviceCriteria* createCriteria() const {
+		PhysicalDeviceCriteriaComposite* composite = new PhysicalDeviceCriteriaComposite();
+		composite->add(new DevicePresentSupport(getSurface()));
+		composite->add(new DeviceSwapChainSupport(getSurface()));
+		return composite;
+	}
+
+	virtual const VkSurfaceKHR& getSurface() const = 0;
+};
+
+
+class GlfwSurface : public VulkanSurface {
+public:
+	GlfwSurface(GLFWwindow* window, Entity* instanceEntity = NULL) : VulkanSurface(), initialized(false), window(window), instanceEntity(instanceEntity) { addType<GlfwSurface>(); }
 	virtual ~GlfwSurface() {
 		vkDestroySurfaceKHR(instance, surface, nullptr);
 	}
 
 	void update() {
+		if (initialized) {
+			return;
+		}
+		initialized = true;
+
 		if (!instanceEntity) {
 			instanceEntity = &getEntity();
 		}
@@ -191,11 +429,15 @@ public:
 	const VkSurfaceKHR& getSurface() const { return surface; }
 
 private:
+	bool initialized;
 	Entity* instanceEntity;
 	GLFWwindow* window;
 	VkSurfaceKHR surface;
 	VkInstance instance;
 };
+
+
+
 
 }
 
