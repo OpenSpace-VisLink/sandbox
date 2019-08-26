@@ -184,11 +184,13 @@ private:
 
     void initVulkan() {
         vulkanNode.addComponent(new VulkanInstance());
+        vulkanNode.addComponent(new GlfwSurface(window));
         vulkanNode.update();
         instance = vulkanNode.getComponent<VulkanInstance>()->getInstance();
+        surface = vulkanNode.getComponent<GlfwSurface>()->getSurface();
         //createInstance();
         //setupDebugMessenger();
-        createSurface();
+        //createSurface();
         pickPhysicalDevice();
         createLogicalDevice();
         createSwapChain();
@@ -271,7 +273,7 @@ private:
 
         vkDestroyDevice(device, nullptr);
 
-        vkDestroySurfaceKHR(instance, surface, nullptr);
+        //vkDestroySurfaceKHR(instance, surface, nullptr);
 
         glfwDestroyWindow(window);
 
@@ -298,12 +300,6 @@ private:
         createDescriptorPool();
         createDescriptorSets();
         createCommandBuffers();
-    }
-
-    void createSurface() {
-        if (glfwCreateWindowSurface(instance, window, nullptr, &surface) != VK_SUCCESS) {
-            throw std::runtime_error("failed to create window surface!");
-        }
     }
 
     void pickPhysicalDevice() {
@@ -1325,31 +1321,6 @@ private:
         }
 
         return indices;
-    }
-
-    bool checkValidationLayerSupport() {
-        uint32_t layerCount;
-        vkEnumerateInstanceLayerProperties(&layerCount, nullptr);
-
-        std::vector<VkLayerProperties> availableLayers(layerCount);
-        vkEnumerateInstanceLayerProperties(&layerCount, availableLayers.data());
-
-        for (const char* layerName : vulkanNode.getComponent<VulkanInstance>()->getValidationLayers()) {
-            bool layerFound = false;
-
-            for (const auto& layerProperties : availableLayers) {
-                if (strcmp(layerName, layerProperties.layerName) == 0) {
-                    layerFound = true;
-                    break;
-                }
-            }
-
-            if (!layerFound) {
-                return false;
-            }
-        }
-
-        return true;
     }
 
     static std::vector<char> readFile(const std::string& filename) {

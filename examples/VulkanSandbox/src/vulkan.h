@@ -129,7 +129,7 @@ public:
 	    }
 	}
 
-	VkInstance& getInstance() { return instance; }
+	const VkInstance& getInstance() const { return instance; }
 
 	bool validationLayersEnabled() { return enableValidationLayers; }
 	const std::vector<const char*>& getValidationLayers() { return validationLayers; }
@@ -165,16 +165,36 @@ private:
 	}
 };
 
+
 class GlfwSurface : public Component {
 public:
-	GlfwSurface() { addType<GlfwSurface>(); }
+	GlfwSurface(GLFWwindow* window, Entity* instanceEntity = NULL) : window(window), instanceEntity(instanceEntity) { addType<GlfwSurface>(); }
 	virtual ~GlfwSurface() {
+		vkDestroySurfaceKHR(instance, surface, nullptr);
 	}
 
-	void update() {}
+	void update() {
+		if (!instanceEntity) {
+			instanceEntity = &getEntity();
+		}
+
+		VulkanInstance* inst = instanceEntity->getComponent<VulkanInstance>();
+		if (inst) {
+			instance = inst->getInstance();
+		}
+
+		if (glfwCreateWindowSurface(instance, window, nullptr, &surface) != VK_SUCCESS) {
+            throw std::runtime_error("failed to create window surface!");
+        }
+	}
+
+	const VkSurfaceKHR& getSurface() const { return surface; }
 
 private:
+	Entity* instanceEntity;
+	GLFWwindow* window;
 	VkSurfaceKHR surface;
+	VkInstance instance;
 };
 
 }
