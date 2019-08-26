@@ -543,14 +543,18 @@ public:
 
 				std::vector<VkDeviceQueueCreateInfo> queueCreateInfos;
 
+				std::set<uint32_t> uniqueQueueFamilies;// = {indices.graphicsFamily.value(), indices.presentFamily.value()};
+				for (VulkanQueue* queue : queues) {
+					queue->init(physicalDevice);
+					uniqueQueueFamilies.insert(queue->getIndex());
+				}
+
 				float queuePriority = 1.0f;
-		        for (VulkanQueue* queue : queues) {
-		        	queue->init(physicalDevice);
-		        	std::cout << "update queue " << queue->getIndex() << std::endl;
+		        for (uint32_t queue : uniqueQueueFamilies) {
 
 		            VkDeviceQueueCreateInfo queueCreateInfo = {};
 		            queueCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
-		            queueCreateInfo.queueFamilyIndex = queue->getIndex();
+		            queueCreateInfo.queueFamilyIndex = queue;
 		            queueCreateInfo.queueCount = 1;
 		            queueCreateInfo.pQueuePriorities = &queuePriority;
 		            queueCreateInfos.push_back(queueCreateInfo);
