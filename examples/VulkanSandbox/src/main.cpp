@@ -185,14 +185,22 @@ private:
     void initVulkan() {
         vulkanNode.addComponent(new VulkanInstance());
         vulkanNode.addComponent(new GlfwSurface(window));
+        EntityNode* deviceNode = new EntityNode(&vulkanNode);
+            deviceNode->addComponent(new VulkanDevice(&vulkanNode));
+            deviceNode->addComponent(new VulkanGraphicsQueue());
+            deviceNode->addComponent(new VulkanPresentQueue(&vulkanNode));
         vulkanNode.update();
         instance = vulkanNode.getComponent<VulkanInstance>()->getInstance();
-        surface = vulkanNode.getComponent<GlfwSurface>()->getSurface();
+        surface = vulkanNode.getComponent<VulkanSurface>()->getSurface();
+        device = deviceNode->getComponent<VulkanDevice>()->getDevice();
+        physicalDevice = deviceNode->getComponent<VulkanDevice>()->getPhysicalDevice();
+        graphicsQueue = deviceNode->getComponent<VulkanGraphicsQueue>()->getQueue();
+        presentQueue = deviceNode->getComponent<VulkanPresentQueue>()->getQueue();
         //createInstance();
         //setupDebugMessenger();
         //createSurface();
-        pickPhysicalDevice();
-        createLogicalDevice();
+        //pickPhysicalDevice();
+        //createLogicalDevice();
         createSwapChain();
         createImageViews();
         createRenderPass();

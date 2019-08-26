@@ -48,6 +48,20 @@ public:
 
 		return typed;
 	}
+
+
+	template<typename T>
+	std::vector<T*> getComponentsRecursive() const {
+		std::vector<T*> components = getComponents<T>();
+		const std::vector<Entity*>& children = getChildren();
+		for (int f = 0; f < children.size(); f++) {
+			std::vector<T*> childComponents = children[f]->getComponentsRecursive<T>();
+			components.insert( components.end(), childComponents.begin(), childComponents.end() );
+		}
+
+		return components;
+	}
+
 protected:
 	virtual Component* getComponentByType(const std::type_info& type) const = 0;
 	virtual const std::vector<Component*>& getComponentsByType(const std::type_info& type) const = 0;

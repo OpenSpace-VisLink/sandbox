@@ -34,13 +34,13 @@ public:
 	virtual bool isDeviceSuitable(const VulkanInstance& instance, VkPhysicalDevice device) const = 0;
 };
 
-class HasVulkanPhysicalDeviceCriteria {
+class VulkanComponent : public Component {
 public:
-	virtual ~HasVulkanPhysicalDeviceCriteria() {}
-	virtual VulkanPhysicalDeviceCriteria* createCriteria() const = 0;
+	virtual ~VulkanComponent() {}
+	virtual VulkanPhysicalDeviceCriteria* createPhysicalCriteria() const { return NULL; }
 };
 
-class VulkanInstance : public Component {
+class VulkanInstance : public VulkanComponent {
 public:
 	VulkanInstance() : initialized(false) { addType<VulkanInstance>(); }
 	virtual ~VulkanInstance() {
@@ -277,7 +277,6 @@ private:
 
 class DeviceExtensionSupport : public VulkanPhysicalDeviceCriteria {
 public:
-	DeviceExtensionSupport() : deviceExtensions(defaultDeviceExtensions) {}
 	DeviceExtensionSupport(std::vector<const char*> deviceExtensions) : deviceExtensions(deviceExtensions) {}
 
 	bool isDeviceSuitable(const VulkanInstance& instance, VkPhysicalDevice device) const {
@@ -296,10 +295,6 @@ public:
         return requiredExtensions.empty();
 	}
 private:
-	const std::vector<const char*> defaultDeviceExtensions = {
-	    VK_KHR_SWAPCHAIN_EXTENSION_NAME
-	};
-
 	std::vector<const char*> deviceExtensions;
 };
 
@@ -371,7 +366,7 @@ protected:
 };
 
 
-class DeviceSamplerAnisotropySupport : public VulkanPhysicalDeviceCriteria {
+class DeviceSamplerAnisotropySupport : public DeviceFeatureSupport {
 protected:
 	bool isDeviceSuitable(const VkPhysicalDeviceFeatures& features) const {
         return features.samplerAnisotropy;
@@ -379,21 +374,13 @@ protected:
 };
 
 
-class VulkanSurface : public Component, public HasVulkanPhysicalDeviceCriteria {
+class VulkanSurface : public VulkanComponent {
 public:
 	VulkanSurface() { 
 		addType<VulkanSurface>();
-		addType<HasVulkanPhysicalDeviceCriteria>();
 	}
 
 	virtual ~VulkanSurface() {}
-
-	VulkanPhysicalDeviceCriteria* createCriteria() const {
-		PhysicalDeviceCriteriaComposite* composite = new PhysicalDeviceCriteriaComposite();
-		composite->add(new DevicePresentSupport(getSurface()));
-		composite->add(new DeviceSwapChainSupport(getSurface()));
-		return composite;
-	}
 
 	virtual const VkSurfaceKHR& getSurface() const = 0;
 };
@@ -436,8 +423,200 @@ private:
 	VkInstance instance;
 };
 
+class VulkanQueue : public VulkanComponent {
+public:
+	VulkanQueue() { addType<VulkanQueue>(); }
+	virtual ~VulkanQueue() {}
+
+	void init(VkPhysicalDevice device) {
+        uint32_t queueFamilyCount = 0;
+        vkGetPhysicalDeviceQueueFamilyProperties(device, &queueFamilyCount, nullptr);
+
+        std::vector<VkQueueFamilyProperties> queueFamilies(queueFamilyCount);
+        vkGetPhysicalDeviceQueueFamilyProperties(device, &queueFamilyCount, queueFamilies.data());
+
+        int i = 0;
+        for (const VkQueueFamilyProperties& queueFamily : queueFamilies) {
+        	if (isQueueFamily(device, queueFamily, i)) {
+        		index = i;
+        		break;
+        	}
+
+            i++;
+        }
+	}
+
+	void update();
+
+	uint32_t getIndex() const { return index; }
+	VkQueue getQueue() const { return queue; }
+
+protected:
+	virtual bool isQueueFamily(VkPhysicalDevice device, const VkQueueFamilyProperties& queueFamily, int index) const = 0;
+
+private:
+	VkQueue queue;
+	uint32_t index;
+};
+
+class VulkanGraphicsQueue : public VulkanQueue {
+public:
+	VulkanGraphicsQueue() { addType<VulkanGraphicsQueue>(); }
+	virtual ~VulkanGraphicsQueue() {}
+
+	VulkanPhysicalDeviceCriteria* createPhysicalCriteria() const { return new DeviceGraphicsSupport(); }
+
+protected:
+	virtual bool isQueueFamily(VkPhysicalDevice device, const VkQueueFamilyProperties& queueFamily, int index) const {
+		return queueFamily.queueCount > 0 && queueFamily.queueFlags & VK_QUEUE_GRAPHICS_BIT;
+	}
+
+private:
+	VkQueue queue;
+	uint32_t index;
+};
+
+class VulkanPresentQueue : public VulkanQueue {
+public:
+	VulkanPresentQueue(Entity* surfaceEntity) : surfaceEntity(surfaceEntity) { addType<VulkanPresentQueue>(); }
+	virtual ~VulkanPresentQueue() {}
+
+	VulkanPhysicalDeviceCriteria* createPhysicalCriteria() const { 
+		VulkanSurface* surface = surfaceEntity->getComponent<VulkanSurface>();
+		if (surface) {
+			return new DevicePresentSupport(surface->getSurface()); 
+		}
+
+		return NULL;
+	}
+
+protected:
+	virtual bool isQueueFamily(VkPhysicalDevice device, const VkQueueFamilyProperties& queueFamily, int index) const {
+		VulkanSurface* surface = surfaceEntity->getComponent<VulkanSurface>();
+		if (surface) {
+			VkBool32 presentSupport = false;
+	        vkGetPhysicalDeviceSurfaceSupportKHR(device, index, surface->getSurface(), &presentSupport);
+	        return queueFamily.queueCount > 0 && presentSupport;
+		}
+
+		return false;
+	}
+
+private:
+	Entity* surfaceEntity;
+	VkQueue queue;
+	uint32_t index;
+};
+
+class VulkanDevice : public VulkanComponent {
+public:
+	VulkanDevice(Entity* instanceEntity) : instanceEntity(instanceEntity), instance(NULL), initialized(false) { addType<VulkanDevice>(); }
+	virtual ~VulkanDevice() {
+		vkDestroyDevice(device, nullptr);
+	}
+
+	void update() {
+		if (initialized) {
+			return;
+		}
+
+		if (instanceEntity) {
+			vulkanInstance = instanceEntity->getComponent<VulkanInstance>();
+		}
+
+		if (vulkanInstance) {
+			instance = vulkanInstance->getInstance();
+
+			PhysicalDeviceCriteriaComposite composite;
+			std::vector<VulkanComponent*> criteria = getEntity().getComponentsRecursive<VulkanComponent>();
+			for (int f = 0; f < criteria.size(); f++) {
+				VulkanPhysicalDeviceCriteria* physicalCriteria = criteria[f]->createPhysicalCriteria();
+				if (physicalCriteria) {
+					composite.add(physicalCriteria);
+				}
+			}
+			physicalDevice = vulkanInstance->pickPhysicalDevice(composite);
 
 
+			if (physicalDevice != VK_NULL_HANDLE) {
+				std::vector<VulkanQueue*> queues = getEntity().getComponents<VulkanQueue>();
+
+				std::vector<VkDeviceQueueCreateInfo> queueCreateInfos;
+
+				float queuePriority = 1.0f;
+		        for (VulkanQueue* queue : queues) {
+		        	queue->init(physicalDevice);
+		        	std::cout << "update queue " << queue->getIndex() << std::endl;
+
+		            VkDeviceQueueCreateInfo queueCreateInfo = {};
+		            queueCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
+		            queueCreateInfo.queueFamilyIndex = queue->getIndex();
+		            queueCreateInfo.queueCount = 1;
+		            queueCreateInfo.pQueuePriorities = &queuePriority;
+		            queueCreateInfos.push_back(queueCreateInfo);
+		        }
+
+		        VkPhysicalDeviceFeatures deviceFeatures = {};
+		        deviceFeatures.samplerAnisotropy = VK_TRUE;
+
+		        VkDeviceCreateInfo createInfo = {};
+		        createInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
+
+		        createInfo.queueCreateInfoCount = static_cast<uint32_t>(queueCreateInfos.size());
+		        createInfo.pQueueCreateInfos = queueCreateInfos.data();
+
+		        createInfo.pEnabledFeatures = &deviceFeatures;
+
+		        createInfo.enabledExtensionCount = static_cast<uint32_t>(deviceExtensions.size());
+		        createInfo.ppEnabledExtensionNames = deviceExtensions.data();
+
+		        if (vulkanInstance->validationLayersEnabled()) {
+		            createInfo.enabledLayerCount = static_cast<uint32_t>(vulkanInstance->getValidationLayers().size());
+		            createInfo.ppEnabledLayerNames = vulkanInstance->getValidationLayers().data();
+		        } else {
+		            createInfo.enabledLayerCount = 0;
+		        }
+
+		        if (vkCreateDevice(physicalDevice, &createInfo, nullptr, &device) != VK_SUCCESS) {
+		            throw std::runtime_error("failed to create logical device!");
+		        }
+
+				initialized = true;
+			}
+
+		}
+
+	}
+
+	VulkanPhysicalDeviceCriteria* createPhysicalCriteria() const { 
+		PhysicalDeviceCriteriaComposite* composite = new PhysicalDeviceCriteriaComposite();
+		composite->add(new DeviceSamplerAnisotropySupport());
+		composite->add(new DeviceExtensionSupport(deviceExtensions));
+		return composite; 
+	}
+
+	virtual const VkDevice& getDevice() const { return device; }
+	virtual const VkPhysicalDevice& getPhysicalDevice() const { return physicalDevice; }
+
+private:
+	bool initialized;
+	Entity* instanceEntity;
+	VulkanInstance* vulkanInstance;
+	VkDevice device;
+	VkPhysicalDevice physicalDevice;
+	VkInstance instance;
+
+	const std::vector<const char*> deviceExtensions = {
+	    VK_KHR_SWAPCHAIN_EXTENSION_NAME
+	};
+};
+
+void VulkanQueue::update() {
+	VulkanDevice* device = getEntity().getComponent<VulkanDevice>();
+	if (device) {
+		vkGetDeviceQueue(device->getDevice(), index, 0, &queue);
+	}
+}
 
 }
 
