@@ -62,6 +62,16 @@ public:
 		return components;
 	}
 
+	template<typename T>
+	T* getComponentRecursive() const {
+		std::vector<T*> components = getComponentsRecursive<T>();
+		if (components.size() > 0) {
+			return components[0];
+		}
+
+		return NULL;
+	}
+
 protected:
 	virtual Component* getComponentByType(const std::type_info& type) const = 0;
 	virtual const std::vector<Component*>& getComponentsByType(const std::type_info& type) const = 0;

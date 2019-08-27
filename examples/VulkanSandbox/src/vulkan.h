@@ -11,15 +11,6 @@
 
 namespace sandbox {
 
-struct QueueFamilyIndices {
-    std::optional<uint32_t> graphicsFamily;
-    std::optional<uint32_t> presentFamily;
-
-    bool isComplete() {
-        return graphicsFamily.has_value() && presentFamily.has_value();
-    }
-};
-
 struct SwapChainSupportDetails {
     VkSurfaceCapabilitiesKHR capabilities;
     std::vector<VkSurfaceFormatKHR> formats;
@@ -383,6 +374,7 @@ public:
 	virtual ~VulkanSurface() {}
 
 	virtual const VkSurfaceKHR& getSurface() const = 0;
+	virtual void getFramebufferSize(int &width, int &height) const = 0;
 };
 
 
@@ -415,6 +407,10 @@ public:
 
 	const VkSurfaceKHR& getSurface() const { return surface; }
 
+	virtual void getFramebufferSize(int &width, int &height) const {
+		glfwGetFramebufferSize(window, &width, &height);
+	}
+
 private:
 	bool initialized;
 	Entity* instanceEntity;
@@ -423,28 +419,29 @@ private:
 	VkInstance instance;
 };
 
-class VulkanQueue : public VulkanComponent {
+class VulkanDevice;
+
+class VulkanDeviceComponent : public VulkanComponent {
+public:
+	VulkanDeviceComponent() { addType<VulkanDeviceComponent>(); }
+
+	void setDevice(VulkanDevice* device) {
+		this->device = device;
+		initDeviceComponent();
+	}
+	VulkanDevice& getDevice() { return *device; }
+
+protected:
+	virtual void initDeviceComponent() {}
+
+private:
+	VulkanDevice* device;
+};
+
+class VulkanQueue : public VulkanDeviceComponent {
 public:
 	VulkanQueue() { addType<VulkanQueue>(); }
 	virtual ~VulkanQueue() {}
-
-	void init(VkPhysicalDevice device) {
-        uint32_t queueFamilyCount = 0;
-        vkGetPhysicalDeviceQueueFamilyProperties(device, &queueFamilyCount, nullptr);
-
-        std::vector<VkQueueFamilyProperties> queueFamilies(queueFamilyCount);
-        vkGetPhysicalDeviceQueueFamilyProperties(device, &queueFamilyCount, queueFamilies.data());
-
-        int i = 0;
-        for (const VkQueueFamilyProperties& queueFamily : queueFamilies) {
-        	if (isQueueFamily(device, queueFamily, i)) {
-        		index = i;
-        		break;
-        	}
-
-            i++;
-        }
-	}
 
 	void update();
 
@@ -452,6 +449,7 @@ public:
 	VkQueue getQueue() const { return queue; }
 
 protected:
+	void initDeviceComponent();
 	virtual bool isQueueFamily(VkPhysicalDevice device, const VkQueueFamilyProperties& queueFamily, int index) const = 0;
 
 private:
@@ -539,13 +537,17 @@ public:
 
 
 			if (physicalDevice != VK_NULL_HANDLE) {
-				std::vector<VulkanQueue*> queues = getEntity().getComponents<VulkanQueue>();
+				std::vector<VulkanDeviceComponent*> deviceComponents = getEntity().getComponentsRecursive<VulkanDeviceComponent>();
+				for (VulkanDeviceComponent* component : deviceComponents) {
+					component->setDevice(this);
+				}
+					
+				std::vector<VulkanQueue*> queues = getEntity().getComponentsRecursive<VulkanQueue>();
 
 				std::vector<VkDeviceQueueCreateInfo> queueCreateInfos;
 
 				std::set<uint32_t> uniqueQueueFamilies;// = {indices.graphicsFamily.value(), indices.presentFamily.value()};
 				for (VulkanQueue* queue : queues) {
-					queue->init(physicalDevice);
 					uniqueQueueFamilies.insert(queue->getIndex());
 				}
 
@@ -601,6 +603,7 @@ public:
 
 	virtual const VkDevice& getDevice() const { return device; }
 	virtual const VkPhysicalDevice& getPhysicalDevice() const { return physicalDevice; }
+	virtual const VulkanInstance& getInstance() const { return *vulkanInstance; }
 
 private:
 	bool initialized;
@@ -615,12 +618,164 @@ private:
 	};
 };
 
-void VulkanQueue::update() {
-	VulkanDevice* device = getEntity().getComponent<VulkanDevice>();
-	if (device) {
-		vkGetDeviceQueue(device->getDevice(), index, 0, &queue);
-	}
+
+void VulkanQueue::initDeviceComponent() {
+	VkPhysicalDevice device = getDevice().getPhysicalDevice();
+    uint32_t queueFamilyCount = 0;
+    vkGetPhysicalDeviceQueueFamilyProperties(device, &queueFamilyCount, nullptr);
+
+    std::vector<VkQueueFamilyProperties> queueFamilies(queueFamilyCount);
+    vkGetPhysicalDeviceQueueFamilyProperties(device, &queueFamilyCount, queueFamilies.data());
+
+    int i = 0;
+    for (const VkQueueFamilyProperties& queueFamily : queueFamilies) {
+    	if (isQueueFamily(device, queueFamily, i)) {
+    		index = i;
+    		break;
+    	}
+
+        i++;
+    }
 }
+
+void VulkanQueue::update() {
+	vkGetDeviceQueue(getDevice().getDevice(), index, 0, &queue);
+}
+
+class VulkanSwapChain : public VulkanDeviceComponent {
+public:
+	VulkanSwapChain(Entity* surfaceEntity) : surfaceEntity(surfaceEntity) { addType<VulkanSwapChain>(); }
+	virtual ~VulkanSwapChain() {
+		cleanup();
+	}
+
+	void cleanup() {
+        /*for (auto framebuffer : swapChainFramebuffers) {
+            vkDestroyFramebuffer(device, framebuffer, nullptr);
+        }
+
+        vkFreeCommandBuffers(device, commandPool, static_cast<uint32_t>(commandBuffers.size()), commandBuffers.data());
+
+        vkDestroyPipeline(device, graphicsPipeline, nullptr);
+        vkDestroyPipelineLayout(device, pipelineLayout, nullptr);
+        vkDestroyRenderPass(device, renderPass, nullptr);
+
+        for (auto imageView : swapChainImageViews) {
+            vkDestroyImageView(device, imageView, nullptr);
+        }
+
+        vkDestroySwapchainKHR(device, swapChain, nullptr);
+
+        for (size_t i = 0; i < swapChainImages.size(); i++) {
+            vkDestroyBuffer(device, uniformBuffers[i], nullptr);
+            vkFreeMemory(device, uniformBuffersMemory[i], nullptr);
+        }
+
+        vkDestroyDescriptorPool(device, descriptorPool, nullptr);*/
+    }
+
+	void update() {
+		VulkanSurface* surface = surfaceEntity->getComponent<VulkanSurface>();
+
+        SwapChainSupportDetails swapChainSupport = getDevice().getInstance().querySwapChainSupport(getDevice().getPhysicalDevice(), surface->getSurface());
+
+        VkSurfaceFormatKHR surfaceFormat = chooseSwapSurfaceFormat(swapChainSupport.formats);
+        VkPresentModeKHR presentMode = chooseSwapPresentMode(swapChainSupport.presentModes);
+        VkExtent2D extent = chooseSwapExtent(swapChainSupport.capabilities);
+
+        uint32_t imageCount = swapChainSupport.capabilities.minImageCount + 1;
+        if (swapChainSupport.capabilities.maxImageCount > 0 && imageCount > swapChainSupport.capabilities.maxImageCount) {
+            imageCount = swapChainSupport.capabilities.maxImageCount;
+        }
+
+        VkSwapchainCreateInfoKHR createInfo = {};
+        createInfo.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
+        createInfo.surface = surface->getSurface();
+
+        createInfo.minImageCount = imageCount;
+        createInfo.imageFormat = surfaceFormat.format;
+        createInfo.imageColorSpace = surfaceFormat.colorSpace;
+        createInfo.imageExtent = extent;
+        createInfo.imageArrayLayers = 1;
+        createInfo.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+
+        VulkanGraphicsQueue* graphicsQueue = getDevice().getEntity().getComponentRecursive<VulkanGraphicsQueue>();
+        VulkanPresentQueue* presentQueue = getDevice().getEntity().getComponentRecursive<VulkanPresentQueue>();
+
+        uint32_t queueFamilyIndices[] = {graphicsQueue->getIndex(), presentQueue->getIndex()};
+
+        if (graphicsQueue->getIndex() != presentQueue->getIndex()) {
+            createInfo.imageSharingMode = VK_SHARING_MODE_CONCURRENT;
+            createInfo.queueFamilyIndexCount = 2;
+            createInfo.pQueueFamilyIndices = queueFamilyIndices;
+        } else {
+            createInfo.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE;
+        }
+
+        createInfo.preTransform = swapChainSupport.capabilities.currentTransform;
+        createInfo.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
+        createInfo.presentMode = presentMode;
+        createInfo.clipped = VK_TRUE;
+
+        if (vkCreateSwapchainKHR(getDevice().getDevice(), &createInfo, nullptr, &swapChain) != VK_SUCCESS) {
+            throw std::runtime_error("failed to create swap chain!");
+        }
+
+        vkGetSwapchainImagesKHR(getDevice().getDevice(), swapChain, &imageCount, nullptr);
+        swapChainImages.resize(imageCount);
+        vkGetSwapchainImagesKHR(getDevice().getDevice(), swapChain, &imageCount, swapChainImages.data());
+
+        swapChainImageFormat = surfaceFormat.format;
+        swapChainExtent = extent;
+	}
+
+	VkSurfaceFormatKHR chooseSwapSurfaceFormat(const std::vector<VkSurfaceFormatKHR>& availableFormats) {
+        for (const auto& availableFormat : availableFormats) {
+            if (availableFormat.format == VK_FORMAT_B8G8R8A8_UNORM && availableFormat.colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR) {
+                return availableFormat;
+            }
+        }
+
+        return availableFormats[0];
+    }
+
+    VkPresentModeKHR chooseSwapPresentMode(const std::vector<VkPresentModeKHR>& availablePresentModes) {
+        for (const auto& availablePresentMode : availablePresentModes) {
+            if (availablePresentMode == VK_PRESENT_MODE_MAILBOX_KHR) {
+                return availablePresentMode;
+            }
+        }
+
+        return VK_PRESENT_MODE_FIFO_KHR;
+    }
+
+    VkExtent2D chooseSwapExtent(const VkSurfaceCapabilitiesKHR& capabilities) {
+        if (capabilities.currentExtent.width != UINT32_MAX) {
+            return capabilities.currentExtent;
+        } else {
+            int width, height;
+            surface->getFramebufferSize(width, height);
+
+            VkExtent2D actualExtent = {
+                static_cast<uint32_t>(width),
+                static_cast<uint32_t>(height)
+            };
+
+            actualExtent.width = std::max(capabilities.minImageExtent.width, std::min(capabilities.maxImageExtent.width, actualExtent.width));
+            actualExtent.height = std::max(capabilities.minImageExtent.height, std::min(capabilities.maxImageExtent.height, actualExtent.height));
+
+            return actualExtent;
+        }
+    }
+
+//private:
+	Entity* surfaceEntity;
+	VulkanSurface* surface;
+	VkSwapchainKHR swapChain;
+    std::vector<VkImage> swapChainImages;
+    VkFormat swapChainImageFormat;
+    VkExtent2D swapChainExtent;
+};
 
 }
 
