@@ -649,6 +649,13 @@ public:
 		cleanup();
 	}
 
+	void afterAdd() {
+		/*getEntity().addComponent(new Transform());
+		getEntity().addComponent(new ArcBall(input));
+		getEntity().addComponent(new MouseZoom(input));
+		getEntity().addComponent(new MouseTranslate(input));*/
+	}
+
 	void cleanup() {
         /*for (auto framebuffer : swapChainFramebuffers) {
             vkDestroyFramebuffer(device, framebuffer, nullptr);
@@ -766,6 +773,15 @@ public:
 
             return actualExtent;
         }
+    }
+
+    VulkanPhysicalDeviceCriteria* createPhysicalCriteria() const { 
+    	VulkanSurface* surface = surfaceEntity->getComponent<VulkanSurface>();
+		if (surface) {
+			return new DeviceSwapChainSupport(surface->getSurface()); 
+		}
+
+		return NULL;
     }
 
 //private:

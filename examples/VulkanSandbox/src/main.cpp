@@ -294,7 +294,7 @@ private:
 
         cleanupSwapChain();
 
-        createSwapChain();
+        //createSwapChain();
         createImageViews();
         createRenderPass();
         createGraphicsPipeline();
