@@ -25,6 +25,8 @@
 #include <optional>
 #include <set>
 
+#include <sandbox/image/Image.h>
+
 using namespace sandbox;
 
 const int WIDTH = 800;
@@ -152,6 +154,8 @@ private:
     bool framebufferResized = false;
 
     EntityNode vulkanNode;
+    EntityNode images;
+    Entity* mainImage;
 
     void initWindow() {
         glfwInit();
@@ -169,27 +173,34 @@ private:
     }
 
     void initVulkan() {
+        mainImage = new EntityNode(&images);
+            mainImage->addComponent(new Image("examples/VulkanExample/textures/texture.jpg"));
+        images.update();
+
         vulkanNode.addComponent(new VulkanInstance());
-        vulkanNode.addComponent(new GlfwSurface(window));
+        EntityNode* surfaceNode = new EntityNode(&vulkanNode);
+            surfaceNode->addComponent(new GlfwSurface(window, &vulkanNode));
         EntityNode* deviceNode = new EntityNode(&vulkanNode);
             deviceNode->addComponent(new VulkanDevice(&vulkanNode));
             EntityNode* queues = new EntityNode(deviceNode);
                 queues->addComponent(new VulkanGraphicsQueue());
-                queues->addComponent(new VulkanPresentQueue(&vulkanNode));
+                queues->addComponent(new VulkanPresentQueue(surfaceNode));
             EntityNode* swapChainNode = new EntityNode(deviceNode);
-                swapChainNode->addComponent(new VulkanSwapChain(&vulkanNode));
+                swapChainNode->addComponent(new VulkanBasicSwapChain(surfaceNode));
         vulkanNode.update();
+
         instance = vulkanNode.getComponent<VulkanInstance>()->getInstance();
-        surface = vulkanNode.getComponent<VulkanSurface>()->getSurface();
+        surface = surfaceNode->getComponent<VulkanSurface>()->getSurface();
         device = deviceNode->getComponent<VulkanDevice>()->getDevice();
         physicalDevice = deviceNode->getComponent<VulkanDevice>()->getPhysicalDevice();
         graphicsQueue = queues->getComponent<VulkanGraphicsQueue>();
         presentQueue = queues->getComponent<VulkanPresentQueue>();
 
-        swapChain = swapChainNode->getComponent<VulkanSwapChain>()->swapChain;
-        swapChainImages = swapChainNode->getComponent<VulkanSwapChain>()->swapChainImages;
-        swapChainImageFormat = swapChainNode->getComponent<VulkanSwapChain>()->swapChainImageFormat;
-        swapChainExtent = swapChainNode->getComponent<VulkanSwapChain>()->swapChainExtent;
+        swapChain = swapChainNode->getComponent<VulkanBasicSwapChain>()->swapChain;
+        swapChainImages = swapChainNode->getComponent<VulkanBasicSwapChain>()->swapChainImages;
+        swapChainImageFormat = swapChainNode->getComponent<VulkanBasicSwapChain>()->swapChainImageFormat;
+        swapChainExtent = swapChainNode->getComponent<VulkanBasicSwapChain>()->swapChainExtent;
+        swapChainImageViews = swapChainNode->getComponent<VulkanBasicSwapChain>()->swapChainImageViews;
 
         //createInstance();
         //setupDebugMessenger();
@@ -197,7 +208,7 @@ private:
         //pickPhysicalDevice();
         //createLogicalDevice();
         //createSwapChain();
-        createImageViews();
+        //createImageViews();
         createRenderPass();
         createDescriptorSetLayout();
         createGraphicsPipeline();
@@ -534,8 +545,14 @@ private:
 
     void createTextureImage() {
         int texWidth, texHeight, texChannels;
-        stbi_uc* pixels = stbi_load("examples/VulkanExample/textures/texture.jpg", &texWidth, &texHeight, &texChannels, STBI_rgb_alpha);
-        VkDeviceSize imageSize = texWidth * texHeight * 4;
+        //stbi_uc* pixels = stbi_load("examples/VulkanExample/textures/texture.jpg", &texWidth, &texHeight, &texChannels, STBI_rgb_alpha);
+        Image* image = mainImage->getComponent<Image>();
+        texHeight = image->getHeight();
+        texWidth = image->getWidth();
+        texChannels = image->getComponents();
+        std::cout << texChannels << std::endl;
+        const unsigned char* pixels = image->getData();
+        VkDeviceSize imageSize = texWidth * texHeight * texChannels; 
 
         if (!pixels) {
             throw std::runtime_error("failed to load texture image!");
@@ -550,7 +567,7 @@ private:
             memcpy(data, pixels, static_cast<size_t>(imageSize));
         vkUnmapMemory(device, stagingBufferMemory);
 
-        stbi_image_free(pixels);
+        //stbi_image_free(pixels);
 
         createImage(texWidth, texHeight, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, textureImage, textureImageMemory);
 

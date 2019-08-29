@@ -48,13 +48,29 @@ void EntityNode::update() {
 	}
 }
 
-void EntityNode::addChild(Entity* entity) {
+void EntityNode::addChild(Entity* entity, bool updateVersion) {
 	entity->setParent(this);
 	children.push_back(entity);
-	incrementVersion();
+	if (updateVersion) {
+		incrementVersion();
+	}
 }
 
-void EntityNode::addComponent(Component* component) {
+void EntityNode::deleteChild(Entity* entity, bool updateVersion) {
+	for (int f = 0; f < children.size(); f++) {
+		if (children[f] == entity) {
+			delete children[f];
+			children.erase(children.begin()+f);
+			break;
+		}
+	}
+
+	if (updateVersion) {
+		incrementVersion();
+	}
+}
+
+void EntityNode::addComponent(Component* component, bool updateVersion) {
 	component->setEntity(this);
 
 	bool componentIsAdded = component->beforeAdd();
@@ -78,12 +94,16 @@ void EntityNode::addComponent(Component* component) {
 		delete component;
 	}
 
-	incrementVersion();
+	if (updateVersion) {
+		incrementVersion();
+	}
 }
 
-void EntityNode::deleteComponent(Component* component) {
+void EntityNode::deleteComponent(Component* component, bool updateVersion) {
 	// TODO: make work
-	incrementVersion();
+	if (updateVersion) {
+		incrementVersion();
+	}
 }
 
 Component* EntityNode::getComponentByType(const std::type_info& type) const {

@@ -644,8 +644,14 @@ void VulkanQueue::update() {
 
 class VulkanSwapChain : public VulkanDeviceComponent {
 public:
-	VulkanSwapChain(Entity* surfaceEntity) : surfaceEntity(surfaceEntity) { addType<VulkanSwapChain>(); }
-	virtual ~VulkanSwapChain() {
+	VulkanSwapChain() { addType<VulkanSwapChain>(); }
+	virtual ~VulkanSwapChain() {}
+};
+
+class VulkanBasicSwapChain : public VulkanSwapChain {
+public:
+	VulkanBasicSwapChain(Entity* surfaceEntity) : surfaceEntity(surfaceEntity) { addType<VulkanBasicSwapChain>(); }
+	virtual ~VulkanBasicSwapChain() {
 		cleanup();
 	}
 
@@ -694,6 +700,7 @@ public:
         if (swapChainSupport.capabilities.maxImageCount > 0 && imageCount > swapChainSupport.capabilities.maxImageCount) {
             imageCount = swapChainSupport.capabilities.maxImageCount;
         }
+        std::cout << "image count " << imageCount << " " << swapChainSupport.capabilities.maxImageCount<< std::endl;
 
         VkSwapchainCreateInfoKHR createInfo = {};
         createInfo.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
@@ -734,6 +741,7 @@ public:
 
         swapChainImageFormat = surfaceFormat.format;
         swapChainExtent = extent;
+        createImageViews();
 	}
 
 	VkSurfaceFormatKHR chooseSwapSurfaceFormat(const std::vector<VkSurfaceFormatKHR>& availableFormats) {
@@ -784,6 +792,35 @@ public:
 		return NULL;
     }
 
+    void createImageViews() {
+        swapChainImageViews.resize(swapChainImages.size());
+
+        for (size_t i = 0; i < swapChainImages.size(); i++) {
+            swapChainImageViews[i] = createImageView(swapChainImages[i], swapChainImageFormat);
+        }
+    }
+
+
+    VkImageView createImageView(VkImage image, VkFormat format) {
+        VkImageViewCreateInfo viewInfo = {};
+        viewInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+        viewInfo.image = image;
+        viewInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
+        viewInfo.format = format;
+        viewInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+        viewInfo.subresourceRange.baseMipLevel = 0;
+        viewInfo.subresourceRange.levelCount = 1;
+        viewInfo.subresourceRange.baseArrayLayer = 0;
+        viewInfo.subresourceRange.layerCount = 1;
+
+        VkImageView imageView;
+        if (vkCreateImageView(getDevice().getDevice(), &viewInfo, nullptr, &imageView) != VK_SUCCESS) {
+            throw std::runtime_error("failed to create texture image view!");
+        }
+
+        return imageView;
+    }
+
 //private:
 	Entity* surfaceEntity;
 	VulkanSurface* surface;
@@ -791,6 +828,8 @@ public:
     std::vector<VkImage> swapChainImages;
     VkFormat swapChainImageFormat;
     VkExtent2D swapChainExtent;
+    std::vector<VkImageView> swapChainImageViews;
+    std::vector<VkFramebuffer> swapChainFramebuffers;
 };
 
 }

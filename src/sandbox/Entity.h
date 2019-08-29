@@ -16,11 +16,12 @@ friend class EntityReference;
 friend class EntityNode;
 public:
 	virtual ~Entity() {}
-	virtual void addChild(Entity* entity) = 0;
+	virtual void addChild(Entity* entity, bool updateVersion = true) = 0;
+	virtual void deleteChild(Entity* entity, bool updateVersion = true) = 0;
 	virtual const std::vector<Entity*>& getChildren() const = 0;
 	virtual const Entity* getParent() const = 0;
-	virtual void addComponent(Component* component) = 0;
-	virtual void deleteComponent(Component* component) = 0;
+	virtual void addComponent(Component* component, bool updateVersion = true) = 0;
+	virtual void deleteComponent(Component* component, bool updateVersion = true) = 0;
 	virtual const std::vector<Component*>& getComponents() const = 0;
 	virtual void update() = 0;
 	virtual void incrementVersion() = 0;
@@ -84,12 +85,13 @@ public:
 	EntityNode(Entity* parent);
 	virtual ~EntityNode();
 
-	void addChild(Entity* entity);
+	void addChild(Entity* entity, bool updateVersion = true);
+	void deleteChild(Entity* entity, bool updateVersion = true);
 	const std::vector<Entity*>& getChildren() const { return children; }
 	const Entity* getParent() const { return parent; }
 
-	void addComponent(Component* component);
-	void deleteComponent(Component* component);
+	void addComponent(Component* component, bool updateVersion = true);
+	void deleteComponent(Component* component, bool updateVersion = true);
 	const std::vector<Component*>& getComponents() const { return components; }
 
 	void update();
@@ -145,11 +147,12 @@ public:
 	EntityReference(Entity* entity) : entity(entity), parent(NULL) {}
 	EntityReference(Entity* entity, Entity* parent) : entity(entity), parent(parent) {}
 	virtual ~EntityReference() {}
-	void addChild(Entity* entity) { entity->addChild(entity); }
+	void addChild(Entity* entity, bool updateVersion = true) { entity->addChild(entity, updateVersion); }
+	void deleteChild(Entity* entity, bool updateVersion = true) { entity->deleteChild(entity, updateVersion); }
 	const std::vector<Entity*>& getChildren() const { return entity->getChildren(); }
 	const Entity* getParent() const  { return parent; }
-	void addComponent(Component* component) { return entity->addComponent(component); }
-	void deleteComponent(Component* component) { return entity->deleteComponent(component); }
+	void addComponent(Component* component, bool updateVersion = true) { return entity->addComponent(component, updateVersion); }
+	void deleteComponent(Component* component, bool updateVersion = true) { return entity->deleteComponent(component, updateVersion); }
 	const std::vector<Component*>& getComponents() const { return entity->getComponents(); }
 	void update() { return entity->update(); }
 	void incrementVersion() { entity->incrementVersion(); }

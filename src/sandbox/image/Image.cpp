@@ -16,8 +16,9 @@ void Image::loadImage(const std::string& path) {
 		delete[] image;
 	}
 
-	unsigned char *data = stbi_load(path.c_str(), &width, &height, &components, 0);
-	std::cout << width << " " << height << " " << components << std::endl;
+	unsigned char *data = stbi_load(path.c_str(), &width, &height, &components, STBI_rgb_alpha);
+	std::cout << width << " " << height << " " << components << std::endl; 
+	components = 4;
 	image = new unsigned char[width*height*components];
 	std::copy(data, data+width*height*components, image);
 
