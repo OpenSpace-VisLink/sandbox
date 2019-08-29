@@ -646,6 +646,8 @@ class VulkanSwapChain : public VulkanDeviceComponent {
 public:
 	VulkanSwapChain() { addType<VulkanSwapChain>(); }
 	virtual ~VulkanSwapChain() {}
+
+	virtual VkFormat getImageFormat() const = 0;
 };
 
 class VulkanBasicSwapChain : public VulkanSwapChain {
@@ -671,6 +673,7 @@ public:
 
         vkDestroyPipeline(device, graphicsPipeline, nullptr);
         vkDestroyPipelineLayout(device, pipelineLayout, nullptr);
+        
         vkDestroyRenderPass(device, renderPass, nullptr);
 
         for (auto imageView : swapChainImageViews) {
@@ -684,7 +687,8 @@ public:
             vkFreeMemory(device, uniformBuffersMemory[i], nullptr);
         }
 
-        vkDestroyDescriptorPool(device, descriptorPool, nullptr);*/
+        vkDestroyDescriptorPool(device, descriptorPool, nullptr);
+        */
     }
 
 	void update() {
@@ -821,6 +825,8 @@ public:
         return imageView;
     }
 
+    VkFormat getImageFormat() const { return swapChainImageFormat; }
+
 //private:
 	Entity* surfaceEntity;
 	VulkanSurface* surface;
@@ -830,6 +836,69 @@ public:
     VkExtent2D swapChainExtent;
     std::vector<VkImageView> swapChainImageViews;
     std::vector<VkFramebuffer> swapChainFramebuffers;
+};
+
+class VulkanRenderPass : public VulkanDeviceComponent {
+public:
+	VulkanRenderPass() { addType<VulkanRenderPass>(); }
+	virtual ~VulkanRenderPass() {}
+
+	virtual VkRenderPass getRenderPass() const = 0;
+};
+
+class VulkanBasicRenderPass : public VulkanRenderPass {
+public:
+	VulkanBasicRenderPass() { addType<VulkanBasicRenderPass>(); }
+	virtual ~VulkanBasicRenderPass() {}
+
+	void update() {
+		VkAttachmentDescription colorAttachment = {};
+        colorAttachment.format = getEntity().getComponent<VulkanSwapChain>()->getImageFormat();
+        colorAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
+        colorAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+        colorAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+        colorAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+        colorAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+        colorAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+        colorAttachment.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+
+        VkAttachmentReference colorAttachmentRef = {};
+        colorAttachmentRef.attachment = 0;
+        colorAttachmentRef.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+
+        VkSubpassDescription subpass = {};
+        subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
+        subpass.colorAttachmentCount = 1;
+        subpass.pColorAttachments = &colorAttachmentRef;
+
+        VkSubpassDependency dependency = {};
+        dependency.srcSubpass = VK_SUBPASS_EXTERNAL;
+        dependency.dstSubpass = 0;
+        dependency.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+        dependency.srcAccessMask = 0;
+        dependency.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+        dependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+
+        VkRenderPassCreateInfo renderPassInfo = {};
+        renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
+        renderPassInfo.attachmentCount = 1;
+        renderPassInfo.pAttachments = &colorAttachment;
+        renderPassInfo.subpassCount = 1;
+        renderPassInfo.pSubpasses = &subpass;
+        renderPassInfo.dependencyCount = 1;
+        renderPassInfo.pDependencies = &dependency;
+
+        if (vkCreateRenderPass(getDevice().getDevice(), &renderPassInfo, nullptr, &renderPass) != VK_SUCCESS) {
+            throw std::runtime_error("failed to create render pass!");
+        }
+	}
+
+	VkRenderPass getRenderPass() const {
+		return renderPass;
+	}
+
+private:
+	VkRenderPass renderPass;
 };
 
 }

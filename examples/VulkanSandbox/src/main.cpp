@@ -104,6 +104,7 @@ public:
 
 private:
     GLFWwindow* window;
+    GLFWwindow* window2;
 
     VkInstance instance;
     VkSurfaceKHR surface;
@@ -165,6 +166,11 @@ private:
         window = glfwCreateWindow(WIDTH, HEIGHT, "Vulkan", nullptr, nullptr);
         glfwSetWindowUserPointer(window, this);
         glfwSetFramebufferSizeCallback(window, framebufferResizeCallback);
+
+        window2 = glfwCreateWindow(WIDTH, HEIGHT, "Vulkan", nullptr, nullptr);
+        glfwSetWindowUserPointer(window2, this);
+        glfwSetFramebufferSizeCallback(window2, framebufferResizeCallback);
+        glfwSetWindowPos (window2, WIDTH+5, 0);
     }
 
     static void framebufferResizeCallback(GLFWwindow* window, int width, int height) {
@@ -180,27 +186,31 @@ private:
         vulkanNode.addComponent(new VulkanInstance());
         EntityNode* surfaceNode = new EntityNode(&vulkanNode);
             surfaceNode->addComponent(new GlfwSurface(window, &vulkanNode));
+        EntityNode* surface2Node = new EntityNode(&vulkanNode);
+            surfaceNode->addComponent(new GlfwSurface(window2, &vulkanNode));
         EntityNode* deviceNode = new EntityNode(&vulkanNode);
             deviceNode->addComponent(new VulkanDevice(&vulkanNode));
             EntityNode* queues = new EntityNode(deviceNode);
                 queues->addComponent(new VulkanGraphicsQueue());
                 queues->addComponent(new VulkanPresentQueue(surfaceNode));
-            EntityNode* swapChainNode = new EntityNode(deviceNode);
-                swapChainNode->addComponent(new VulkanBasicSwapChain(surfaceNode));
+            EntityNode* renderNode = new EntityNode(deviceNode);
+                renderNode->addComponent(new VulkanBasicSwapChain(surfaceNode));
+                renderNode->addComponent(new VulkanBasicRenderPass());
         vulkanNode.update();
 
-        instance = vulkanNode.getComponent<VulkanInstance>()->getInstance();
-        surface = surfaceNode->getComponent<VulkanSurface>()->getSurface();
+        //instance = vulkanNode.getComponent<VulkanInstance>()->getInstance();
+        //surface = surfaceNode->getComponent<VulkanSurface>()->getSurface();
         device = deviceNode->getComponent<VulkanDevice>()->getDevice();
         physicalDevice = deviceNode->getComponent<VulkanDevice>()->getPhysicalDevice();
         graphicsQueue = queues->getComponent<VulkanGraphicsQueue>();
         presentQueue = queues->getComponent<VulkanPresentQueue>();
 
-        swapChain = swapChainNode->getComponent<VulkanBasicSwapChain>()->swapChain;
-        swapChainImages = swapChainNode->getComponent<VulkanBasicSwapChain>()->swapChainImages;
-        swapChainImageFormat = swapChainNode->getComponent<VulkanBasicSwapChain>()->swapChainImageFormat;
-        swapChainExtent = swapChainNode->getComponent<VulkanBasicSwapChain>()->swapChainExtent;
-        swapChainImageViews = swapChainNode->getComponent<VulkanBasicSwapChain>()->swapChainImageViews;
+        swapChain = renderNode->getComponent<VulkanBasicSwapChain>()->swapChain;
+        swapChainImages = renderNode->getComponent<VulkanBasicSwapChain>()->swapChainImages;
+        //swapChainImageFormat = renderNode->getComponent<VulkanBasicSwapChain>()->swapChainImageFormat;
+        swapChainExtent = renderNode->getComponent<VulkanBasicSwapChain>()->swapChainExtent;
+        swapChainImageViews = renderNode->getComponent<VulkanBasicSwapChain>()->swapChainImageViews;
+        renderPass = renderNode->getComponent<VulkanRenderPass>()->getRenderPass();
 
         //createInstance();
         //setupDebugMessenger();
@@ -209,7 +219,7 @@ private:
         //createLogicalDevice();
         //createSwapChain();
         //createImageViews();
-        createRenderPass();
+        //createRenderPass();
         createDescriptorSetLayout();
         createGraphicsPipeline();
         createFramebuffers();
@@ -290,6 +300,7 @@ private:
         //vkDestroySurfaceKHR(instance, surface, nullptr);
 
         glfwDestroyWindow(window);
+        glfwDestroyWindow(window2);
 
         glfwTerminate();
     }
@@ -306,64 +317,14 @@ private:
         cleanupSwapChain();
 
         //createSwapChain();
-        createImageViews();
-        createRenderPass();
+        //createImageViews();
+        //createRenderPass();
         createGraphicsPipeline();
         createFramebuffers();
         createUniformBuffers();
         createDescriptorPool();
         createDescriptorSets();
         createCommandBuffers();
-    }
-
-    void createImageViews() {
-        swapChainImageViews.resize(swapChainImages.size());
-
-        for (size_t i = 0; i < swapChainImages.size(); i++) {
-            swapChainImageViews[i] = createImageView(swapChainImages[i], swapChainImageFormat);
-        }
-    }
-
-    void createRenderPass() {
-        VkAttachmentDescription colorAttachment = {};
-        colorAttachment.format = swapChainImageFormat;
-        colorAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
-        colorAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
-        colorAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-        colorAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-        colorAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-        colorAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-        colorAttachment.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
-
-        VkAttachmentReference colorAttachmentRef = {};
-        colorAttachmentRef.attachment = 0;
-        colorAttachmentRef.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-
-        VkSubpassDescription subpass = {};
-        subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
-        subpass.colorAttachmentCount = 1;
-        subpass.pColorAttachments = &colorAttachmentRef;
-
-        VkSubpassDependency dependency = {};
-        dependency.srcSubpass = VK_SUBPASS_EXTERNAL;
-        dependency.dstSubpass = 0;
-        dependency.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-        dependency.srcAccessMask = 0;
-        dependency.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-        dependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
-
-        VkRenderPassCreateInfo renderPassInfo = {};
-        renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
-        renderPassInfo.attachmentCount = 1;
-        renderPassInfo.pAttachments = &colorAttachment;
-        renderPassInfo.subpassCount = 1;
-        renderPassInfo.pSubpasses = &subpass;
-        renderPassInfo.dependencyCount = 1;
-        renderPassInfo.pDependencies = &dependency;
-
-        if (vkCreateRenderPass(device, &renderPassInfo, nullptr, &renderPass) != VK_SUCCESS) {
-            throw std::runtime_error("failed to create render pass!");
-        }
     }
 
     void createDescriptorSetLayout() {
@@ -1092,69 +1053,6 @@ private:
         }
 
         return shaderModule;
-    }
-
-    VkSurfaceFormatKHR chooseSwapSurfaceFormat(const std::vector<VkSurfaceFormatKHR>& availableFormats) {
-        for (const auto& availableFormat : availableFormats) {
-            if (availableFormat.format == VK_FORMAT_B8G8R8A8_UNORM && availableFormat.colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR) {
-                return availableFormat;
-            }
-        }
-
-        return availableFormats[0];
-    }
-
-    VkPresentModeKHR chooseSwapPresentMode(const std::vector<VkPresentModeKHR>& availablePresentModes) {
-        for (const auto& availablePresentMode : availablePresentModes) {
-            if (availablePresentMode == VK_PRESENT_MODE_MAILBOX_KHR) {
-                return availablePresentMode;
-            }
-        }
-
-        return VK_PRESENT_MODE_FIFO_KHR;
-    }
-
-    VkExtent2D chooseSwapExtent(const VkSurfaceCapabilitiesKHR& capabilities) {
-        if (capabilities.currentExtent.width != UINT32_MAX) {
-            return capabilities.currentExtent;
-        } else {
-            int width, height;
-            glfwGetFramebufferSize(window, &width, &height);
-
-            VkExtent2D actualExtent = {
-                static_cast<uint32_t>(width),
-                static_cast<uint32_t>(height)
-            };
-
-            actualExtent.width = std::max(capabilities.minImageExtent.width, std::min(capabilities.maxImageExtent.width, actualExtent.width));
-            actualExtent.height = std::max(capabilities.minImageExtent.height, std::min(capabilities.maxImageExtent.height, actualExtent.height));
-
-            return actualExtent;
-        }
-    }
-
-    SwapChainSupportDetails querySwapChainSupport(VkPhysicalDevice device) {
-        SwapChainSupportDetails details;
-
-        vkGetPhysicalDeviceSurfaceCapabilitiesKHR(device, surface, &details.capabilities);
-
-        uint32_t formatCount;
-        vkGetPhysicalDeviceSurfaceFormatsKHR(device, surface, &formatCount, nullptr);
-
-        if (formatCount != 0) {
-            details.formats.resize(formatCount);
-            vkGetPhysicalDeviceSurfaceFormatsKHR(device, surface, &formatCount, details.formats.data());
-        }
-
-        uint32_t presentModeCount;
-        vkGetPhysicalDeviceSurfacePresentModesKHR(device, surface, &presentModeCount, nullptr);
-
-        if (presentModeCount != 0) {
-            details.presentModes.resize(presentModeCount);
-            vkGetPhysicalDeviceSurfacePresentModesKHR(device, surface, &presentModeCount, details.presentModes.data());
-        }
-
-        return details;
     }
 
     static std::vector<char> readFile(const std::string& filename) {
