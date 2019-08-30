@@ -178,6 +178,23 @@ private:
         app->framebufferResized = true;
     }
 
+    /*void createDevice(GLFWwindow* window) {
+        EntityNode* surfaceNode = new EntityNode(&vulkanNode);
+            surfaceNode->addComponent(new GlfwSurface(window, &vulkanNode));
+        EntityNode* deviceNode = new EntityNode(&vulkanNode);
+            deviceNode->addComponent(new VulkanDevice(&vulkanNode));
+            EntityNode* queues = new EntityNode(deviceNode);
+                graphicsQueue = new VulkanGraphicsQueue();
+                queues->addComponent(graphicsQueue);
+                queues->addComponent(new VulkanPresentQueue(surfaceNode));
+            EntityNode* renderNode = new EntityNode(deviceNode);
+                renderNode->addComponent(new VulkanBasicSwapChain(surfaceNode));
+                renderNode->addComponent(new VulkanBasicRenderPass());
+                renderNode->addComponent(new VulkanSwapChainFramebufferGroup());
+            EntityNode* commandPoolNode = new EntityNode(deviceNode);
+                commandPoolNode->addComponent(new VulkanCommandPool(graphicsQueue));
+    }*/
+
     void initVulkan() {
         mainImage = new EntityNode(&images);
             mainImage->addComponent(new Image("examples/VulkanExample/textures/texture.jpg"));
@@ -191,11 +208,18 @@ private:
         EntityNode* deviceNode = new EntityNode(&vulkanNode);
             deviceNode->addComponent(new VulkanDevice(&vulkanNode));
             EntityNode* queues = new EntityNode(deviceNode);
-                queues->addComponent(new VulkanGraphicsQueue());
+                graphicsQueue = new VulkanGraphicsQueue();
+                queues->addComponent(graphicsQueue);
                 queues->addComponent(new VulkanPresentQueue(surfaceNode));
             EntityNode* renderNode = new EntityNode(deviceNode);
                 renderNode->addComponent(new VulkanBasicSwapChain(surfaceNode));
                 renderNode->addComponent(new VulkanBasicRenderPass());
+                renderNode->addComponent(new VulkanSwapChainFramebufferGroup());
+            EntityNode* commandPoolNode = new EntityNode(deviceNode);
+                commandPoolNode->addComponent(new VulkanCommandPool(graphicsQueue));
+
+        //createDevice(window2);
+
         vulkanNode.update();
 
         //instance = vulkanNode.getComponent<VulkanInstance>()->getInstance();
@@ -211,6 +235,8 @@ private:
         swapChainExtent = renderNode->getComponent<VulkanBasicSwapChain>()->swapChainExtent;
         swapChainImageViews = renderNode->getComponent<VulkanBasicSwapChain>()->swapChainImageViews;
         renderPass = renderNode->getComponent<VulkanRenderPass>()->getRenderPass();
+        swapChainFramebuffers = renderNode->getComponent<VulkanSwapChainFramebufferGroup>()->getFramebuffers();
+        commandPool = commandPoolNode->getComponent<VulkanCommandPool>()->getCommandPool();
 
         //createInstance();
         //setupDebugMessenger();
@@ -222,8 +248,8 @@ private:
         //createRenderPass();
         createDescriptorSetLayout();
         createGraphicsPipeline();
-        createFramebuffers();
-        createCommandPool();
+        //createFramebuffers();
+        //createCommandPool();
         createTextureImage();
         createTextureImageView();
         createTextureSampler();
@@ -320,7 +346,7 @@ private:
         //createImageViews();
         //createRenderPass();
         createGraphicsPipeline();
-        createFramebuffers();
+        //createFramebuffers();
         createUniformBuffers();
         createDescriptorPool();
         createDescriptorSets();
@@ -469,39 +495,6 @@ private:
 
         vkDestroyShaderModule(device, fragShaderModule, nullptr);
         vkDestroyShaderModule(device, vertShaderModule, nullptr);
-    }
-
-    void createFramebuffers() {
-        swapChainFramebuffers.resize(swapChainImageViews.size());
-
-        for (size_t i = 0; i < swapChainImageViews.size(); i++) {
-            VkImageView attachments[] = {
-                swapChainImageViews[i]
-            };
-
-            VkFramebufferCreateInfo framebufferInfo = {};
-            framebufferInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
-            framebufferInfo.renderPass = renderPass;
-            framebufferInfo.attachmentCount = 1;
-            framebufferInfo.pAttachments = attachments;
-            framebufferInfo.width = swapChainExtent.width;
-            framebufferInfo.height = swapChainExtent.height;
-            framebufferInfo.layers = 1;
-
-            if (vkCreateFramebuffer(device, &framebufferInfo, nullptr, &swapChainFramebuffers[i]) != VK_SUCCESS) {
-                throw std::runtime_error("failed to create framebuffer!");
-            }
-        }
-    }
-
-    void createCommandPool() {
-        VkCommandPoolCreateInfo poolInfo = {};
-        poolInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
-        poolInfo.queueFamilyIndex = graphicsQueue->getIndex();
-
-        if (vkCreateCommandPool(device, &poolInfo, nullptr, &commandPool) != VK_SUCCESS) {
-            throw std::runtime_error("failed to create graphics command pool!");
-        }
     }
 
     void createTextureImage() {
