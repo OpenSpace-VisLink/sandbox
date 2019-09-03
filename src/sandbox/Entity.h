@@ -52,20 +52,29 @@ public:
 
 
 	template<typename T>
-	std::vector<T*> getComponentsRecursive() const {
+	std::vector<T*> getComponentsRecursive(bool down = true) const {
 		std::vector<T*> components = getComponents<T>();
-		const std::vector<Entity*>& children = getChildren();
-		for (int f = 0; f < children.size(); f++) {
-			std::vector<T*> childComponents = children[f]->getComponentsRecursive<T>();
-			components.insert( components.end(), childComponents.begin(), childComponents.end() );
+		if (down) {		
+			const std::vector<Entity*>& children = getChildren();
+			for (int f = 0; f < children.size(); f++) {
+				std::vector<T*> childComponents = children[f]->getComponentsRecursive<T>(down);
+				components.insert( components.end(), childComponents.begin(), childComponents.end() );
+			}	
+		}
+		else {
+			const Entity* parent = getParent();
+			if (parent) {
+				std::vector<T*> parentComponents = parent->getComponentsRecursive<T>(down);
+				components.insert( components.end(), parentComponents.begin(), parentComponents.end() );
+			}
 		}
 
 		return components;
 	}
 
 	template<typename T>
-	T* getComponentRecursive() const {
-		std::vector<T*> components = getComponentsRecursive<T>();
+	T* getComponentRecursive(bool down = true) const {
+		std::vector<T*> components = getComponentsRecursive<T>(down);
 		if (components.size() > 0) {
 			return components[0];
 		}

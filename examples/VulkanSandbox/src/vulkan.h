@@ -975,10 +975,10 @@ private:
 	VulkanQueue* queue;
 };
 
-class VulkanDeviceObject : public Component {
+class RenderObject : public Component {
 public:
-	VulkanDeviceObject() { addType<VulkanDeviceObject>(); }
-	virtual ~VulkanDeviceObject() {}
+	RenderObject() { addType<RenderObject>(); }
+	virtual ~RenderObject() {}
 
 	virtual void update(const GraphicsContext& context) {}
 
@@ -987,13 +987,18 @@ public:
 	virtual void finishRender(const GraphicsContext& context) {}
 };
 
-class VulkanDeviceNode : public VulkanDeviceObject {
+class RenderNode : public Component {
 public:
-	VulkanDeviceNode(Entity* proxyEntity) : proxyEntity(proxyEntity) { addType<VulkanDeviceNode>(); }
-	virtual ~VulkanDeviceNode() {}
+	RenderNode(Entity* proxyEntity) : proxyEntity(proxyEntity) { addType<RenderNode>(); }
+	virtual ~RenderNode() {}
 
 	void update(const GraphicsContext& context) {
 		update(proxyEntity, context);
+	}
+
+	void render(const GraphicsContext& context) {
+		startRender(context);
+		finishRender(context);
 	}
 
 	void startRender(const GraphicsContext& context) {
@@ -1004,7 +1009,7 @@ public:
 
 private:
 	void update(Entity* entity, const GraphicsContext& context) {
-		std::vector<VulkanDeviceObject*> components = entity->getComponents<VulkanDeviceObject>();
+		std::vector<RenderObject*> components = entity->getComponents<RenderObject>();
 		for (int f = 0; f < components.size(); f++) {
 			components[f]->update(context);
 		}
@@ -1016,7 +1021,7 @@ private:
 	}
 
 	void render(Entity* entity, const GraphicsContext& context) {
-		std::vector<VulkanDeviceObject*> components = entity->getComponents<VulkanDeviceObject>();
+		std::vector<RenderObject*> components = entity->getComponents<RenderObject>();
 		for (int f = 0; f < components.size(); f++) {
 			components[f]->update(context);
 		}
@@ -1034,10 +1039,10 @@ private:
 	Entity* proxyEntity;
 };
 
-class VulkanDeviceRenderer : public VulkanDeviceComponent {
+class GraphicsRenderer : public Component {
 public:
-	VulkanDeviceRenderer() : node(NULL) { addType<VulkanDeviceRenderer>(); }
-	virtual ~VulkanDeviceRenderer() {
+	GraphicsRenderer() : node(NULL) { addType<GraphicsRenderer>(); }
+	virtual ~GraphicsRenderer() {
 		if (node) {
 			delete node;
 		}
@@ -1045,19 +1050,71 @@ public:
 
 	void update() {
 		if (!node) {
-			node = new VulkanDeviceNode(&getEntity());
+			node = new RenderNode(&getEntity());
 		}
 
 		node->update(context);
 	}
 
 	void render() {
-
+		node->render(context);
 	}
+
+protected:
+	GraphicsContext& getContext() { return context; }
 
 private:
 	GraphicsContext context;
-	VulkanDeviceNode* node;
+	RenderNode* node;
+};
+
+class VulkanDeviceState : public StateContainerItem {
+public:
+	VulkanDeviceState() {
+		device = NULL;
+	}
+
+	virtual ~VulkanDeviceState() {}
+
+	const VulkanDevice* getDevice() const { return device; }
+	void setDevice(VulkanDevice* device) { this->device = device; }
+
+	static VulkanDeviceState& get(const GraphicsContext& context) { return context.getRenderState()->getItem<VulkanDeviceState>(); }
+
+private:
+	VulkanDevice* device;
+};
+
+class VulkanDeviceRenderer : public GraphicsRenderer {
+public:
+	VulkanDeviceRenderer() : initialized(false), device(NULL) { addType<VulkanDeviceRenderer>(); }
+	virtual ~VulkanDeviceRenderer() {}
+
+	void update() {
+		VulkanDeviceState& state = VulkanDeviceState::get(getContext());
+		if (!initialized) {
+			VulkanDeviceState::get(getContext()).setDevice(device);
+			initialized = true;
+		}
+		
+		GraphicsRenderer::update();
+	}
+
+	void render() {
+		GraphicsRenderer::render();
+	}
+
+	VulkanDevice* getDevice() {
+		if (!device) {
+			device = getEntity().getComponentRecursive<VulkanDevice>(false);
+		}
+
+		return device;
+	}
+
+private:
+	bool initialized;
+	VulkanDevice* device;
 };
 
 }
