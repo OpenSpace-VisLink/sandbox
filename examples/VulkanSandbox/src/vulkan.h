@@ -1079,6 +1079,8 @@ public:
 	VulkanDeviceState() {
 		device = NULL;
 		renderMode = VULKAN_RENDER_NONE;
+		swapChain = NULL;
+		renderPass = NULL;
 	}
 
 	virtual ~VulkanDeviceState() {}
@@ -1087,12 +1089,18 @@ public:
 	void setDevice(VulkanDevice* device) { this->device = device; }
 	VulkanRenderMode getRenderMode() const { return renderMode; }
 	void setRenderMode(VulkanRenderMode renderMode) { this->renderMode = renderMode; }
+	VulkanSwapChain* getSwapChain() const { return swapChain; }
+	void setSwapChain(VulkanSwapChain* swapChain) { this->swapChain = swapChain; }
+	VulkanRenderPass* getRenderPass() const { return renderPass; }
+	void setRenderPass(VulkanRenderPass* renderPass) { this->renderPass = renderPass; }
 
 	static VulkanDeviceState& get(const GraphicsContext& context) { return context.getRenderState()->getItem<VulkanDeviceState>(); }
 
 private:
 	VulkanDevice* device;
 	VulkanRenderMode renderMode;
+	VulkanSwapChain* swapChain;
+	VulkanRenderPass* renderPass;
 };
 
 class VulkanDeviceRenderer : public GraphicsRenderer {
@@ -1109,6 +1117,8 @@ public:
 			device = getEntity().getComponentRecursive<VulkanDevice>(false);
 			if (device) {
 				state->setDevice(device);
+				state->setSwapChain(getEntity().getComponent<VulkanSwapChain>());
+				state->setRenderPass(getEntity().getComponent<VulkanRenderPass>());
 			}
 		}
 		
@@ -1225,20 +1235,229 @@ private:
 	GraphicsContextHandler<ContextState,ShaderModuleState> contextHandler;
 };
 
+class VulkanVertexInput : public Component {
+public:
+	VulkanVertexInput(size_t stride) : stride(stride) { addType<VulkanVertexInput>(); }
+	virtual ~VulkanVertexInput() {}
+
+	virtual VkVertexInputBindingDescription getBindingDescription(int binding) const {
+		VkVertexInputBindingDescription bindingDescription = {};
+	    bindingDescription.binding = 0;
+	    bindingDescription.stride = stride;//sizeof(Vertex);
+	    bindingDescription.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
+
+	    return bindingDescription;
+	}
+
+	std::vector<VkVertexInputAttributeDescription> getAttributeDescriptions(int binding) const {
+		std::vector<VkVertexInputAttributeDescription> attributeDescriptions;
+		attributeDescriptions.resize(attributes.size());
+
+		for (int f = 0; f < attributes.size(); f++) {
+			attributeDescriptions[f].binding = binding;
+	        attributeDescriptions[f].location = f;
+	        attributeDescriptions[f].format = attributes[f].format;
+	        attributeDescriptions[f].offset = attributes[f].offset;
+		}
+
+	    return attributeDescriptions;
+	}
+
+	void addAttribute(VkFormat format, size_t offset) {
+		Attribute att;
+		att.format = format;
+		att.offset = offset;
+		attributes.push_back(att);
+	}
+
+private:
+	struct Attribute { VkFormat format; size_t offset; };
+	std::vector<Attribute> attributes;
+	size_t stride;
+};
+
 class VulkanGraphicsPipeline : public VulkanRenderObject {
 public:
 	VulkanGraphicsPipeline() { addType<VulkanGraphicsPipeline>(); }
 	virtual ~VulkanGraphicsPipeline() {}
 
-	void update(const GraphicsContext& context) {
-	}
+	VkPipeline getGraphicsPipeline(const GraphicsContext& context) const { return contextHandler.getState(context)->graphicsPipeline; }
 
 protected:
-	void startRenderCommand(const GraphicsContext& context, VulkanDeviceState& state) {
+	void cleanup(const GraphicsContext& context, VulkanDeviceState& state) {
+		GraphicsPipelineState* pipelineState = contextHandler.getState(context);
+		vkDestroyPipeline(state.getDevice()->getDevice(), pipelineState->graphicsPipeline, nullptr);
+        vkDestroyPipelineLayout(state.getDevice()->getDevice(), pipelineState->pipelineLayout, nullptr);
 	}
-	void finishRenderCommand(const GraphicsContext& context, VulkanDeviceState& state) {
+	void update(const GraphicsContext& context, VulkanDeviceState& state) {
+		GraphicsPipelineState* pipelineState = contextHandler.getState(context);
+		VkDevice device = state.getDevice()->getDevice();
+
+		std::vector<VkPipelineShaderStageCreateInfo> shaderStages;
+
+        std::vector<VulkanShaderModule*> shaderModules = getEntity().getComponents<VulkanShaderModule>();
+        for (int f = 0; f < shaderModules.size(); f++) {
+            VkPipelineShaderStageCreateInfo shaderStageInfo = {};
+            shaderStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+            shaderStageInfo.stage = shaderModules[f]->getShaderStage();
+            shaderStageInfo.module = shaderModules[f]->getShaderModule(context);
+            shaderStageInfo.pName = "main";
+            shaderStages.push_back(shaderStageInfo);
+        }
+
+        VkPipelineVertexInputStateCreateInfo vertexInputInfo = {};
+        vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
+
+        //auto bindingDescription = Vertex::getBindingDescription();
+        //auto attributeDescriptions = Vertex::getAttributeDescriptions();
+
+        std::vector<VulkanVertexInput*> vertexInputList = getEntity().getComponents<VulkanVertexInput>();
+        std::vector<VkVertexInputBindingDescription> bindingDescriptions;
+        std::vector<VkVertexInputAttributeDescription> attributeDescriptions;
+        for (int f = 0; f < vertexInputList.size(); f++) {
+        	bindingDescriptions.push_back(vertexInputList[f]->getBindingDescription(f));
+        	std::vector<VkVertexInputAttributeDescription> bindingAttributeDescriptions = vertexInputList[f]->getAttributeDescriptions(f);
+        	attributeDescriptions.insert(attributeDescriptions.end(), bindingAttributeDescriptions.begin(), bindingAttributeDescriptions.end() );
+        }				
+
+        vertexInputInfo.vertexBindingDescriptionCount = bindingDescriptions.size();
+        vertexInputInfo.vertexAttributeDescriptionCount = static_cast<uint32_t>(attributeDescriptions.size());
+        vertexInputInfo.pVertexBindingDescriptions = bindingDescriptions.data();
+        vertexInputInfo.pVertexAttributeDescriptions = attributeDescriptions.data();
+
+        VkPipelineInputAssemblyStateCreateInfo inputAssembly = {};
+        inputAssembly.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
+        inputAssembly.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+        inputAssembly.primitiveRestartEnable = VK_FALSE;
+
+        VkViewport viewport = {};
+        viewport.x = 0.0f;
+        viewport.y = 0.0f;
+        viewport.width = (float) state.getSwapChain()->getExtent().width;
+        viewport.height = (float) state.getSwapChain()->getExtent().height;
+        viewport.minDepth = 0.0f;
+        viewport.maxDepth = 1.0f;
+
+        VkRect2D scissor = {};
+        scissor.offset = {0, 0};
+        scissor.extent = state.getSwapChain()->getExtent();
+
+        VkPipelineViewportStateCreateInfo viewportState = {};
+        viewportState.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
+        viewportState.viewportCount = 1;
+        viewportState.pViewports = &viewport;
+        viewportState.scissorCount = 1;
+        viewportState.pScissors = &scissor;
+
+        VkPipelineRasterizationStateCreateInfo rasterizer = {};
+        rasterizer.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
+        rasterizer.depthClampEnable = VK_FALSE;
+        rasterizer.rasterizerDiscardEnable = VK_FALSE;
+        rasterizer.polygonMode = VK_POLYGON_MODE_FILL;
+        rasterizer.lineWidth = 1.0f;
+        rasterizer.cullMode = VK_CULL_MODE_BACK_BIT;
+        rasterizer.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
+        rasterizer.depthBiasEnable = VK_FALSE;
+
+        VkPipelineMultisampleStateCreateInfo multisampling = {};
+        multisampling.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
+        multisampling.sampleShadingEnable = VK_FALSE;
+        multisampling.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
+
+        VkPipelineColorBlendAttachmentState colorBlendAttachment = {};
+        colorBlendAttachment.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
+        colorBlendAttachment.blendEnable = VK_FALSE;
+
+        VkPipelineColorBlendStateCreateInfo colorBlending = {};
+        colorBlending.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
+        colorBlending.logicOpEnable = VK_FALSE;
+        colorBlending.logicOp = VK_LOGIC_OP_COPY;
+        colorBlending.attachmentCount = 1;
+        colorBlending.pAttachments = &colorBlendAttachment;
+        colorBlending.blendConstants[0] = 0.0f;
+        colorBlending.blendConstants[1] = 0.0f;
+        colorBlending.blendConstants[2] = 0.0f;
+        colorBlending.blendConstants[3] = 0.0f;
+
+        VkPipelineLayoutCreateInfo pipelineLayoutInfo = {};
+        pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+        pipelineLayoutInfo.setLayoutCount = 1;
+        pipelineLayoutInfo.pSetLayouts = &descriptorSetLayout;
+
+        if (vkCreatePipelineLayout(state.getDevice()->getDevice(), &pipelineLayoutInfo, nullptr, &pipelineState->pipelineLayout) != VK_SUCCESS) {
+            throw std::runtime_error("failed to create pipeline layout!");
+        }
+
+        VkGraphicsPipelineCreateInfo pipelineInfo = {};
+        pipelineInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
+        pipelineInfo.stageCount = shaderStages.size();
+        pipelineInfo.pStages = shaderStages.data();
+        pipelineInfo.pVertexInputState = &vertexInputInfo;
+        pipelineInfo.pInputAssemblyState = &inputAssembly;
+        pipelineInfo.pViewportState = &viewportState;
+        pipelineInfo.pRasterizationState = &rasterizer;
+        pipelineInfo.pMultisampleState = &multisampling;
+        pipelineInfo.pColorBlendState = &colorBlending;
+        pipelineInfo.layout = pipelineState->pipelineLayout;
+        pipelineInfo.renderPass = state.getRenderPass()->getRenderPass();
+        pipelineInfo.subpass = 0;
+        pipelineInfo.basePipelineHandle = VK_NULL_HANDLE;
+
+        if (vkCreateGraphicsPipelines(device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &pipelineState->graphicsPipeline) != VK_SUCCESS) {
+            throw std::runtime_error("failed to create graphics pipeline!");
+        }
 	}
+	void startRenderCommand(const GraphicsContext& context, VulkanDeviceState& state) {}
+	void finishRenderCommand(const GraphicsContext& context, VulkanDeviceState& state) {}
+	void updateObject(const GraphicsContext& context, VulkanDeviceState& state) {}
+
+private:
+	struct Vertex {
+	    glm::vec2 pos;
+	    glm::vec3 color;
+	    glm::vec2 texCoord;
+
+	    static VkVertexInputBindingDescription getBindingDescription() {
+	        VkVertexInputBindingDescription bindingDescription = {};
+	        bindingDescription.binding = 0;
+	        bindingDescription.stride = sizeof(Vertex);
+	        bindingDescription.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
+
+	        return bindingDescription;
+	    }
+
+	    static std::array<VkVertexInputAttributeDescription, 3> getAttributeDescriptions() {
+	        std::array<VkVertexInputAttributeDescription, 3> attributeDescriptions = {};
+
+	        attributeDescriptions[0].binding = 0;
+	        attributeDescriptions[0].location = 0;
+	        attributeDescriptions[0].format = VK_FORMAT_R32G32_SFLOAT;
+	        attributeDescriptions[0].offset = offsetof(Vertex, pos);
+
+	        attributeDescriptions[1].binding = 0;
+	        attributeDescriptions[1].location = 1;
+	        attributeDescriptions[1].format = VK_FORMAT_R32G32B32_SFLOAT;
+	        attributeDescriptions[1].offset = offsetof(Vertex, color);
+
+	        attributeDescriptions[2].binding = 0;
+	        attributeDescriptions[2].location = 2;
+	        attributeDescriptions[2].format = VK_FORMAT_R32G32_SFLOAT;
+	        attributeDescriptions[2].offset = offsetof(Vertex, texCoord);
+
+	        return attributeDescriptions;
+	    }
+	};
+
+
+	struct GraphicsPipelineState : public ContextState {
+		VkPipeline graphicsPipeline;
+		VkPipelineLayout pipelineLayout;
+	};
+
+	GraphicsContextHandler<ContextState,GraphicsPipelineState> contextHandler;
 };
+
+
 
 }
 
