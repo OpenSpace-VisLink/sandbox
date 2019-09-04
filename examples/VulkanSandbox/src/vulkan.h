@@ -1081,6 +1081,8 @@ public:
 		renderMode = VULKAN_RENDER_NONE;
 		swapChain = NULL;
 		renderPass = NULL;
+		extent.width = 0;
+		extent.height = 0;
 	}
 
 	virtual ~VulkanDeviceState() {}
@@ -1089,10 +1091,12 @@ public:
 	void setDevice(VulkanDevice* device) { this->device = device; }
 	VulkanRenderMode getRenderMode() const { return renderMode; }
 	void setRenderMode(VulkanRenderMode renderMode) { this->renderMode = renderMode; }
-	VulkanSwapChain* getSwapChain() const { return swapChain; }
+	//VulkanSwapChain* getSwapChain() const { return swapChain; }
 	void setSwapChain(VulkanSwapChain* swapChain) { this->swapChain = swapChain; }
 	VulkanRenderPass* getRenderPass() const { return renderPass; }
 	void setRenderPass(VulkanRenderPass* renderPass) { this->renderPass = renderPass; }
+	const VkExtent2D& getExtent() const { return extent; }
+	void setExtent(VkExtent2D extent) { this->extent = extent; }
 
 	static VulkanDeviceState& get(const GraphicsContext& context) { return context.getRenderState()->getItem<VulkanDeviceState>(); }
 
@@ -1101,6 +1105,7 @@ private:
 	VulkanRenderMode renderMode;
 	VulkanSwapChain* swapChain;
 	VulkanRenderPass* renderPass;
+	VkExtent2D extent;
 };
 
 class VulkanDeviceRenderer : public GraphicsRenderer {
@@ -1119,6 +1124,7 @@ public:
 				state->setDevice(device);
 				state->setSwapChain(getEntity().getComponent<VulkanSwapChain>());
 				state->setRenderPass(getEntity().getComponent<VulkanRenderPass>());
+				state->setExtent(getEntity().getComponent<VulkanSwapChain>()->getExtent());
 			}
 		}
 		
@@ -1333,14 +1339,14 @@ protected:
         VkViewport viewport = {};
         viewport.x = 0.0f;
         viewport.y = 0.0f;
-        viewport.width = (float) state.getSwapChain()->getExtent().width;
-        viewport.height = (float) state.getSwapChain()->getExtent().height;
+        viewport.width = (float) state.getExtent().width;
+        viewport.height = (float) state.getExtent().height;
         viewport.minDepth = 0.0f;
         viewport.maxDepth = 1.0f;
 
         VkRect2D scissor = {};
         scissor.offset = {0, 0};
-        scissor.extent = state.getSwapChain()->getExtent();
+        scissor.extent = state.getExtent();
 
         VkPipelineViewportStateCreateInfo viewportState = {};
         viewportState.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
@@ -1382,7 +1388,7 @@ protected:
         VkPipelineLayoutCreateInfo pipelineLayoutInfo = {};
         pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
         pipelineLayoutInfo.setLayoutCount = 1;
-        pipelineLayoutInfo.pSetLayouts = &descriptorSetLayout;
+        //pipelineLayoutInfo.pSetLayouts = &descriptorSetLayout;
 
         if (vkCreatePipelineLayout(state.getDevice()->getDevice(), &pipelineLayoutInfo, nullptr, &pipelineState->pipelineLayout) != VK_SUCCESS) {
             throw std::runtime_error("failed to create pipeline layout!");
@@ -1412,43 +1418,6 @@ protected:
 	void updateObject(const GraphicsContext& context, VulkanDeviceState& state) {}
 
 private:
-	struct Vertex {
-	    glm::vec2 pos;
-	    glm::vec3 color;
-	    glm::vec2 texCoord;
-
-	    static VkVertexInputBindingDescription getBindingDescription() {
-	        VkVertexInputBindingDescription bindingDescription = {};
-	        bindingDescription.binding = 0;
-	        bindingDescription.stride = sizeof(Vertex);
-	        bindingDescription.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
-
-	        return bindingDescription;
-	    }
-
-	    static std::array<VkVertexInputAttributeDescription, 3> getAttributeDescriptions() {
-	        std::array<VkVertexInputAttributeDescription, 3> attributeDescriptions = {};
-
-	        attributeDescriptions[0].binding = 0;
-	        attributeDescriptions[0].location = 0;
-	        attributeDescriptions[0].format = VK_FORMAT_R32G32_SFLOAT;
-	        attributeDescriptions[0].offset = offsetof(Vertex, pos);
-
-	        attributeDescriptions[1].binding = 0;
-	        attributeDescriptions[1].location = 1;
-	        attributeDescriptions[1].format = VK_FORMAT_R32G32B32_SFLOAT;
-	        attributeDescriptions[1].offset = offsetof(Vertex, color);
-
-	        attributeDescriptions[2].binding = 0;
-	        attributeDescriptions[2].location = 2;
-	        attributeDescriptions[2].format = VK_FORMAT_R32G32_SFLOAT;
-	        attributeDescriptions[2].offset = offsetof(Vertex, texCoord);
-
-	        return attributeDescriptions;
-	    }
-	};
-
-
 	struct GraphicsPipelineState : public ContextState {
 		VkPipeline graphicsPipeline;
 		VkPipelineLayout pipelineLayout;
