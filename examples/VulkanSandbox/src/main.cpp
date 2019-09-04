@@ -155,8 +155,10 @@ private:
     bool framebufferResized = false;
 
     EntityNode vulkanNode;
+    EntityNode pipelineNode;
     EntityNode images;
     Entity* mainImage;
+    GraphicsRenderer* renderer;
 
     void initWindow() {
         glfwInit();
@@ -200,6 +202,9 @@ private:
             mainImage->addComponent(new Image("examples/VulkanExample/textures/texture.jpg"));
         images.update();
 
+        pipelineNode.addComponent(new VulkanShaderModule("examples/VulkanExample/src/shaders/vert.spv", VK_SHADER_STAGE_VERTEX_BIT));
+        pipelineNode.addComponent(new VulkanShaderModule("examples/VulkanExample/src/shaders/frag.spv", VK_SHADER_STAGE_FRAGMENT_BIT));
+
         vulkanNode.addComponent(new VulkanInstance());
         EntityNode* surfaceNode = new EntityNode(&vulkanNode);
             surfaceNode->addComponent(new GlfwSurface(window, &vulkanNode));
@@ -215,7 +220,10 @@ private:
                 renderNode->addComponent(new VulkanBasicSwapChain(surfaceNode));
                 renderNode->addComponent(new VulkanBasicRenderPass());
                 renderNode->addComponent(new VulkanSwapChainFramebufferGroup());
-            EntityNode* commandPoolNode = new EntityNode(deviceNode);
+                renderNode->addComponent(new VulkanDeviceRenderer());
+                EntityNode* graphicsNode = new EntityNode(renderNode);
+                    graphicsNode->addComponent(new RenderNode(&pipelineNode));
+           EntityNode* commandPoolNode = new EntityNode(deviceNode);
                 commandPoolNode->addComponent(new VulkanCommandPool(graphicsQueue));
 
         //createDevice(window2);
@@ -237,6 +245,7 @@ private:
         renderPass = renderNode->getComponent<VulkanRenderPass>()->getRenderPass();
         swapChainFramebuffers = renderNode->getComponent<VulkanSwapChainFramebufferGroup>()->getFramebuffers();
         commandPool = commandPoolNode->getComponent<VulkanCommandPool>()->getCommandPool();
+        renderer = renderNode->getComponent<GraphicsRenderer>();
 
         //createInstance();
         //setupDebugMessenger();
@@ -380,7 +389,7 @@ private:
     }
 
     void createGraphicsPipeline() {
-        auto vertShaderCode = readFile("examples/VulkanExample/src/shaders/vert.spv");
+        /*auto vertShaderCode = readFile("examples/VulkanExample/src/shaders/vert.spv");
         auto fragShaderCode = readFile("examples/VulkanExample/src/shaders/frag.spv");
 
         VkShaderModule vertShaderModule = createShaderModule(vertShaderCode);
@@ -398,7 +407,19 @@ private:
         fragShaderStageInfo.module = fragShaderModule;
         fragShaderStageInfo.pName = "main";
 
-        VkPipelineShaderStageCreateInfo shaderStages[] = {vertShaderStageInfo, fragShaderStageInfo};
+        VkPipelineShaderStageCreateInfo shaderStages[] = {vertShaderStageInfo, fragShaderStageInfo};*/
+
+        std::vector<VkPipelineShaderStageCreateInfo> shaderStages;
+
+        std::vector<VulkanShaderModule*> shaderModules = pipelineNode.getComponents<VulkanShaderModule>();
+        for (int f = 0; f < shaderModules.size(); f++) {
+            VkPipelineShaderStageCreateInfo shaderStageInfo = {};
+            shaderStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+            shaderStageInfo.stage = shaderModules[f]->getShaderStage();
+            shaderStageInfo.module = shaderModules[f]->getShaderModule(renderer->getContext());
+            shaderStageInfo.pName = "main";
+            shaderStages.push_back(shaderStageInfo);
+        }
 
         VkPipelineVertexInputStateCreateInfo vertexInputInfo = {};
         vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
@@ -477,7 +498,7 @@ private:
         VkGraphicsPipelineCreateInfo pipelineInfo = {};
         pipelineInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
         pipelineInfo.stageCount = 2;
-        pipelineInfo.pStages = shaderStages;
+        pipelineInfo.pStages = shaderStages.data();
         pipelineInfo.pVertexInputState = &vertexInputInfo;
         pipelineInfo.pInputAssemblyState = &inputAssembly;
         pipelineInfo.pViewportState = &viewportState;
@@ -493,8 +514,8 @@ private:
             throw std::runtime_error("failed to create graphics pipeline!");
         }
 
-        vkDestroyShaderModule(device, fragShaderModule, nullptr);
-        vkDestroyShaderModule(device, vertShaderModule, nullptr);
+        //vkDestroyShaderModule(device, fragShaderModule, nullptr);
+        //vkDestroyShaderModule(device, vertShaderModule, nullptr);
     }
 
     void createTextureImage() {

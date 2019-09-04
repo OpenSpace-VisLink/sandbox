@@ -9,6 +9,7 @@
 
 #include <iostream>
 #include <set>
+#include <fstream>
 
 namespace sandbox {
 
@@ -980,14 +981,13 @@ public:
 	RenderObject() { addType<RenderObject>(); }
 	virtual ~RenderObject() {}
 
+	virtual void cleanup(const GraphicsContext& context) {}
 	virtual void update(const GraphicsContext& context) {}
-
 	virtual void startRender(const GraphicsContext& context) {}
-
 	virtual void finishRender(const GraphicsContext& context) {}
 };
 
-class RenderNode : public Component {
+class RenderNode : public RenderObject {
 public:
 	RenderNode(Entity* proxyEntity) : proxyEntity(proxyEntity) { addType<RenderNode>(); }
 	virtual ~RenderNode() {}
@@ -1010,6 +1010,7 @@ public:
 private:
 	void update(Entity* entity, const GraphicsContext& context) {
 		std::vector<RenderObject*> components = entity->getComponents<RenderObject>();
+
 		for (int f = 0; f < components.size(); f++) {
 			components[f]->update(context);
 		}
@@ -1060,7 +1061,6 @@ public:
 		node->render(context);
 	}
 
-protected:
 	GraphicsContext& getContext() { return context; }
 
 private:
@@ -1068,53 +1068,176 @@ private:
 	RenderNode* node;
 };
 
+enum VulkanRenderMode {
+	VULKAN_RENDER_NONE,
+	VULKAN_RENDER_OBJECT,
+	VULKAN_RENDER_COMMAND
+};
+
 class VulkanDeviceState : public StateContainerItem {
 public:
 	VulkanDeviceState() {
 		device = NULL;
+		renderMode = VULKAN_RENDER_NONE;
 	}
 
 	virtual ~VulkanDeviceState() {}
 
 	const VulkanDevice* getDevice() const { return device; }
 	void setDevice(VulkanDevice* device) { this->device = device; }
+	VulkanRenderMode getRenderMode() const { return renderMode; }
+	void setRenderMode(VulkanRenderMode renderMode) { this->renderMode = renderMode; }
 
 	static VulkanDeviceState& get(const GraphicsContext& context) { return context.getRenderState()->getItem<VulkanDeviceState>(); }
 
 private:
 	VulkanDevice* device;
+	VulkanRenderMode renderMode;
 };
 
 class VulkanDeviceRenderer : public GraphicsRenderer {
 public:
-	VulkanDeviceRenderer() : initialized(false), device(NULL) { addType<VulkanDeviceRenderer>(); }
+	VulkanDeviceRenderer() : device(NULL), state(NULL) { addType<VulkanDeviceRenderer>(); }
 	virtual ~VulkanDeviceRenderer() {}
 
 	void update() {
-		VulkanDeviceState& state = VulkanDeviceState::get(getContext());
-		if (!initialized) {
-			VulkanDeviceState::get(getContext()).setDevice(device);
-			initialized = true;
+		if (!state) {
+			state = &VulkanDeviceState::get(getContext());
+		}
+
+		if (!device) {
+			device = getEntity().getComponentRecursive<VulkanDevice>(false);
+			if (device) {
+				state->setDevice(device);
+			}
 		}
 		
 		GraphicsRenderer::update();
 	}
 
 	void render() {
+		state->setRenderMode(VULKAN_RENDER_OBJECT);
 		GraphicsRenderer::render();
-	}
-
-	VulkanDevice* getDevice() {
-		if (!device) {
-			device = getEntity().getComponentRecursive<VulkanDevice>(false);
-		}
-
-		return device;
+		state->setRenderMode(VULKAN_RENDER_COMMAND);
+		GraphicsRenderer::render();
+		state->setRenderMode(VULKAN_RENDER_NONE);
 	}
 
 private:
-	bool initialized;
 	VulkanDevice* device;
+	VulkanDeviceState* state;
+};
+
+class VulkanRenderObject : public RenderObject {
+public:
+	VulkanRenderObject() { addType<VulkanRenderObject>(); }
+	virtual ~VulkanRenderObject() {}
+
+	void cleanup(const GraphicsContext& context) {
+		cleanup(context, VulkanDeviceState::get(context));
+	}
+	void update(const GraphicsContext& context) {
+		update(context, VulkanDeviceState::get(context));
+	}
+	void startRender(const GraphicsContext& context) {
+		VulkanDeviceState& state = VulkanDeviceState::get(context);
+		switch (state.getRenderMode()) {
+			case VULKAN_RENDER_OBJECT:
+				updateObject(context, state);
+				break;
+			case VULKAN_RENDER_COMMAND:
+				startRenderCommand(context, state);
+				break;
+			default:
+				break;
+		}
+
+	}
+	void finishRender(const GraphicsContext& context) {
+		VulkanDeviceState& state = VulkanDeviceState::get(context);
+		if (state.getRenderMode() == VULKAN_RENDER_COMMAND) {
+			finishRenderCommand(context, state);
+		}
+	}
+
+protected:
+	virtual void cleanup(const GraphicsContext& context, VulkanDeviceState& state) {}
+	virtual void update(const GraphicsContext& context, VulkanDeviceState& state) {}
+	virtual void startRenderCommand(const GraphicsContext& context, VulkanDeviceState& state) {}
+	virtual void finishRenderCommand(const GraphicsContext& context, VulkanDeviceState& state) {}
+	virtual void updateObject(const GraphicsContext& context, VulkanDeviceState& state) {}
+};
+
+class VulkanShaderModule : public VulkanRenderObject {
+public:
+	VulkanShaderModule(const std::string& filename, VkShaderStageFlagBits shaderStage) : shaderStage(shaderStage) { 
+		addType<VulkanShaderModule>(); 
+		code = readFile(filename);
+
+	}
+	virtual ~VulkanShaderModule() {}
+
+	VkShaderStageFlagBits getShaderStage() const { return shaderStage; }
+	VkShaderModule getShaderModule(const GraphicsContext& context) const { return contextHandler.getState(context)->shaderModule; }
+
+protected:
+	void cleanup(const GraphicsContext& context, VulkanDeviceState& state) {
+		vkDestroyShaderModule(state.getDevice()->getDevice(), contextHandler.getState(context)->shaderModule, nullptr);
+	}
+
+	void update(const GraphicsContext& context, VulkanDeviceState& state) {
+		VkShaderModuleCreateInfo createInfo = {};
+        createInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
+        createInfo.codeSize = code.size();
+        createInfo.pCode = reinterpret_cast<const uint32_t*>(code.data());
+
+        if (vkCreateShaderModule(state.getDevice()->getDevice(), &createInfo, nullptr, &contextHandler.getState(context)->shaderModule) != VK_SUCCESS) {
+            throw std::runtime_error("failed to create shader module!");
+        }
+	}
+
+
+private:
+	struct ShaderModuleState : public ContextState {
+		VkShaderModule shaderModule;
+	};
+
+    static std::vector<char> readFile(const std::string& filename) {
+        std::ifstream file(filename, std::ios::ate | std::ios::binary);
+
+        if (!file.is_open()) {
+            throw std::runtime_error("failed to open file!");
+        }
+
+        size_t fileSize = (size_t) file.tellg();
+        std::vector<char> buffer(fileSize);
+
+        file.seekg(0);
+        file.read(buffer.data(), fileSize);
+
+        file.close();
+
+        return buffer;
+    }
+
+	std::vector<char> code;
+	VkShaderStageFlagBits shaderStage;
+	GraphicsContextHandler<ContextState,ShaderModuleState> contextHandler;
+};
+
+class VulkanGraphicsPipeline : public VulkanRenderObject {
+public:
+	VulkanGraphicsPipeline() { addType<VulkanGraphicsPipeline>(); }
+	virtual ~VulkanGraphicsPipeline() {}
+
+	void update(const GraphicsContext& context) {
+	}
+
+protected:
+	void startRenderCommand(const GraphicsContext& context, VulkanDeviceState& state) {
+	}
+	void finishRenderCommand(const GraphicsContext& context, VulkanDeviceState& state) {
+	}
 };
 
 }
