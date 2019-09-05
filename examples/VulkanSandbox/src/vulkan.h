@@ -13,11 +13,124 @@
 
 namespace sandbox {
 
+class RenderObject : public Component {
+public:
+	RenderObject() { addType<RenderObject>(); }
+	virtual ~RenderObject() {}
+
+	virtual void cleanup(const GraphicsContext& context) {}
+	virtual void update(const GraphicsContext& context) {}
+	virtual void startRender(const GraphicsContext& context) {}
+	virtual void finishRender(const GraphicsContext& context) {}
+};
+
+class RenderNode : public RenderObject {
+public:
+	RenderNode(Entity* proxyEntity) : proxyEntity(proxyEntity) { addType<RenderNode>(); }
+	virtual ~RenderNode() {}
+
+	void update(const GraphicsContext& context) {
+		update(proxyEntity, context);
+	}
+
+	void render(const GraphicsContext& context) {
+		startRender(context);
+		finishRender(context);
+	}
+
+	void startRender(const GraphicsContext& context) {
+		render(proxyEntity, context);
+	}
+
+	void finishRender(const GraphicsContext& context) {}
+
+private:
+	void update(Entity* entity, const GraphicsContext& context) {
+		std::vector<RenderObject*> components = entity->getComponents<RenderObject>();
+
+		for (int f = 0; f < components.size(); f++) {
+			components[f]->update(context);
+		}
+
+		const std::vector<Entity*>& children = entity->getChildren();
+		for (int f = 0; f < children.size(); f++) {
+			update(children[f], context);
+		}
+	}
+
+	void render(Entity* entity, const GraphicsContext& context) {
+		std::vector<RenderObject*> components = entity->getComponents<RenderObject>();
+		for (int f = 0; f < components.size(); f++) {
+			components[f]->update(context);
+		}
+
+		const std::vector<Entity*>& children = entity->getChildren();
+		for (int f = 0; f < entity->getChildren().size(); f++) {
+			update(children[f], context);
+		}
+
+		for (int f = components.size()-1; f >= 0; f--) {
+			components[f]->finishRender(context);
+		}
+	}
+
+	Entity* proxyEntity;
+};
+
+class GraphicsRenderer : public Component {
+public:
+	GraphicsRenderer() : node(NULL) { addType<GraphicsRenderer>(); }
+	virtual ~GraphicsRenderer() {
+		if (node) {
+			delete node;
+		}
+	}
+
+	void update() {
+		if (!node) {
+			node = new RenderNode(&getEntity());
+		}
+
+		node->update(context);
+	}
+
+	void render() {
+		node->render(context);
+	}
+
+	GraphicsContext& getContext() { return context; }
+
+private:
+	GraphicsContext context;
+	RenderNode* node;
+};
+
 struct SwapChainSupportDetails {
     VkSurfaceCapabilitiesKHR capabilities;
     std::vector<VkSurfaceFormatKHR> formats;
     std::vector<VkPresentModeKHR> presentModes;
 };
+
+class VulkanDeviceState;
+
+class VulkanRenderObject : public RenderObject {
+public:
+	VulkanRenderObject() { addType<VulkanRenderObject>(); }
+	virtual ~VulkanRenderObject() {}
+
+	void cleanup(const GraphicsContext& context);
+	void update(const GraphicsContext& context);
+	void startRender(const GraphicsContext& context);
+	void finishRender(const GraphicsContext& context);
+
+protected:
+	virtual void cleanup(const GraphicsContext& context, VulkanDeviceState& state) {}
+	virtual void update(const GraphicsContext& context, VulkanDeviceState& state) {}
+	virtual void startRenderCommand(const GraphicsContext& context, VulkanDeviceState& state) {}
+	virtual void finishRenderCommand(const GraphicsContext& context, VulkanDeviceState& state) {}
+	virtual void updateObject(const GraphicsContext& context, VulkanDeviceState& state) {}
+};
+
 
 class VulkanInstance;
 
@@ -843,111 +956,15 @@ public:
     std::vector<VkImageView> swapChainImageViews;
 };
 
-class VulkanRenderPass : public VulkanDeviceComponent {
+class VulkanRenderPass : public VulkanRenderObject {
 public:
 	VulkanRenderPass() { addType<VulkanRenderPass>(); }
 	virtual ~VulkanRenderPass() {}
 
-	virtual VkRenderPass getRenderPass() const = 0;
+	virtual VkRenderPass getRenderPass(const GraphicsContext& context) const = 0;
 };
 
-class VulkanBasicRenderPass : public VulkanRenderPass {
-public:
-	VulkanBasicRenderPass() { addType<VulkanBasicRenderPass>(); }
-	virtual ~VulkanBasicRenderPass() {
-		vkDestroyRenderPass(getDevice().getDevice(), renderPass, nullptr);
-	}
 
-	void update() {
-		VkAttachmentDescription colorAttachment = {};
-        colorAttachment.format = getEntity().getComponent<VulkanSwapChain>()->getImageFormat();
-        colorAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
-        colorAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
-        colorAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-        colorAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-        colorAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-        colorAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-        colorAttachment.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
-
-        VkAttachmentReference colorAttachmentRef = {};
-        colorAttachmentRef.attachment = 0;
-        colorAttachmentRef.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-
-        VkSubpassDescription subpass = {};
-        subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
-        subpass.colorAttachmentCount = 1;
-        subpass.pColorAttachments = &colorAttachmentRef;
-
-        VkSubpassDependency dependency = {};
-        dependency.srcSubpass = VK_SUBPASS_EXTERNAL;
-        dependency.dstSubpass = 0;
-        dependency.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-        dependency.srcAccessMask = 0;
-        dependency.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-        dependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
-
-        VkRenderPassCreateInfo renderPassInfo = {};
-        renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
-        renderPassInfo.attachmentCount = 1;
-        renderPassInfo.pAttachments = &colorAttachment;
-        renderPassInfo.subpassCount = 1;
-        renderPassInfo.pSubpasses = &subpass;
-        renderPassInfo.dependencyCount = 1;
-        renderPassInfo.pDependencies = &dependency;
-
-        if (vkCreateRenderPass(getDevice().getDevice(), &renderPassInfo, nullptr, &renderPass) != VK_SUCCESS) {
-            throw std::runtime_error("failed to create render pass!");
-        }
-	}
-
-	VkRenderPass getRenderPass() const {
-		return renderPass;
-	}
-
-private:
-	VkRenderPass renderPass;
-};
-
-class VulkanSwapChainFramebufferGroup : public VulkanDeviceComponent {
-public:
-	VulkanSwapChainFramebufferGroup() { addType<VulkanSwapChainFramebufferGroup>(); }
-	virtual ~VulkanSwapChainFramebufferGroup() {
-		for (auto framebuffer : swapChainFramebuffers) {
-            vkDestroyFramebuffer(getDevice().getDevice(), framebuffer, nullptr);
-        }
-	}
-
-	void update() {
-		VulkanSwapChain* swapChain = getEntity().getComponent<VulkanSwapChain>();
-        swapChainFramebuffers.resize(swapChain->getImageViews().size());
-
-        for (size_t i = 0; i < swapChain->getImageViews().size(); i++) {
-            VkImageView attachments[] = {
-                swapChain->getImageViews()[i]
-            };
-
-            VkFramebufferCreateInfo framebufferInfo = {};
-            framebufferInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
-            framebufferInfo.renderPass = getEntity().getComponent<VulkanRenderPass>()->getRenderPass();
-            framebufferInfo.attachmentCount = 1;
-            framebufferInfo.pAttachments = attachments;
-            framebufferInfo.width = swapChain->getExtent().width;
-            framebufferInfo.height = swapChain->getExtent().height;
-            framebufferInfo.layers = 1;
-
-            if (vkCreateFramebuffer(getDevice().getDevice(), &framebufferInfo, nullptr, &swapChainFramebuffers[i]) != VK_SUCCESS) {
-                throw std::runtime_error("failed to create framebuffer!");
-            }
-        }
-	}
-
-	std::vector<VkFramebuffer> getFramebuffers() const {
-		return swapChainFramebuffers;
-	}
-
-private:
-	std::vector<VkFramebuffer> swapChainFramebuffers;
-};
 
 
 class VulkanCommandPool : public VulkanDeviceComponent {
@@ -976,103 +993,12 @@ private:
 	VulkanQueue* queue;
 };
 
-class RenderObject : public Component {
-public:
-	RenderObject() { addType<RenderObject>(); }
-	virtual ~RenderObject() {}
-
-	virtual void cleanup(const GraphicsContext& context) {}
-	virtual void update(const GraphicsContext& context) {}
-	virtual void startRender(const GraphicsContext& context) {}
-	virtual void finishRender(const GraphicsContext& context) {}
-};
-
-class RenderNode : public RenderObject {
-public:
-	RenderNode(Entity* proxyEntity) : proxyEntity(proxyEntity) { addType<RenderNode>(); }
-	virtual ~RenderNode() {}
-
-	void update(const GraphicsContext& context) {
-		update(proxyEntity, context);
-	}
-
-	void render(const GraphicsContext& context) {
-		startRender(context);
-		finishRender(context);
-	}
-
-	void startRender(const GraphicsContext& context) {
-		render(proxyEntity, context);
-	}
-
-	void finishRender(const GraphicsContext& context) {}
-
-private:
-	void update(Entity* entity, const GraphicsContext& context) {
-		std::vector<RenderObject*> components = entity->getComponents<RenderObject>();
-
-		for (int f = 0; f < components.size(); f++) {
-			components[f]->update(context);
-		}
-
-		const std::vector<Entity*>& children = entity->getChildren();
-		for (int f = 0; f < children.size(); f++) {
-			update(children[f], context);
-		}
-	}
-
-	void render(Entity* entity, const GraphicsContext& context) {
-		std::vector<RenderObject*> components = entity->getComponents<RenderObject>();
-		for (int f = 0; f < components.size(); f++) {
-			components[f]->update(context);
-		}
-
-		const std::vector<Entity*>& children = entity->getChildren();
-		for (int f = 0; f < entity->getChildren().size(); f++) {
-			update(children[f], context);
-		}
-
-		for (int f = components.size()-1; f >= 0; f--) {
-			components[f]->finishRender(context);
-		}
-	}
-
-	Entity* proxyEntity;
-};
-
-class GraphicsRenderer : public Component {
-public:
-	GraphicsRenderer() : node(NULL) { addType<GraphicsRenderer>(); }
-	virtual ~GraphicsRenderer() {
-		if (node) {
-			delete node;
-		}
-	}
-
-	void update() {
-		if (!node) {
-			node = new RenderNode(&getEntity());
-		}
-
-		node->update(context);
-	}
-
-	void render() {
-		node->render(context);
-	}
-
-	GraphicsContext& getContext() { return context; }
-
-private:
-	GraphicsContext context;
-	RenderNode* node;
-};
-
 enum VulkanRenderMode {
 	VULKAN_RENDER_NONE,
 	VULKAN_RENDER_OBJECT,
 	VULKAN_RENDER_COMMAND
 };
+
 
 class VulkanDeviceState : public StateContainerItem {
 public:
@@ -1106,6 +1032,53 @@ private:
 	VulkanSwapChain* swapChain;
 	VulkanRenderPass* renderPass;
 	VkExtent2D extent;
+};
+
+class VulkanSwapChainFramebufferGroup : public VulkanRenderObject {
+public:
+	VulkanSwapChainFramebufferGroup() { addType<VulkanSwapChainFramebufferGroup>(); }
+	virtual ~VulkanSwapChainFramebufferGroup() {}
+
+	virtual void cleanup(const GraphicsContext& context, VulkanDeviceState& state) {
+		for (auto framebuffer : contextHandler.getSharedState(context)->swapChainFramebuffers) {
+            vkDestroyFramebuffer(state.getDevice()->getDevice(), framebuffer, nullptr);
+        }
+	}
+	virtual void update(const GraphicsContext& context, VulkanDeviceState& state) {
+		VulkanSwapChain* swapChain = getEntity().getComponent<VulkanSwapChain>();
+        contextHandler.getSharedState(context)->swapChainFramebuffers.resize(swapChain->getImageViews().size());
+
+        for (size_t i = 0; i < swapChain->getImageViews().size(); i++) {
+            VkImageView attachments[] = {
+                swapChain->getImageViews()[i]
+            };
+
+            VkFramebufferCreateInfo framebufferInfo = {};
+            framebufferInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
+            framebufferInfo.renderPass = state.getRenderPass()->getRenderPass(context);
+            framebufferInfo.attachmentCount = 1;
+            framebufferInfo.pAttachments = attachments;
+            framebufferInfo.width = swapChain->getExtent().width;
+            framebufferInfo.height = swapChain->getExtent().height;
+            framebufferInfo.layers = 1;
+
+            if (vkCreateFramebuffer(state.getDevice()->getDevice(), &framebufferInfo, nullptr, &contextHandler.getSharedState(context)->swapChainFramebuffers[i]) != VK_SUCCESS) {
+                throw std::runtime_error("failed to create framebuffer!");
+            }
+        }
+	}
+
+	std::vector<VkFramebuffer> getFramebuffers(const GraphicsContext& context) const {
+		return contextHandler.getSharedState(context)->swapChainFramebuffers;
+	}
+
+private:
+	struct FrameBufferGroupState : public ContextState {
+		std::vector<VkFramebuffer> swapChainFramebuffers;
+	};
+
+	GraphicsContextHandler<FrameBufferGroupState,ContextState> contextHandler;
+
 };
 
 class VulkanDeviceRenderer : public GraphicsRenderer {
@@ -1144,45 +1117,34 @@ private:
 	VulkanDeviceState* state;
 };
 
-class VulkanRenderObject : public RenderObject {
-public:
-	VulkanRenderObject() { addType<VulkanRenderObject>(); }
-	virtual ~VulkanRenderObject() {}
 
-	void cleanup(const GraphicsContext& context) {
-		cleanup(context, VulkanDeviceState::get(context));
-	}
-	void update(const GraphicsContext& context) {
-		update(context, VulkanDeviceState::get(context));
-	}
-	void startRender(const GraphicsContext& context) {
-		VulkanDeviceState& state = VulkanDeviceState::get(context);
-		switch (state.getRenderMode()) {
-			case VULKAN_RENDER_OBJECT:
-				updateObject(context, state);
-				break;
-			case VULKAN_RENDER_COMMAND:
-				startRenderCommand(context, state);
-				break;
-			default:
-				break;
-		}
-
-	}
-	void finishRender(const GraphicsContext& context) {
-		VulkanDeviceState& state = VulkanDeviceState::get(context);
-		if (state.getRenderMode() == VULKAN_RENDER_COMMAND) {
-			finishRenderCommand(context, state);
-		}
+inline void VulkanRenderObject::cleanup(const GraphicsContext& context) {
+	cleanup(context, VulkanDeviceState::get(context));
+}
+inline void VulkanRenderObject::update(const GraphicsContext& context) {
+	update(context, VulkanDeviceState::get(context));
+}
+inline void VulkanRenderObject::startRender(const GraphicsContext& context) {
+	VulkanDeviceState& state = VulkanDeviceState::get(context);
+	switch (state.getRenderMode()) {
+		case VULKAN_RENDER_OBJECT:
+			updateObject(context, state);
+			break;
+		case VULKAN_RENDER_COMMAND:
+			startRenderCommand(context, state);
+			break;
+		default:
+			break;
 	}
 
-protected:
-	virtual void cleanup(const GraphicsContext& context, VulkanDeviceState& state) {}
-	virtual void update(const GraphicsContext& context, VulkanDeviceState& state) {}
-	virtual void startRenderCommand(const GraphicsContext& context, VulkanDeviceState& state) {}
-	virtual void finishRenderCommand(const GraphicsContext& context, VulkanDeviceState& state) {}
-	virtual void updateObject(const GraphicsContext& context, VulkanDeviceState& state) {}
-};
+}
+inline void VulkanRenderObject::finishRender(const GraphicsContext& context) {
+	VulkanDeviceState& state = VulkanDeviceState::get(context);
+	if (state.getRenderMode() == VULKAN_RENDER_COMMAND) {
+		finishRenderCommand(context, state);
+	}
+}
+
 
 class VulkanShaderModule : public VulkanRenderObject {
 public:
@@ -1194,11 +1156,11 @@ public:
 	virtual ~VulkanShaderModule() {}
 
 	VkShaderStageFlagBits getShaderStage() const { return shaderStage; }
-	VkShaderModule getShaderModule(const GraphicsContext& context) const { return contextHandler.getState(context)->shaderModule; }
+	VkShaderModule getShaderModule(const GraphicsContext& context) const { return contextHandler.getSharedState(context)->shaderModule; }
 
 protected:
 	void cleanup(const GraphicsContext& context, VulkanDeviceState& state) {
-		vkDestroyShaderModule(state.getDevice()->getDevice(), contextHandler.getState(context)->shaderModule, nullptr);
+		vkDestroyShaderModule(state.getDevice()->getDevice(), contextHandler.getSharedState(context)->shaderModule, nullptr);
 	}
 
 	void update(const GraphicsContext& context, VulkanDeviceState& state) {
@@ -1207,7 +1169,7 @@ protected:
         createInfo.codeSize = code.size();
         createInfo.pCode = reinterpret_cast<const uint32_t*>(code.data());
 
-        if (vkCreateShaderModule(state.getDevice()->getDevice(), &createInfo, nullptr, &contextHandler.getState(context)->shaderModule) != VK_SUCCESS) {
+        if (vkCreateShaderModule(state.getDevice()->getDevice(), &createInfo, nullptr, &contextHandler.getSharedState(context)->shaderModule) != VK_SUCCESS) {
             throw std::runtime_error("failed to create shader module!");
         }
 	}
@@ -1238,7 +1200,7 @@ private:
 
 	std::vector<char> code;
 	VkShaderStageFlagBits shaderStage;
-	GraphicsContextHandler<ContextState,ShaderModuleState> contextHandler;
+	GraphicsContextHandler<ShaderModuleState, ContextState> contextHandler;
 };
 
 class VulkanVertexInput : public Component {
@@ -1282,21 +1244,86 @@ private:
 	size_t stride;
 };
 
+class VulkanBasicRenderPass : public VulkanRenderPass {
+public:
+	VulkanBasicRenderPass() { addType<VulkanBasicRenderPass>(); }
+	virtual ~VulkanBasicRenderPass() {}
+
+	virtual void cleanup(const GraphicsContext& context, VulkanDeviceState& state) {
+		vkDestroyRenderPass(state.getDevice()->getDevice(), contextHandler.getSharedState(context)->renderPass, nullptr);
+	}
+
+	void update(const GraphicsContext& context, VulkanDeviceState& state) {
+		RenderPassState* sharedState = contextHandler.getSharedState(context);
+		VkAttachmentDescription colorAttachment = {};
+        colorAttachment.format = getEntity().getComponent<VulkanSwapChain>()->getImageFormat();
+        colorAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
+        colorAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+        colorAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+        colorAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+        colorAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+        colorAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+        colorAttachment.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+
+        VkAttachmentReference colorAttachmentRef = {};
+        colorAttachmentRef.attachment = 0;
+        colorAttachmentRef.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+
+        VkSubpassDescription subpass = {};
+        subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
+        subpass.colorAttachmentCount = 1;
+        subpass.pColorAttachments = &colorAttachmentRef;
+
+        VkSubpassDependency dependency = {};
+        dependency.srcSubpass = VK_SUBPASS_EXTERNAL;
+        dependency.dstSubpass = 0;
+        dependency.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+        dependency.srcAccessMask = 0;
+        dependency.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+        dependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+
+        VkRenderPassCreateInfo renderPassInfo = {};
+        renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
+        renderPassInfo.attachmentCount = 1;
+        renderPassInfo.pAttachments = &colorAttachment;
+        renderPassInfo.subpassCount = 1;
+        renderPassInfo.pSubpasses = &subpass;
+        renderPassInfo.dependencyCount = 1;
+        renderPassInfo.pDependencies = &dependency;
+
+        if (vkCreateRenderPass(state.getDevice()->getDevice(), &renderPassInfo, nullptr, &sharedState->renderPass) != VK_SUCCESS) {
+            throw std::runtime_error("failed to create render pass!");
+        }
+	}
+
+	VkRenderPass getRenderPass(const GraphicsContext& context) const {
+		return contextHandler.getSharedState(context)->renderPass;
+	}
+
+private:
+	struct RenderPassState : public ContextState {
+		VkRenderPass renderPass;
+	};
+
+	
+	GraphicsContextHandler<RenderPassState,ContextState> contextHandler;
+};
+
 class VulkanGraphicsPipeline : public VulkanRenderObject {
 public:
 	VulkanGraphicsPipeline() { addType<VulkanGraphicsPipeline>(); }
 	virtual ~VulkanGraphicsPipeline() {}
 
-	VkPipeline getGraphicsPipeline(const GraphicsContext& context) const { return contextHandler.getState(context)->graphicsPipeline; }
+	VkPipeline getGraphicsPipeline(const GraphicsContext& context) const { return contextHandler.getSharedState(context)->graphicsPipeline; }
 
 protected:
 	void cleanup(const GraphicsContext& context, VulkanDeviceState& state) {
-		GraphicsPipelineState* pipelineState = contextHandler.getState(context);
+		GraphicsPipelineState* pipelineState = contextHandler.getSharedState(context);
 		vkDestroyPipeline(state.getDevice()->getDevice(), pipelineState->graphicsPipeline, nullptr);
         vkDestroyPipelineLayout(state.getDevice()->getDevice(), pipelineState->pipelineLayout, nullptr);
 	}
 	void update(const GraphicsContext& context, VulkanDeviceState& state) {
-		GraphicsPipelineState* pipelineState = contextHandler.getState(context);
+		GraphicsPipelineState* pipelineState = contextHandler.getSharedState(context);
 		VkDevice device = state.getDevice()->getDevice();
 
 		std::vector<VkPipelineShaderStageCreateInfo> shaderStages;
@@ -1405,7 +1432,7 @@ protected:
         pipelineInfo.pMultisampleState = &multisampling;
         pipelineInfo.pColorBlendState = &colorBlending;
         pipelineInfo.layout = pipelineState->pipelineLayout;
-        pipelineInfo.renderPass = state.getRenderPass()->getRenderPass();
+        pipelineInfo.renderPass = state.getRenderPass()->getRenderPass(context);
         pipelineInfo.subpass = 0;
         pipelineInfo.basePipelineHandle = VK_NULL_HANDLE;
 
@@ -1423,7 +1450,7 @@ private:
 		VkPipelineLayout pipelineLayout;
 	};
 
-	GraphicsContextHandler<ContextState,GraphicsPipelineState> contextHandler;
+	GraphicsContextHandler<GraphicsPipelineState,ContextState> contextHandler;
 };
 
 

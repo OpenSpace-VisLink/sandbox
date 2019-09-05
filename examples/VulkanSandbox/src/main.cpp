@@ -247,10 +247,10 @@ private:
         //swapChainImageFormat = renderNode->getComponent<VulkanBasicSwapChain>()->swapChainImageFormat;
         swapChainExtent = renderNode->getComponent<VulkanBasicSwapChain>()->swapChainExtent;
         swapChainImageViews = renderNode->getComponent<VulkanBasicSwapChain>()->swapChainImageViews;
-        renderPass = renderNode->getComponent<VulkanRenderPass>()->getRenderPass();
-        swapChainFramebuffers = renderNode->getComponent<VulkanSwapChainFramebufferGroup>()->getFramebuffers();
         commandPool = commandPoolNode->getComponent<VulkanCommandPool>()->getCommandPool();
         renderer = renderNode->getComponent<GraphicsRenderer>();
+        renderPass = renderNode->getComponent<VulkanRenderPass>()->getRenderPass(renderer->getContext());
+        swapChainFramebuffers = renderNode->getComponent<VulkanSwapChainFramebufferGroup>()->getFramebuffers(renderer->getContext());
 
         //createInstance();
         //setupDebugMessenger();
