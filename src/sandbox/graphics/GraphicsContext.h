@@ -8,11 +8,15 @@ namespace sandbox {
 
 class GraphicsContext {
 public:
-	GraphicsContext() : sharedContext(new Context()), context(new Context()), renderState(new StateContainer()) {}
-	GraphicsContext(Context* sharedContext, Context* contex) : sharedContext(sharedContext), context(context), renderState(new StateContainer()) {}
+	GraphicsContext() : sharedContext(new Context()), context(new Context()), renderState(new StateContainer()), deleteSharedContext(true), deleteContext(true) {}
+	GraphicsContext(Context* sharedContext, Context* context, bool deleteSharedContext = true, bool deleteContext = true) : sharedContext(sharedContext), context(context), renderState(new StateContainer()), deleteSharedContext(deleteSharedContext), deleteContext(deleteContext) {}
 	virtual ~GraphicsContext() {
-		delete sharedContext;
-		delete context;
+		if (deleteSharedContext) {
+			delete sharedContext;
+		}
+		if (deleteContext) {
+			delete context;	
+		}
 		delete renderState;
 	}
 
@@ -24,6 +28,8 @@ private:
 	Context* sharedContext;
 	Context* context;
 	StateContainer* renderState;
+	bool deleteSharedContext;
+	bool deleteContext;
 };
 
 template<typename SharedStateType, typename StateType>

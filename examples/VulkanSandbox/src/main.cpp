@@ -225,7 +225,7 @@ private:
                 renderNode->addComponent(new VulkanBasicSwapChain(surfaceNode));
                 renderNode->addComponent(new VulkanBasicRenderPass());
                 renderNode->addComponent(new VulkanSwapChainFramebufferGroup());
-                renderNode->addComponent(new VulkanDeviceRenderer());
+                //renderNode->addComponent(new VulkanDeviceRenderer());
                 EntityNode* graphicsNode = new EntityNode(renderNode);
                     graphicsNode->addComponent(new RenderNode(&pipelineNode));
            EntityNode* commandPoolNode = new EntityNode(deviceNode);
