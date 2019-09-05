@@ -1169,7 +1169,7 @@ public:
 	virtual VkFramebuffer getFramebuffer(const GraphicsContext& context) const = 0;
 };
 
-class VulkanSwapChainFramebuffer : public VulkanRenderObject {
+class VulkanSwapChainFramebuffer : public VulkanFramebuffer {
 public:
 	VulkanSwapChainFramebuffer() { addType<VulkanSwapChainFramebufferGroup>(); }
 	virtual ~VulkanSwapChainFramebuffer() {}

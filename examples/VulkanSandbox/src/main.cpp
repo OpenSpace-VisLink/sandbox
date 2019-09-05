@@ -120,7 +120,7 @@ private:
     VkFormat swapChainImageFormat;
     VkExtent2D swapChainExtent;
     std::vector<VkImageView> swapChainImageViews;
-    std::vector<VkFramebuffer> swapChainFramebuffers;
+    VulkanFramebuffer* framebuffer;
 
     VkRenderPass renderPass;
     VkDescriptorSetLayout descriptorSetLayout;
@@ -158,6 +158,7 @@ private:
     EntityNode pipelineNode;
     EntityNode images;
     Entity* mainImage;
+    Entity* renderNode;
     GraphicsRenderer* renderer;
 
     void initWindow() {
@@ -221,10 +222,10 @@ private:
                 graphicsQueue = new VulkanGraphicsQueue();
                 queues->addComponent(graphicsQueue);
                 queues->addComponent(new VulkanPresentQueue(surfaceNode));
-            EntityNode* renderNode = new EntityNode(deviceNode);
+            renderNode = new EntityNode(deviceNode);
                 renderNode->addComponent(new VulkanBasicSwapChain(surfaceNode));
                 renderNode->addComponent(new VulkanBasicRenderPass());
-                renderNode->addComponent(new VulkanSwapChainFramebufferGroup());
+                renderNode->addComponent(new VulkanSwapChainFramebuffer());
                 //renderNode->addComponent(new VulkanDeviceRenderer());
                 EntityNode* graphicsNode = new EntityNode(renderNode);
                     graphicsNode->addComponent(new RenderNode(&pipelineNode));
@@ -252,9 +253,10 @@ private:
         commandPool = commandPoolNode->getComponent<VulkanCommandPool>()->getCommandPool();
         renderer = renderNode->getComponents<GraphicsRenderer>()[1];
         renderPass = renderNode->getComponent<VulkanRenderPass>()->getRenderPass(renderer->getContext());
-        swapChainFramebuffers = renderNode->getComponent<VulkanSwapChainFramebufferGroup>()->getFramebuffers(renderer->getContext());
+
         graphicsPipeline = pipelineNode.getComponent<VulkanGraphicsPipeline>()->getGraphicsPipeline(renderer->getContext());
         pipelineLayout = pipelineNode.getComponent<VulkanGraphicsPipeline>()->getPipelineLayout(renderer->getContext());
+        framebuffer = renderNode->getComponent<VulkanFramebuffer>();
         //createInstance();
         //setupDebugMessenger();
         //createSurface();
@@ -289,9 +291,9 @@ private:
     }
 
     void cleanupSwapChain() {
-        for (auto framebuffer : swapChainFramebuffers) {
+        /*for (auto framebuffer : swapChainFramebuffers) {
             vkDestroyFramebuffer(device, framebuffer, nullptr);
-        }
+        }*/
 
         vkFreeCommandBuffers(device, commandPool, static_cast<uint32_t>(commandBuffers.size()), commandBuffers.data());
 
@@ -910,7 +912,7 @@ private:
     }
 
     void createCommandBuffers() {
-        commandBuffers.resize(swapChainFramebuffers.size());
+        commandBuffers.resize(swapChainImageViews.size());
 
         VkCommandBufferAllocateInfo allocInfo = {};
         allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
@@ -923,6 +925,8 @@ private:
         }
 
         for (size_t i = 0; i < commandBuffers.size(); i++) {
+            GraphicsRenderer* renderer = renderNode->getComponents<GraphicsRenderer>()[i];
+
             VkCommandBufferBeginInfo beginInfo = {};
             beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
 
@@ -933,7 +937,7 @@ private:
             VkRenderPassBeginInfo renderPassInfo = {};
             renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
             renderPassInfo.renderPass = renderPass;
-            renderPassInfo.framebuffer = swapChainFramebuffers[i];
+            renderPassInfo.framebuffer = framebuffer->getFramebuffer(renderer->getContext());
             renderPassInfo.renderArea.offset = {0, 0};
             renderPassInfo.renderArea.extent = swapChainExtent;
 
