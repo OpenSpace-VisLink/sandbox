@@ -235,6 +235,8 @@ private:
 
         vulkanNode.update();
 
+        pipelineNode.addComponent(new VulkanGraphicsPipeline());
+
         //instance = vulkanNode.getComponent<VulkanInstance>()->getInstance();
         //surface = surfaceNode->getComponent<VulkanSurface>()->getSurface();
         device = deviceNode->getComponent<VulkanDevice>()->getDevice();
@@ -248,10 +250,11 @@ private:
         swapChainExtent = renderNode->getComponent<VulkanBasicSwapChain>()->swapChainExtent;
         swapChainImageViews = renderNode->getComponent<VulkanBasicSwapChain>()->swapChainImageViews;
         commandPool = commandPoolNode->getComponent<VulkanCommandPool>()->getCommandPool();
-        renderer = renderNode->getComponent<GraphicsRenderer>();
+        renderer = renderNode->getComponents<GraphicsRenderer>()[1];
         renderPass = renderNode->getComponent<VulkanRenderPass>()->getRenderPass(renderer->getContext());
         swapChainFramebuffers = renderNode->getComponent<VulkanSwapChainFramebufferGroup>()->getFramebuffers(renderer->getContext());
-
+        graphicsPipeline = pipelineNode.getComponent<VulkanGraphicsPipeline>()->getGraphicsPipeline(renderer->getContext());
+        pipelineLayout = pipelineNode.getComponent<VulkanGraphicsPipeline>()->getPipelineLayout(renderer->getContext());
         //createInstance();
         //setupDebugMessenger();
         //createSurface();

@@ -792,6 +792,24 @@ public:
 	virtual VkExtent2D getExtent() const = 0;
 };
 
+
+class VulkanSwapChainState : public StateContainerItem {
+public:
+	VulkanSwapChainState() {
+		imageIndex = 0;
+	}
+
+	virtual ~VulkanSwapChainState() {}
+
+	int getImageIndex() const { return imageIndex; }
+	int setImageIndex(int imageIndex) { this->imageIndex = imageIndex; }
+
+	static VulkanSwapChainState& get(const GraphicsContext& context) { return context.getRenderState()->getItem<VulkanSwapChainState>(); }
+
+private:
+	int imageIndex;
+};
+
 class VulkanBasicSwapChain : public VulkanSwapChain {
 public:
 	VulkanBasicSwapChain(Entity* surfaceEntity) : surfaceEntity(surfaceEntity) { addType<VulkanBasicSwapChain>(); }
@@ -890,7 +908,9 @@ public:
         createImageViews();
 
         for (int f = 0; f < imageCount; f++) {
-	        getEntity().addComponent(new VulkanDeviceRenderer(new GraphicsContext(&sharedContext, new Context(), false)), false);	
+        	GraphicsContext* context = new GraphicsContext(&sharedContext, new Context(), false);
+        	VulkanSwapChainState::get(*context).setImageIndex(f);
+	        getEntity().addComponent(new VulkanDeviceRenderer(context), false);	
         }
 	}
 
@@ -1027,14 +1047,33 @@ enum VulkanRenderMode {
 	VULKAN_RENDER_COMMAND
 };
 
+class VulkanImageView : public VulkanRenderObject {
+public:
+	VulkanImageView() { addType<VulkanImageView>(); }
+	virtual ~VulkanImageView() {}
+
+	void cleanup(const GraphicsContext& context, VulkanDeviceState& state);
+
+	virtual VkImageView getImageView(const GraphicsContext& context) const = 0;
+};
+
+class VulkanImage : public VulkanRenderObject {
+public:
+	VulkanImage() { addType<VulkanImage>(); }
+	virtual ~VulkanImage() {}
+
+	void cleanup(const GraphicsContext& context, VulkanDeviceState& state);
+
+	virtual VkImage getImage(const GraphicsContext& context) const = 0;
+};
 
 class VulkanDeviceState : public StateContainerItem {
 public:
 	VulkanDeviceState() {
 		device = NULL;
 		renderMode = VULKAN_RENDER_NONE;
-		swapChain = NULL;
 		renderPass = NULL;
+		//imageView = NULL;
 		extent.width = 0;
 		extent.height = 0;
 	}
@@ -1045,10 +1084,10 @@ public:
 	void setDevice(VulkanDevice* device) { this->device = device; }
 	VulkanRenderMode getRenderMode() const { return renderMode; }
 	void setRenderMode(VulkanRenderMode renderMode) { this->renderMode = renderMode; }
-	//VulkanSwapChain* getSwapChain() const { return swapChain; }
-	void setSwapChain(VulkanSwapChain* swapChain) { this->swapChain = swapChain; }
 	VulkanRenderPass* getRenderPass() const { return renderPass; }
 	void setRenderPass(VulkanRenderPass* renderPass) { this->renderPass = renderPass; }
+	//VulkanImageView* getImageView() const { return imageView; }
+	//void setImageView(VulkanImageView* renderPass) { this->imageView = imageView; }
 	const VkExtent2D& getExtent() const { return extent; }
 	void setExtent(VkExtent2D extent) { this->extent = extent; }
 
@@ -1057,10 +1096,18 @@ public:
 private:
 	VulkanDevice* device;
 	VulkanRenderMode renderMode;
-	VulkanSwapChain* swapChain;
 	VulkanRenderPass* renderPass;
+	VulkanImageView* imageView;
 	VkExtent2D extent;
 };
+
+inline void VulkanImageView::cleanup(const GraphicsContext& context, VulkanDeviceState& state) {
+    vkDestroyImageView(state.getDevice()->getDevice(), getImageView(context), nullptr);
+}
+
+inline void VulkanImage::cleanup(const GraphicsContext& context, VulkanDeviceState& state) {
+    vkDestroyImage(state.getDevice()->getDevice(), getImage(context), nullptr);
+}
 
 class VulkanSwapChainFramebufferGroup : public VulkanRenderObject {
 public:
@@ -1075,6 +1122,7 @@ public:
 	virtual void update(const GraphicsContext& context, VulkanDeviceState& state) {
 		VulkanSwapChain* swapChain = getEntity().getComponent<VulkanSwapChain>();
         contextHandler.getSharedState(context)->swapChainFramebuffers.resize(swapChain->getImageViews().size());
+        std::cout << " Image Index: " << VulkanSwapChainState::get(context).getImageIndex() << std::endl;
 
         for (size_t i = 0; i < swapChain->getImageViews().size(); i++) {
             VkImageView attachments[] = {
@@ -1086,8 +1134,8 @@ public:
             framebufferInfo.renderPass = state.getRenderPass()->getRenderPass(context);
             framebufferInfo.attachmentCount = 1;
             framebufferInfo.pAttachments = attachments;
-            framebufferInfo.width = swapChain->getExtent().width;
-            framebufferInfo.height = swapChain->getExtent().height;
+            framebufferInfo.width = state.getExtent().width;
+            framebufferInfo.height = state.getExtent().height;
             framebufferInfo.layers = 1;
 
             if (vkCreateFramebuffer(state.getDevice()->getDevice(), &framebufferInfo, nullptr, &contextHandler.getSharedState(context)->swapChainFramebuffers[i]) != VK_SUCCESS) {
@@ -1109,37 +1157,44 @@ private:
 
 };
 
+class VulkanFramebuffer : public VulkanRenderObject {
+public:
+	VulkanFramebuffer() { addType<VulkanFramebuffer>(); }
+	virtual ~VulkanFramebuffer() {}
+
+	void cleanup(const GraphicsContext& context, VulkanDeviceState& state) {
+        vkDestroyFramebuffer(state.getDevice()->getDevice(), getFramebuffer(context), nullptr);
+	}
+
+	virtual VkFramebuffer getFramebuffer(const GraphicsContext& context) const = 0;
+};
+
 class VulkanSwapChainFramebuffer : public VulkanRenderObject {
 public:
 	VulkanSwapChainFramebuffer() { addType<VulkanSwapChainFramebufferGroup>(); }
 	virtual ~VulkanSwapChainFramebuffer() {}
 
-	virtual void cleanup(const GraphicsContext& context, VulkanDeviceState& state) {
-        vkDestroyFramebuffer(state.getDevice()->getDevice(), contextHandler.getState(context)->framebuffer, nullptr);
-	}
-
 	virtual void update(const GraphicsContext& context, VulkanDeviceState& state) {
 		VulkanSwapChain* swapChain = getEntity().getComponent<VulkanSwapChain>();
-        //contextHandler.getSharedState(context)->swapChainFramebuffers.resize(swapChain->getImageViews().size());
 
-        //for (size_t i = 0; i < swapChain->getImageViews().size(); i++) {
-            VkImageView attachments[] = {
-                swapChain->getImageViews()[0]
-            };
+        VkImageView attachments[] = {
+            //swapChain->getImageViews()[0]
+            //state.getImageView()->getImageView(context)
+            swapChain->getImageViews()[VulkanSwapChainState::get(context).getImageIndex()]
+        };
 
-            VkFramebufferCreateInfo framebufferInfo = {};
-            framebufferInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
-            framebufferInfo.renderPass = state.getRenderPass()->getRenderPass(context);
-            framebufferInfo.attachmentCount = 1;
-            framebufferInfo.pAttachments = attachments;
-            framebufferInfo.width = swapChain->getExtent().width;
-            framebufferInfo.height = swapChain->getExtent().height;
-            framebufferInfo.layers = 1;
+        VkFramebufferCreateInfo framebufferInfo = {};
+        framebufferInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
+        framebufferInfo.renderPass = state.getRenderPass()->getRenderPass(context);
+        framebufferInfo.attachmentCount = 1;
+        framebufferInfo.pAttachments = attachments;
+        framebufferInfo.width = state.getExtent().width;
+        framebufferInfo.height = state.getExtent().height;
+        framebufferInfo.layers = 1;
 
-            if (vkCreateFramebuffer(state.getDevice()->getDevice(), &framebufferInfo, nullptr, &contextHandler.getState(context)->framebuffer) != VK_SUCCESS) {
-                throw std::runtime_error("failed to create framebuffer!");
-            }
-        //}
+        if (vkCreateFramebuffer(state.getDevice()->getDevice(), &framebufferInfo, nullptr, &contextHandler.getState(context)->framebuffer) != VK_SUCCESS) {
+            throw std::runtime_error("failed to create framebuffer!");
+        }
 	}
 
 	VkFramebuffer getFramebuffer(const GraphicsContext& context) const {
@@ -1165,7 +1220,6 @@ inline void VulkanDeviceRenderer::update() {
 		device = getEntity().getComponentRecursive<VulkanDevice>(false);
 		if (device) {
 			state->setDevice(device);
-			state->setSwapChain(getEntity().getComponent<VulkanSwapChain>());
 			state->setRenderPass(getEntity().getComponent<VulkanRenderPass>());
 			state->setExtent(getEntity().getComponent<VulkanSwapChain>()->getExtent());
 		}
@@ -1381,6 +1435,7 @@ public:
 	virtual ~VulkanGraphicsPipeline() {}
 
 	VkPipeline getGraphicsPipeline(const GraphicsContext& context) const { return contextHandler.getSharedState(context)->graphicsPipeline; }
+	VkPipelineLayout getPipelineLayout(const GraphicsContext& context) const { return contextHandler.getSharedState(context)->pipelineLayout; }
 
 protected:
 	void cleanup(const GraphicsContext& context, VulkanDeviceState& state) {
