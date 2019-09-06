@@ -1510,7 +1510,7 @@ struct UniformBufferObject {
 
 class VulkanBuffer {
 public:
-	VulkanBuffer(VulkanDevice* device, VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties) : device(device) {
+	VulkanBuffer(const VulkanDevice* device, VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties) : device(device) {
 		createBuffer(size, usage, properties, buffer, bufferMemory);
 	}
 	virtual ~VulkanBuffer() {
@@ -1524,6 +1524,8 @@ public:
             memcpy(data, newData, size);
         vkUnmapMemory(device->getDevice(), bufferMemory);
 	}
+
+	VkBuffer getBuffer() const { return buffer; }
 
 private:
 	void createBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, VkBuffer& buffer, VkDeviceMemory& bufferMemory) {
@@ -1563,12 +1565,10 @@ private:
         }
     }
 
-	VkBuffer getBuffer(const GraphicsContext& context) const { return buffer; }
-
 private:
 	VkBuffer buffer;
 	VkDeviceMemory bufferMemory;
-	VulkanDevice* device;
+	const VulkanDevice* device;
 };
 
 class VulkanUniformBuffer : public VulkanShaderObject {
@@ -1579,9 +1579,8 @@ public:
 	void startRender(const GraphicsContext& context, VulkanDeviceState& state) {
 		UniformBufferState* uboState = contextHandler.getState(context);
 		if (state.getRenderMode() == VULKAN_RENDER_UPDATE) {
-
 			int bufferSize = sizeof(UniformBufferObject);
-			createBuffer(state, bufferSize, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, uboState->buffer, uboState->bufferMemory);
+			uboState->buffer = new VulkanBuffer(state.getDevice(), bufferSize, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
 		}
 		else if (state.getRenderMode() == VULKAN_RENDER_OBJECT) {
 			static auto startTime = std::chrono::high_resolution_clock::now();
@@ -1595,92 +1594,20 @@ public:
 	        ubo.proj = glm::perspective(glm::radians(45.0f), (float) state.getExtent().width / (float) state.getExtent().height, 0.1f, 10.0f);
 	        ubo.proj[1][1] *= -1;
 
-	        void* data;
-	        vkMapMemory(state.getDevice()->getDevice(), uboState->bufferMemory, 0, sizeof(ubo), 0, &data);
-	            memcpy(data, &ubo, sizeof(ubo));
-	        vkUnmapMemory(state.getDevice()->getDevice(), uboState->bufferMemory);
+	        uboState->buffer->update(&ubo, sizeof(ubo));
 		}
-
-/*
-        VkDeviceSize bufferSize = sizeof(UniformBufferObject);
-
-        uniformBuffers.resize(swapChainImages.size());
-        uniformBuffersMemory.resize(swapChainImages.size());
-
-        for (size_t i = 0; i < swapChainImages.size(); i++) {
-            createBuffer(bufferSize, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, uniformBuffers[i], uniformBuffersMemory[i]);
-        }
-
-        static auto startTime = std::chrono::high_resolution_clock::now();
-
-        auto currentTime = std::chrono::high_resolution_clock::now();
-        float time = std::chrono::duration<float, std::chrono::seconds::period>(currentTime - startTime).count();
-
-        UniformBufferObject ubo = {};
-        ubo.model = glm::rotate(glm::mat4(1.0f), time * glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f));
-        ubo.view = glm::lookAt(glm::vec3(2.0f, 2.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
-        ubo.proj = glm::perspective(glm::radians(45.0f), swapChainExtent.width / (float) swapChainExtent.height, 0.1f, 10.0f);
-        ubo.proj[1][1] *= -1;
-
-        void* data;
-        vkMapMemory(device, uniformBuffersMemory[currentImage], 0, sizeof(ubo), 0, &data);
-            memcpy(data, &ubo, sizeof(ubo));
-        vkUnmapMemory(device, uniformBuffersMemory[currentImage]);*/
-		
 	}
 	void finishRender(const GraphicsContext& context, VulkanDeviceState& state) {
 		if (state.getRenderMode() == VULKAN_RENDER_CLEANUP) {
-			UniformBufferState* uboState = contextHandler.getState(context);
-            vkDestroyBuffer(state.getDevice()->getDevice(), uboState->buffer, nullptr);
-            vkFreeMemory(state.getDevice()->getDevice(), uboState->bufferMemory, nullptr);
+			delete contextHandler.getState(context)->buffer;
 		}
 	}
 
-	VkBuffer getBuffer(const GraphicsContext& context) const { return contextHandler.getState(context)->buffer; }
+	VkBuffer getBuffer(const GraphicsContext& context) const { return contextHandler.getState(context)->buffer->getBuffer(); }
 
 private:
-    void createBuffer(VulkanDeviceState& state, VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, VkBuffer& buffer, VkDeviceMemory& bufferMemory) {
-        VkBufferCreateInfo bufferInfo = {};
-        bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-        bufferInfo.size = size;
-        bufferInfo.usage = usage;
-        bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-
-        if (vkCreateBuffer(state.getDevice()->getDevice(), &bufferInfo, nullptr, &buffer) != VK_SUCCESS) {
-            throw std::runtime_error("failed to create buffer!");
-        }
-
-        VkMemoryRequirements memRequirements;
-        vkGetBufferMemoryRequirements(state.getDevice()->getDevice(), buffer, &memRequirements);
-
-        VkMemoryAllocateInfo allocInfo = {};
-        allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-        allocInfo.allocationSize = memRequirements.size;
-        allocInfo.memoryTypeIndex = findMemoryType(state, memRequirements.memoryTypeBits, properties);
-
-        if (vkAllocateMemory(state.getDevice()->getDevice(), &allocInfo, nullptr, &bufferMemory) != VK_SUCCESS) {
-            throw std::runtime_error("failed to allocate buffer memory!");
-        }
-
-        vkBindBufferMemory(state.getDevice()->getDevice(), buffer, bufferMemory, 0);
-    }
-
-    uint32_t findMemoryType(VulkanDeviceState& state, uint32_t typeFilter, VkMemoryPropertyFlags properties) {
-        VkPhysicalDeviceMemoryProperties memProperties;
-        vkGetPhysicalDeviceMemoryProperties(state.getDevice()->getPhysicalDevice(), &memProperties);
-
-        for (uint32_t i = 0; i < memProperties.memoryTypeCount; i++) {
-            if ((typeFilter & (1 << i)) && (memProperties.memoryTypes[i].propertyFlags & properties) == properties) {
-                return i;
-            }
-        }
-
-        throw std::runtime_error("failed to find suitable memory type!");
-    }
-
 	struct UniformBufferState : public ContextState {
-		VkBuffer buffer;
-		VkDeviceMemory bufferMemory;
+		VulkanBuffer* buffer;
 	};
 
 	GraphicsContextHandler<ContextState,UniformBufferState> contextHandler;
