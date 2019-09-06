@@ -209,7 +209,7 @@ private:
         vertexInput->addAttribute(VK_FORMAT_R32G32_SFLOAT, offsetof(Vertex, texCoord));
         pipelineNode.addComponent(vertexInput);
 
-        uniformBuffer = new VulkanUniformBuffer();
+        uniformBuffer = new MainUniformBuffer();
         shaderObjects.addComponent(uniformBuffer);
 
         vulkanNode.addComponent(new VulkanInstance());

@@ -1579,11 +1579,11 @@ public:
 	void startRender(const GraphicsContext& context, VulkanDeviceState& state) {
 		UniformBufferState* uboState = contextHandler.getState(context);
 		if (state.getRenderMode() == VULKAN_RENDER_UPDATE) {
-			int bufferSize = sizeof(UniformBufferObject);
+			int bufferSize = getBufferSize();
 			uboState->buffer = new VulkanBuffer(state.getDevice(), bufferSize, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
 		}
 		else if (state.getRenderMode() == VULKAN_RENDER_OBJECT) {
-			updatBuffer(context, state, uboState->buffer);
+			updateBuffer(context, state, uboState->buffer);
 		}
 	}
 	void finishRender(const GraphicsContext& context, VulkanDeviceState& state) {
@@ -1595,7 +1595,11 @@ public:
 	VkBuffer getBuffer(const GraphicsContext& context) const { return contextHandler.getState(context)->buffer->getBuffer(); }
 
 protected:
-	virtual void updatBuffer(const GraphicsContext& context, VulkanDeviceState& state, VulkanBuffer* buffer) {
+	virtual size_t getBufferSize() const = 0;
+	virtual void updateBuffer(const GraphicsContext& context, VulkanDeviceState& state, VulkanBuffer* buffer) = 0;
+	/*virtual size_t getBufferSize() const { return sizeof(UniformBufferObject); }
+
+	virtual void updateBuffer(const GraphicsContext& context, VulkanDeviceState& state, VulkanBuffer* buffer) {
 		static auto startTime = std::chrono::high_resolution_clock::now();
 
         auto currentTime = std::chrono::high_resolution_clock::now();
@@ -1608,7 +1612,7 @@ protected:
         ubo.proj[1][1] *= -1;
 
         buffer->update(&ubo, sizeof(ubo));
-	}
+	}*/
 
 private:
 	struct UniformBufferState : public ContextState {
@@ -1618,7 +1622,39 @@ private:
 	GraphicsContextHandler<ContextState,UniformBufferState> contextHandler;
 };
 
+template<typename T>
+class VulkanUniformBufferValue : public VulkanUniformBuffer {
+public:
+	VulkanUniformBufferValue() { addType< VulkanUniformBufferValue<T> >(); }
+	virtual ~VulkanUniformBufferValue() {}
 
+	T value;
+
+protected:
+	size_t getBufferSize() const { return sizeof(T); }
+
+	void updateBuffer(const GraphicsContext& context, VulkanDeviceState& state, VulkanBuffer* buffer) {
+		buffer->update(&value, sizeof(T));
+	}
+};
+
+
+class MainUniformBuffer : public VulkanUniformBufferValue<UniformBufferObject> {
+
+protected:
+	void updateBuffer(const GraphicsContext& context, VulkanDeviceState& state, VulkanBuffer* buffer) {
+		static auto startTime = std::chrono::high_resolution_clock::now();
+
+        auto currentTime = std::chrono::high_resolution_clock::now();
+        float time = std::chrono::duration<float, std::chrono::seconds::period>(currentTime - startTime).count();
+		//UniformBufferObject ubo = {};
+        value.model = glm::rotate(glm::mat4(1.0f), time * glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+        value.view = glm::lookAt(glm::vec3(2.0f, 2.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+        value.proj = glm::perspective(glm::radians(45.0f), (float) state.getExtent().width / (float) state.getExtent().height, 0.1f, 10.0f);
+        value.proj[1][1] *= -1;
+		VulkanUniformBufferValue<UniformBufferObject>::updateBuffer(context, state, buffer);
+	}
+};
 
 }
 
