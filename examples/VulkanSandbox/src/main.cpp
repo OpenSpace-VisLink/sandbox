@@ -76,11 +76,7 @@ struct Vertex {
     }
 };
 
-struct UniformBufferObject {
-    alignas(16) glm::mat4 model;
-    alignas(16) glm::mat4 view;
-    alignas(16) glm::mat4 proj;
-};
+
 
 const std::vector<Vertex> vertices = {
     {{-0.5f, -0.5f}, {1.0f, 0.0f, 0.0f}, {1.0f, 0.0f}},
@@ -141,6 +137,7 @@ private:
 
     std::vector<VkBuffer> uniformBuffers;
     std::vector<VkDeviceMemory> uniformBuffersMemory;
+    VulkanUniformBuffer* uniformBuffer;
 
     VkDescriptorPool descriptorPool;
     std::vector<VkDescriptorSet> descriptorSets;
@@ -156,6 +153,7 @@ private:
 
     EntityNode vulkanNode;
     EntityNode pipelineNode;
+    EntityNode shaderObjects;
     EntityNode images;
     Entity* mainImage;
     Entity* renderNode;
@@ -211,6 +209,9 @@ private:
         vertexInput->addAttribute(VK_FORMAT_R32G32_SFLOAT, offsetof(Vertex, texCoord));
         pipelineNode.addComponent(vertexInput);
 
+        uniformBuffer = new VulkanUniformBuffer();
+        shaderObjects.addComponent(uniformBuffer);
+
         vulkanNode.addComponent(new VulkanInstance());
         EntityNode* surfaceNode = new EntityNode(&vulkanNode);
             surfaceNode->addComponent(new GlfwSurface(window, &vulkanNode));
@@ -229,6 +230,7 @@ private:
                 //renderNode->addComponent(new VulkanDeviceRenderer());
                 EntityNode* graphicsNode = new EntityNode(renderNode);
                     graphicsNode->addComponent(new RenderNode(&pipelineNode));
+                    graphicsNode->addComponent(new RenderNode(&shaderObjects));
            EntityNode* commandPoolNode = new EntityNode(deviceNode);
                 commandPoolNode->addComponent(new VulkanCommandPool(graphicsQueue));
 
@@ -274,7 +276,7 @@ private:
         createTextureSampler();
         createVertexBuffer();
         createIndexBuffer();
-        createUniformBuffers();
+        //createUniformBuffers();
         createDescriptorPool();
         createDescriptorSets();
         createCommandBuffers();
@@ -797,8 +799,10 @@ private:
         }
 
         for (size_t i = 0; i < swapChainImages.size(); i++) {
+            GraphicsRenderer* renderer = renderNode->getComponents<GraphicsRenderer>()[i];
+
             VkDescriptorBufferInfo bufferInfo = {};
-            bufferInfo.buffer = uniformBuffers[i];
+            bufferInfo.buffer = uniformBuffer->getBuffer(renderer->getContext());
             bufferInfo.offset = 0;
             bufferInfo.range = sizeof(UniformBufferObject);
 
@@ -1019,7 +1023,9 @@ private:
             throw std::runtime_error("failed to acquire swap chain image!");
         }
 
-        updateUniformBuffer(imageIndex);
+        //updateUniformBuffer(imageIndex);
+        VulkanDeviceRenderer* vulkanRenderer = renderNode->getComponents<VulkanDeviceRenderer>()[imageIndex];
+        vulkanRenderer->render(VULKAN_RENDER_OBJECT);
 
         VkSubmitInfo submitInfo = {};
         submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
