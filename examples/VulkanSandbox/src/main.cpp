@@ -204,6 +204,7 @@ private:
 
         mainImage = new EntityNode(&images);
             mainImage->addComponent(new Image("examples/VulkanExample/textures/texture.jpg"));
+            mainImage->addComponent(new VulkanImage());
         images.update();
 
         //shaderObjects.addComponent(uniformBuffer);
@@ -272,6 +273,7 @@ private:
                 objectNode->addComponent(new VulkanDeviceRenderer(new GraphicsContext(renderNode->getComponent<VulkanBasicSwapChain>()->getSharedContext(), new Context(), false)));
                 objectNode->addComponent(new VulkanCommandPool(graphicsQueue));
                 objectNode->addComponent(new RenderNode(&graphicsObjects));
+                objectNode->addComponent(new RenderNode(&images));
 
 
         //createDevice(window2);
@@ -316,7 +318,7 @@ private:
         createGraphicsPipeline();
         //createFramebuffers();
         //createCommandPool();
-        createTextureImage();
+        //createTextureImage();
         createTextureImageView();
         createTextureSampler();
         //createVertexBuffer();
@@ -612,7 +614,7 @@ private:
     }
 
     void createTextureImageView() {
-        textureImageView = createImageView(textureImage, VK_FORMAT_R8G8B8A8_UNORM);
+        textureImageView = createImageView(mainImage->getComponent<VulkanImage>()->getImage(renderer->getContext()), VK_FORMAT_R8G8B8A8_UNORM);
     }
 
     void createTextureSampler() {
