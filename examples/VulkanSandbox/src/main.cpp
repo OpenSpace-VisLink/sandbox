@@ -201,6 +201,7 @@ private:
     }*/
 
     void initVulkan() {
+
         mainImage = new EntityNode(&images);
             mainImage->addComponent(new Image("examples/VulkanExample/textures/texture.jpg"));
         images.update();
@@ -210,6 +211,8 @@ private:
             uniformBuffer = new MainUniformBuffer();
             mainUniformBuffer->addComponent(uniformBuffer);
 
+
+
         /*EntityNode* mainDescriptorLayout;
             mainDescriptorLayout->addComponent(new VulkanDescriptorLayout());
             EntityNode* mainDescriptorSet;
@@ -217,7 +220,12 @@ private:
                 mainDescriptorSet->addComponent(new VulkanDescriptor(mainUniformBuffer, VERTEX));
                 mainDescriptorSet->addComponent(new VulkanDescriptor(SAMPLER, FRAGMENT));*/
 
-        //graphicsObjects.addComponent(new VulkanVertexArray);
+        vertexArray = new VertexArray<Vertex>();
+        vertexArray->value = vertices;
+        indexArray = new IndexArray();
+        indexArray->value = indices;
+        graphicsObjects.addComponent(vertexArray);
+        graphicsObjects.addComponent(indexArray);
 
         pipelineNode.addComponent(new VulkanShaderModule("examples/VulkanExample/src/shaders/vert.spv", VK_SHADER_STAGE_VERTEX_BIT));
         pipelineNode.addComponent(new VulkanShaderModule("examples/VulkanExample/src/shaders/frag.spv", VK_SHADER_STAGE_FRAGMENT_BIT));
@@ -228,9 +236,12 @@ private:
         //pipelineNode.addComponent(new VulkanPipeline(mainDescriptorLayout);
         pipelineNode.addComponent(vertexInput);
 
+
         /*EntityNode* scene;
             scene->addComponent(VertexBuffer);
             scene->addComponent(Image);*/
+
+        
 
         vulkanNode.addComponent(new VulkanInstance());
         EntityNode* surfaceNode = new EntityNode(&vulkanNode);
@@ -259,15 +270,8 @@ private:
                         //commandNode->addComponent(new RenderNode(scene, RENDER_ONLY));
             objectNode = new EntityNode(deviceNode);
                 objectNode->addComponent(new VulkanDeviceRenderer(new GraphicsContext(renderNode->getComponent<VulkanBasicSwapChain>()->getSharedContext(), new Context(), false)));
-                //objectNode->addComponent(new VulkanDeviceRenderer());
                 objectNode->addComponent(new VulkanCommandPool(graphicsQueue));
-                vertexArray = new VertexArray<Vertex>();
-                vertexArray->value = vertices;
-                objectNode->addComponent(vertexArray);
-                indexArray = new IndexArray();
-                indexArray->value = indices;
-                objectNode->addComponent(indexArray);
-
+                objectNode->addComponent(new RenderNode(&graphicsObjects));
 
 
         //createDevice(window2);
@@ -276,6 +280,7 @@ private:
 
         VulkanDeviceRenderer* objectRenderer = objectNode->getComponent<VulkanDeviceRenderer>();
         objectRenderer->render(VULKAN_RENDER_UPDATE_SHARED);
+        objectRenderer->render(VULKAN_RENDER_UPDATE);
         objectRenderer->render(VULKAN_RENDER_OBJECT);
 
         pipelineNode.addComponent(new VulkanGraphicsPipeline());

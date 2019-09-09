@@ -1768,7 +1768,7 @@ private:
 template<typename T>
 class VulkanDeviceBufferValue : public VulkanDeviceBuffer {
 public:
-	VulkanDeviceBufferValue(VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, bool sharedContext) : VulkanDeviceBuffer(usage, properties, sharedContext), value(value) { addType< VulkanDeviceBufferValue<T> >(); }
+	VulkanDeviceBufferValue(VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, bool sharedContext) : VulkanDeviceBuffer(usage, properties, sharedContext) { addType< VulkanDeviceBufferValue<T> >(); }
 	virtual ~VulkanDeviceBufferValue() {}
 
 	T value;
