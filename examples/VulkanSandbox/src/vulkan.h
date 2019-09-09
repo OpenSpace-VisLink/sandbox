@@ -1494,14 +1494,6 @@ private:
 };
 
 
-class VulkanShaderObject : public VulkanRenderObject {
-public:
-	VulkanShaderObject() { addType<VulkanShaderObject>(); }
-	virtual ~VulkanShaderObject() {}
-
-
-};
-
 struct UniformBufferObject {
     alignas(16) glm::mat4 model;
     alignas(16) glm::mat4 view;
@@ -1571,7 +1563,7 @@ private:
 	const VulkanDevice* device;
 };
 
-class VulkanUniformBuffer : public VulkanShaderObject {
+class VulkanUniformBuffer : public VulkanRenderObject {
 public:
 	VulkanUniformBuffer() { addType<VulkanUniformBuffer>(); }
 	virtual ~VulkanUniformBuffer() {}

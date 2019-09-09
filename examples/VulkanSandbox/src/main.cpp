@@ -201,16 +201,30 @@ private:
             mainImage->addComponent(new Image("examples/VulkanExample/textures/texture.jpg"));
         images.update();
 
+        //shaderObjects.addComponent(uniformBuffer);
+        EntityNode* mainUniformBuffer = new EntityNode(&shaderObjects);
+            uniformBuffer = new MainUniformBuffer();
+            mainUniformBuffer->addComponent(uniformBuffer);
+
+        /*EntityNode* mainDescriptorLayout;
+            mainDescriptorLayout->addComponent(new VulkanDescriptorLayout());
+            EntityNode* mainDescriptorSet;
+                mainDescriptorSet->addComponent(new VulkanDescriptorSet(mainDescriptorLayout));
+                mainDescriptorSet->addComponent(new VulkanDescriptor(mainUniformBuffer, VERTEX));
+                mainDescriptorSet->addComponent(new VulkanDescriptor(SAMPLER, FRAGMENT));*/
+
         pipelineNode.addComponent(new VulkanShaderModule("examples/VulkanExample/src/shaders/vert.spv", VK_SHADER_STAGE_VERTEX_BIT));
         pipelineNode.addComponent(new VulkanShaderModule("examples/VulkanExample/src/shaders/frag.spv", VK_SHADER_STAGE_FRAGMENT_BIT));
         VulkanVertexInput* vertexInput = new VulkanVertexInput(sizeof(Vertex));
         vertexInput->addAttribute(VK_FORMAT_R32G32_SFLOAT, offsetof(Vertex, pos));
         vertexInput->addAttribute(VK_FORMAT_R32G32B32_SFLOAT, offsetof(Vertex, color));
         vertexInput->addAttribute(VK_FORMAT_R32G32_SFLOAT, offsetof(Vertex, texCoord));
+        //pipelineNode.addComponent(new VulkanPipeline(mainDescriptorLayout);
         pipelineNode.addComponent(vertexInput);
 
-        uniformBuffer = new MainUniformBuffer();
-        shaderObjects.addComponent(uniformBuffer);
+        /*EntityNode* scene;
+            scene->addComponent(VertexBuffer);
+            scene->addComponent(Image);*/
 
         vulkanNode.addComponent(new VulkanInstance());
         EntityNode* surfaceNode = new EntityNode(&vulkanNode);
@@ -227,12 +241,19 @@ private:
                 renderNode->addComponent(new VulkanBasicSwapChain(surfaceNode));
                 renderNode->addComponent(new VulkanBasicRenderPass());
                 renderNode->addComponent(new VulkanSwapChainFramebuffer());
+                //renderNode->addComponent(new VulkanSwapChainDescriptorPool(mainDescriptorLayout));
                 //renderNode->addComponent(new VulkanDeviceRenderer());
                 EntityNode* graphicsNode = new EntityNode(renderNode);
-                    graphicsNode->addComponent(new RenderNode(&pipelineNode));
-                    graphicsNode->addComponent(new RenderNode(&shaderObjects));
-           EntityNode* commandPoolNode = new EntityNode(deviceNode);
-                commandPoolNode->addComponent(new VulkanCommandPool(graphicsQueue));
+                    graphicsNode->addComponent(new RenderNode(&shaderObjects));//, UPDATE_ONLY));
+                    //graphicsNode->addComponent(new RenderNode(&descriptorNode, UPDATE_ONLY));
+                    graphicsNode->addComponent(new RenderNode(&pipelineNode));//, UPDATE_ONLY));
+                    EntityNode* commandNode = new EntityNode(graphicsNode);
+                        commandNode->addComponent(new VulkanCommandPool(graphicsQueue));
+                        //commandNode->addComponent(new VulkanCommandBuffer());
+                        //commandNode->addComponent(new RenderNode(scene, RENDER_ONLY));
+            EntityNode* updateNode = new EntityNode(deviceNode);
+                updateNode->addComponent(new VulkanCommandPool(graphicsQueue));
+
 
         //createDevice(window2);
 
@@ -252,7 +273,7 @@ private:
         //swapChainImageFormat = renderNode->getComponent<VulkanBasicSwapChain>()->swapChainImageFormat;
         swapChainExtent = renderNode->getComponent<VulkanBasicSwapChain>()->swapChainExtent;
         swapChainImageViews = renderNode->getComponent<VulkanBasicSwapChain>()->swapChainImageViews;
-        commandPool = commandPoolNode->getComponent<VulkanCommandPool>()->getCommandPool();
+        commandPool = commandNode->getComponent<VulkanCommandPool>()->getCommandPool();
         renderer = renderNode->getComponents<GraphicsRenderer>()[1];
         renderPass = renderNode->getComponent<VulkanRenderPass>()->getRenderPass(renderer->getContext());
 
