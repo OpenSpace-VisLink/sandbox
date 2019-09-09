@@ -2067,6 +2067,51 @@ private:
 
 };
 
+class VulkanSampler : public VulkanRenderObject {
+public:
+	VulkanSampler() { addType<VulkanSampler>(); }
+	virtual ~VulkanSampler() {}
+
+	VkSampler getSampler(const GraphicsContext& context) const { return contextHandler.getSharedState(context)->sampler; }
+
+protected:
+	void startRender(const GraphicsContext& context, VulkanDeviceState& state) {
+		if (state.getRenderMode() == VULKAN_RENDER_UPDATE_SHARED) {
+			VkSamplerCreateInfo samplerInfo = {};
+	        samplerInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
+	        samplerInfo.magFilter = VK_FILTER_LINEAR;
+	        samplerInfo.minFilter = VK_FILTER_LINEAR;
+	        samplerInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+	        samplerInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+	        samplerInfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+	        samplerInfo.anisotropyEnable = VK_TRUE;
+	        samplerInfo.maxAnisotropy = 16;
+	        samplerInfo.borderColor = VK_BORDER_COLOR_INT_OPAQUE_BLACK;
+	        samplerInfo.unnormalizedCoordinates = VK_FALSE;
+	        samplerInfo.compareEnable = VK_FALSE;
+	        samplerInfo.compareOp = VK_COMPARE_OP_ALWAYS;
+	        samplerInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
+
+	        if (vkCreateSampler(state.getDevice()->getDevice(), &samplerInfo, nullptr, &contextHandler.getSharedState(context)->sampler) != VK_SUCCESS) {
+	            throw std::runtime_error("failed to create texture sampler!");
+	        }
+		}
+	}
+
+	void finishRender(const GraphicsContext& context, VulkanDeviceState& state) {
+		if (state.getRenderMode() == VULKAN_RENDER_CLEANUP_SHARED) {
+			vkDestroySampler(state.getDevice()->getDevice(), contextHandler.getSharedState(context)->sampler, nullptr);
+		}
+	}
+
+private:
+	struct SamplerState : public ContextState {
+		VkSampler sampler;
+	};
+
+	GraphicsContextHandler<SamplerState,ContextState> contextHandler;
+};
+
 }
 
 #endif
