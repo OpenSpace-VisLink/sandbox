@@ -16,6 +16,8 @@
 #include <fstream>
 #include <chrono>
 
+
+
 namespace sandbox {
 
 class RenderObject : public Component {
@@ -991,6 +993,7 @@ public:
     VkFormat getImageFormat() const { return swapChainImageFormat; }
     const std::vector<VkImageView>& getImageViews() const { return swapChainImageViews; }
     VkExtent2D getExtent() const { return swapChainExtent; }
+    Context* getSharedContext() { return &sharedContext; };
 
 //private:
 	Entity* surfaceEntity;
@@ -1011,20 +1014,21 @@ public:
 	virtual VkRenderPass getRenderPass(const GraphicsContext& context) const = 0;
 };
 
-
-class VulkanCommandPool : public VulkanDeviceComponent {
+class VulkanCommandPool : public VulkanRenderObject {
 public:
 	VulkanCommandPool(VulkanQueue* queue) : queue(queue) { addType<VulkanCommandPool>(); }
 	virtual ~VulkanCommandPool() {
-		vkDestroyCommandPool(getDevice().getDevice(), commandPool, nullptr);
+		vkDestroyCommandPool(device->getDevice(), commandPool, nullptr);
 	}
 
 	void update() {
+		device = getEntity().getComponentRecursive<VulkanDevice>(false);
+
         VkCommandPoolCreateInfo poolInfo = {};
         poolInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
         poolInfo.queueFamilyIndex = queue->getIndex();
 
-        if (vkCreateCommandPool(getDevice().getDevice(), &poolInfo, nullptr, &commandPool) != VK_SUCCESS) {
+        if (vkCreateCommandPool(device->getDevice(), &poolInfo, nullptr, &commandPool) != VK_SUCCESS) {
             throw std::runtime_error("failed to create graphics command pool!");
         }
 	}
@@ -1033,9 +1037,49 @@ public:
 		return commandPool;
 	}
 
+	VkCommandBuffer beginSingleTimeCommands() {
+        VkCommandBufferAllocateInfo allocInfo = {};
+        allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+        allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+        allocInfo.commandPool = commandPool;
+        allocInfo.commandBufferCount = 1;
+
+        VkCommandBuffer commandBuffer;
+        vkAllocateCommandBuffers(device->getDevice(), &allocInfo, &commandBuffer);
+
+        VkCommandBufferBeginInfo beginInfo = {};
+        beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+        beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+
+        vkBeginCommandBuffer(commandBuffer, &beginInfo);
+
+        return commandBuffer;
+    }
+
+    void endSingleTimeCommands(VkCommandBuffer commandBuffer) {
+        vkEndCommandBuffer(commandBuffer);
+
+        VkSubmitInfo submitInfo = {};
+        submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+        submitInfo.commandBufferCount = 1;
+        submitInfo.pCommandBuffers = &commandBuffer;
+
+        vkQueueSubmit(queue->getQueue(), 1, &submitInfo, VK_NULL_HANDLE);
+        vkQueueWaitIdle(queue->getQueue());
+
+        vkFreeCommandBuffers(device->getDevice(), commandPool, 1, &commandBuffer);
+    }
+
+protected:
+
+	void startRender(const GraphicsContext& context, VulkanDeviceState& state);
+	void finishRender(const GraphicsContext& context, VulkanDeviceState& state);
+
+
 private:
 	VkCommandPool commandPool;
 	VulkanQueue* queue;
+	VulkanDevice* device;
 };
 
 
@@ -1048,6 +1092,8 @@ public:
 		//imageView = NULL;
 		extent.width = 0;
 		extent.height = 0;
+		commandPool.set(NULL);
+
 	}
 
 	virtual ~VulkanDeviceState() {}
@@ -1062,6 +1108,7 @@ public:
 	//void setImageView(VulkanImageView* renderPass) { this->imageView = imageView; }
 	const VkExtent2D& getExtent() const { return extent; }
 	void setExtent(VkExtent2D extent) { this->extent = extent; }
+	StateContainerItemStack<VulkanCommandPool*>& getCommandPool() { return commandPool; }
 
 	static VulkanDeviceState& get(const GraphicsContext& context) { return context.getRenderState()->getItem<VulkanDeviceState>(); }
 
@@ -1071,6 +1118,7 @@ private:
 	VulkanRenderPass* renderPass;
 	//VulkanImageView* imageView;
 	VkExtent2D extent;
+	StateContainerItemStack<VulkanCommandPool*> commandPool;
 };
 
 class VulkanFramebuffer : public VulkanRenderObject {
@@ -1086,6 +1134,16 @@ public:
 
 	virtual VkFramebuffer getFramebuffer(const GraphicsContext& context) const = 0;
 };
+
+
+void VulkanCommandPool::startRender(const GraphicsContext& context, VulkanDeviceState& state) {
+	state.getCommandPool().push(this);
+}
+
+void VulkanCommandPool::finishRender(const GraphicsContext& context, VulkanDeviceState& state) {
+	state.getCommandPool().pop();
+}
+
 
 class VulkanSwapChainFramebuffer : public VulkanFramebuffer {
 public:
@@ -1142,7 +1200,10 @@ inline void VulkanDeviceRenderer::update() {
 		if (device) {
 			state->setDevice(device);
 			state->setRenderPass(getEntity().getComponent<VulkanRenderPass>());
-			state->setExtent(getEntity().getComponent<VulkanSwapChain>()->getExtent());
+			VulkanSwapChain* swapChain = getEntity().getComponent<VulkanSwapChain>();
+			if (swapChain) {
+				state->setExtent(getEntity().getComponent<VulkanSwapChain>()->getExtent());	
+			}
 		}
 	}
 	
@@ -1517,6 +1578,16 @@ public:
         vkUnmapMemory(device->getDevice(), bufferMemory);
 	}
 
+	void copyTo(VulkanBuffer* vulkanBuffer, VkDeviceSize size, VulkanCommandPool* commandPool) {
+        VkCommandBuffer commandBuffer = commandPool->beginSingleTimeCommands();
+
+        VkBufferCopy copyRegion = {};
+        copyRegion.size = size;
+        vkCmdCopyBuffer(commandBuffer, buffer, vulkanBuffer->buffer, 1, &copyRegion);
+
+        commandPool->endSingleTimeCommands(commandBuffer);
+    }
+
 	VkBuffer getBuffer() const { return buffer; }
 
 private:
@@ -1574,7 +1645,8 @@ public:
 			int bufferSize = getBufferSize();
 			uboState->buffer = new VulkanBuffer(state.getDevice(), bufferSize, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
 		}
-		else if (state.getRenderMode() == VULKAN_RENDER_OBJECT) {
+		
+		if (state.getRenderMode() == VULKAN_RENDER_OBJECT) {
 			updateBuffer(context, state, uboState->buffer);
 		}
 	}
@@ -1589,22 +1661,7 @@ public:
 protected:
 	virtual size_t getBufferSize() const = 0;
 	virtual void updateBuffer(const GraphicsContext& context, VulkanDeviceState& state, VulkanBuffer* buffer) = 0;
-	/*virtual size_t getBufferSize() const { return sizeof(UniformBufferObject); }
 
-	virtual void updateBuffer(const GraphicsContext& context, VulkanDeviceState& state, VulkanBuffer* buffer) {
-		static auto startTime = std::chrono::high_resolution_clock::now();
-
-        auto currentTime = std::chrono::high_resolution_clock::now();
-        float time = std::chrono::duration<float, std::chrono::seconds::period>(currentTime - startTime).count();
-
-        UniformBufferObject ubo = {};
-        ubo.model = glm::rotate(glm::mat4(1.0f), time * glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f));
-        ubo.view = glm::lookAt(glm::vec3(2.0f, 2.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
-        ubo.proj = glm::perspective(glm::radians(45.0f), (float) state.getExtent().width / (float) state.getExtent().height, 0.1f, 10.0f);
-        ubo.proj[1][1] *= -1;
-
-        buffer->update(&ubo, sizeof(ubo));
-	}*/
 
 private:
 	struct UniformBufferState : public ContextState {
@@ -1630,7 +1687,6 @@ protected:
 	}
 };
 
-
 class MainUniformBuffer : public VulkanUniformBufferValue<UniformBufferObject> {
 
 protected:
@@ -1647,6 +1703,110 @@ protected:
 		VulkanUniformBufferValue<UniformBufferObject>::updateBuffer(context, state, buffer);
 	}
 };
+
+
+class VulkanDeviceBuffer : public VulkanRenderObject {
+public:
+	VulkanDeviceBuffer(VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, bool sharedContext) :
+		usage(usage), properties(properties), sharedContext(sharedContext) { 
+			addType<VulkanDeviceBuffer>(); 
+			updateMode = sharedContext ? VULKAN_RENDER_UPDATE_SHARED : VULKAN_RENDER_UPDATE;
+			cleanupMode = sharedContext ? VULKAN_RENDER_CLEANUP_SHARED : VULKAN_RENDER_CLEANUP;
+		}
+	virtual ~VulkanDeviceBuffer() {}
+
+	VkBuffer getBuffer(const GraphicsContext& context) const { 
+		BufferState* bufferState = sharedContext ? contextHandler.getSharedState(context) : contextHandler.getState(context);
+		return bufferState->buffer->getBuffer(); 
+	}
+
+protected:
+	void startRender(const GraphicsContext& context, VulkanDeviceState& state) {
+		BufferState* bufferState = sharedContext ? contextHandler.getSharedState(context) : contextHandler.getState(context);
+		if (handleUpdate(context, state)) {
+			VkDeviceSize bufferSize = getBufferSize();
+			bufferState->buffer = new VulkanBuffer(state.getDevice(), bufferSize, usage, properties);
+		}
+		
+		if (state.getRenderMode() == VULKAN_RENDER_OBJECT) {
+			VkDeviceSize bufferSize = getBufferSize();
+			VulkanBuffer* stagingBuffer = new VulkanBuffer(state.getDevice(), bufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+			updateBuffer(context, state, stagingBuffer);
+			stagingBuffer->copyTo(bufferState->buffer, bufferSize, state.getCommandPool().get());
+			delete stagingBuffer;
+		}
+	}
+
+	void finishRender(const GraphicsContext& context, VulkanDeviceState& state) {
+		if (handleCleanup(context, state)) {
+			BufferState* bufferState = sharedContext ? contextHandler.getSharedState(context) : contextHandler.getState(context);
+			delete bufferState->buffer;
+		}
+	}
+
+
+protected:
+	virtual bool handleUpdate(const GraphicsContext& context,VulkanDeviceState& state) const { return state.getRenderMode() == updateMode; }
+	virtual bool handleCleanup(const GraphicsContext& context,VulkanDeviceState& state) const { return state.getRenderMode() == cleanupMode; }
+	virtual VkDeviceSize getBufferSize() const = 0;
+	virtual void updateBuffer(const GraphicsContext& context, VulkanDeviceState& state, VulkanBuffer* buffer) = 0;
+
+private:
+	struct BufferState : public ContextState {
+		VulkanBuffer* buffer;
+	};
+
+	GraphicsContextHandler<BufferState,BufferState> contextHandler;
+	VkBufferUsageFlags usage;
+	VkMemoryPropertyFlags properties;
+	VulkanRenderMode updateMode;
+	VulkanRenderMode cleanupMode;
+	bool sharedContext;
+
+};
+
+template<typename T>
+class VulkanDeviceBufferValue : public VulkanDeviceBuffer {
+public:
+	VulkanDeviceBufferValue(VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, bool sharedContext) : VulkanDeviceBuffer(usage, properties, sharedContext), value(value) { addType< VulkanDeviceBufferValue<T> >(); }
+	virtual ~VulkanDeviceBufferValue() {}
+
+	T value;
+
+protected:
+	VkDeviceSize getBufferSize() const { return sizeof(T); }
+	void updateBuffer(const GraphicsContext& context, VulkanDeviceState& state, VulkanBuffer* buffer) {
+		buffer->update(getData(), getBufferSize());
+	}
+	virtual void* getData() { return &value; }
+};
+
+template<typename T>
+class VulkanArrayBuffer : public VulkanDeviceBufferValue< std::vector<T> > {
+public:
+	VulkanArrayBuffer(VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, bool sharedContext) : VulkanDeviceBufferValue< std::vector<T> >(usage, properties, sharedContext) { /*this->addType< VulkanArrayBuffer<T> >();*/ }
+	virtual ~VulkanArrayBuffer() {}
+
+protected:
+	VkDeviceSize getBufferSize() const { return this->value.size()*sizeof(T); }
+	void* getData() { return this->value.data(); }
+};
+
+template<typename T>
+class VertexArray : public VulkanArrayBuffer<T> {
+public:
+	VertexArray() : VulkanArrayBuffer<T>(VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, true) {}
+	virtual ~VertexArray() {}
+};
+
+template<typename T>
+class ObjectArray : public VulkanArrayBuffer<T> {
+public:
+	ObjectArray() : VulkanArrayBuffer<T>(VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, true) {}
+	virtual ~ObjectArray() {}
+};
+
+typedef ObjectArray<uint16_t> IndexArray;
 
 }
 

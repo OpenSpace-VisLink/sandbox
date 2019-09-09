@@ -40,6 +40,7 @@ const int MAX_FRAMES_IN_FLIGHT = 2;
     std::vector<VkPresentModeKHR> presentModes;
 };*/
 
+
 struct Vertex {
     glm::vec2 pos;
     glm::vec3 color;
@@ -75,7 +76,6 @@ struct Vertex {
         return attributeDescriptions;
     }
 };
-
 
 
 const std::vector<Vertex> vertices = {
@@ -134,6 +134,8 @@ private:
     VkDeviceMemory vertexBufferMemory;
     VkBuffer indexBuffer;
     VkDeviceMemory indexBufferMemory;
+    VertexArray<Vertex>* vertexArray;
+    IndexArray* indexArray;
 
     std::vector<VkBuffer> uniformBuffers;
     std::vector<VkDeviceMemory> uniformBuffersMemory;
@@ -154,10 +156,12 @@ private:
     EntityNode vulkanNode;
     EntityNode pipelineNode;
     EntityNode shaderObjects;
+    EntityNode graphicsObjects;
     EntityNode images;
     Entity* mainImage;
     Entity* renderNode;
     GraphicsRenderer* renderer;
+    EntityNode* objectNode;
 
     void initWindow() {
         glfwInit();
@@ -213,6 +217,8 @@ private:
                 mainDescriptorSet->addComponent(new VulkanDescriptor(mainUniformBuffer, VERTEX));
                 mainDescriptorSet->addComponent(new VulkanDescriptor(SAMPLER, FRAGMENT));*/
 
+        //graphicsObjects.addComponent(new VulkanVertexArray);
+
         pipelineNode.addComponent(new VulkanShaderModule("examples/VulkanExample/src/shaders/vert.spv", VK_SHADER_STAGE_VERTEX_BIT));
         pipelineNode.addComponent(new VulkanShaderModule("examples/VulkanExample/src/shaders/frag.spv", VK_SHADER_STAGE_FRAGMENT_BIT));
         VulkanVertexInput* vertexInput = new VulkanVertexInput(sizeof(Vertex));
@@ -251,13 +257,26 @@ private:
                         commandNode->addComponent(new VulkanCommandPool(graphicsQueue));
                         //commandNode->addComponent(new VulkanCommandBuffer());
                         //commandNode->addComponent(new RenderNode(scene, RENDER_ONLY));
-            EntityNode* updateNode = new EntityNode(deviceNode);
-                updateNode->addComponent(new VulkanCommandPool(graphicsQueue));
+            objectNode = new EntityNode(deviceNode);
+                objectNode->addComponent(new VulkanDeviceRenderer(new GraphicsContext(renderNode->getComponent<VulkanBasicSwapChain>()->getSharedContext(), new Context(), false)));
+                //objectNode->addComponent(new VulkanDeviceRenderer());
+                objectNode->addComponent(new VulkanCommandPool(graphicsQueue));
+                vertexArray = new VertexArray<Vertex>();
+                vertexArray->value = vertices;
+                objectNode->addComponent(vertexArray);
+                indexArray = new IndexArray();
+                indexArray->value = indices;
+                objectNode->addComponent(indexArray);
+
 
 
         //createDevice(window2);
 
         vulkanNode.update();
+
+        VulkanDeviceRenderer* objectRenderer = objectNode->getComponent<VulkanDeviceRenderer>();
+        objectRenderer->render(VULKAN_RENDER_UPDATE_SHARED);
+        objectRenderer->render(VULKAN_RENDER_OBJECT);
 
         pipelineNode.addComponent(new VulkanGraphicsPipeline());
 
@@ -295,8 +314,8 @@ private:
         createTextureImage();
         createTextureImageView();
         createTextureSampler();
-        createVertexBuffer();
-        createIndexBuffer();
+        //createVertexBuffer();
+        //createIndexBuffer();
         //createUniformBuffers();
         createDescriptorPool();
         createDescriptorSets();
@@ -389,7 +408,7 @@ private:
         //createRenderPass();
         createGraphicsPipeline();
         //createFramebuffers();
-        createUniformBuffers();
+        //createUniformBuffers();
         createDescriptorPool();
         createDescriptorSets();
         createCommandBuffers();
@@ -737,57 +756,6 @@ private:
         endSingleTimeCommands(commandBuffer);
     }
 
-    void createVertexBuffer() {
-        VkDeviceSize bufferSize = sizeof(vertices[0]) * vertices.size();
-
-        VkBuffer stagingBuffer;
-        VkDeviceMemory stagingBufferMemory;
-        createBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, stagingBuffer, stagingBufferMemory);
-
-        void* data;
-        vkMapMemory(device, stagingBufferMemory, 0, bufferSize, 0, &data);
-            memcpy(data, vertices.data(), (size_t) bufferSize);
-        vkUnmapMemory(device, stagingBufferMemory);
-
-        createBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, vertexBuffer, vertexBufferMemory);
-
-        copyBuffer(stagingBuffer, vertexBuffer, bufferSize);
-
-        vkDestroyBuffer(device, stagingBuffer, nullptr);
-        vkFreeMemory(device, stagingBufferMemory, nullptr);
-    }
-
-    void createIndexBuffer() {
-        VkDeviceSize bufferSize = sizeof(indices[0]) * indices.size();
-
-        VkBuffer stagingBuffer;
-        VkDeviceMemory stagingBufferMemory;
-        createBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, stagingBuffer, stagingBufferMemory);
-
-        void* data;
-        vkMapMemory(device, stagingBufferMemory, 0, bufferSize, 0, &data);
-            memcpy(data, indices.data(), (size_t) bufferSize);
-        vkUnmapMemory(device, stagingBufferMemory);
-
-        createBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, indexBuffer, indexBufferMemory);
-
-        copyBuffer(stagingBuffer, indexBuffer, bufferSize);
-
-        vkDestroyBuffer(device, stagingBuffer, nullptr);
-        vkFreeMemory(device, stagingBufferMemory, nullptr);
-    }
-
-    void createUniformBuffers() {
-        VkDeviceSize bufferSize = sizeof(UniformBufferObject);
-
-        uniformBuffers.resize(swapChainImages.size());
-        uniformBuffersMemory.resize(swapChainImages.size());
-
-        for (size_t i = 0; i < swapChainImages.size(); i++) {
-            createBuffer(bufferSize, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, uniformBuffers[i], uniformBuffersMemory[i]);
-        }
-    }
-
     void createDescriptorPool() {
         std::array<VkDescriptorPoolSize, 2> poolSizes = {};
         poolSizes[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
@@ -974,11 +942,11 @@ private:
 
                 vkCmdBindPipeline(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline);
 
-                VkBuffer vertexBuffers[] = {vertexBuffer};
+                VkBuffer vertexBuffers[] = {vertexArray->getBuffer(renderer->getContext())};
                 VkDeviceSize offsets[] = {0};
                 vkCmdBindVertexBuffers(commandBuffers[i], 0, 1, vertexBuffers, offsets);
 
-                vkCmdBindIndexBuffer(commandBuffers[i], indexBuffer, 0, VK_INDEX_TYPE_UINT16);
+                vkCmdBindIndexBuffer(commandBuffers[i], indexArray->getBuffer(renderer->getContext()), 0, VK_INDEX_TYPE_UINT16);
 
                 vkCmdBindDescriptorSets(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &descriptorSets[i], 0, nullptr);
 
