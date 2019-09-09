@@ -158,6 +158,7 @@ private:
     EntityNode pipelineNode;
     EntityNode shaderObjects;
     EntityNode graphicsObjects;
+    EntityNode descriptorSetGroup;
     EntityNode images;
     Entity* mainImage;
     Entity* renderNode;
@@ -218,13 +219,12 @@ private:
             samplerNode->addComponent(sampler);
 
 
-
-        /*EntityNode* mainDescriptorLayout;
-            mainDescriptorLayout->addComponent(new VulkanDescriptorLayout());
-            EntityNode* mainDescriptorSet;
-                mainDescriptorSet->addComponent(new VulkanDescriptorSet(mainDescriptorLayout));
-                mainDescriptorSet->addComponent(new VulkanDescriptor(mainUniformBuffer, VERTEX));
-                mainDescriptorSet->addComponent(new VulkanDescriptor(SAMPLER, FRAGMENT));*/
+        EntityNode* mainDescriptorSet = new EntityNode(&descriptorSetGroup);
+            //mainDescriptorSet->addComponent(new VulkanDescriptorSet());
+            mainDescriptorSet->addComponent(new VulkanDescriptorSetLayout());
+            mainDescriptorSet->addComponent(new VulkanDescriptor(uniformBuffer, VK_SHADER_STAGE_VERTEX_BIT));
+            mainDescriptorSet->addComponent(new VulkanDescriptor(sampler, VK_SHADER_STAGE_FRAGMENT_BIT));
+            //mainDescriptorSet->addComponent(new VulkanDescriptorPool());
 
         vertexArray = new VertexArray<Vertex>();
         vertexArray->value = vertices;
@@ -239,7 +239,7 @@ private:
         vertexInput->addAttribute(VK_FORMAT_R32G32_SFLOAT, offsetof(Vertex, pos));
         vertexInput->addAttribute(VK_FORMAT_R32G32B32_SFLOAT, offsetof(Vertex, color));
         vertexInput->addAttribute(VK_FORMAT_R32G32_SFLOAT, offsetof(Vertex, texCoord));
-        //pipelineNode.addComponent(new VulkanPipeline(mainDescriptorLayout);
+        pipelineNode.addComponent(new VulkanGraphicsPipeline(mainDescriptorSet->getComponent<VulkanDescriptorSetLayout>()));
         pipelineNode.addComponent(vertexInput);
 
 
@@ -268,7 +268,7 @@ private:
                 //renderNode->addComponent(new VulkanDeviceRenderer());
                 EntityNode* graphicsNode = new EntityNode(renderNode);
                     graphicsNode->addComponent(new RenderNode(&shaderObjects));//, UPDATE_ONLY));
-                    //graphicsNode->addComponent(new RenderNode(&descriptorNode, UPDATE_ONLY));
+                    graphicsNode->addComponent(new RenderNode(&descriptorSetGroup)); //, UPDATE_ONLY));
                     graphicsNode->addComponent(new RenderNode(&pipelineNode));//, UPDATE_ONLY));
                     EntityNode* commandNode = new EntityNode(graphicsNode);
                         commandNode->addComponent(new VulkanCommandPool(graphicsQueue));
@@ -290,8 +290,6 @@ private:
         objectRenderer->render(VULKAN_RENDER_UPDATE);
         objectRenderer->render(VULKAN_RENDER_OBJECT);
 
-        pipelineNode.addComponent(new VulkanGraphicsPipeline());
-
         //instance = vulkanNode.getComponent<VulkanInstance>()->getInstance();
         //surface = surfaceNode->getComponent<VulkanSurface>()->getSurface();
         device = deviceNode->getComponent<VulkanDevice>()->getDevice();
@@ -310,6 +308,7 @@ private:
 
         graphicsPipeline = pipelineNode.getComponent<VulkanGraphicsPipeline>()->getGraphicsPipeline(renderer->getContext());
         pipelineLayout = pipelineNode.getComponent<VulkanGraphicsPipeline>()->getPipelineLayout(renderer->getContext());
+        descriptorSetLayout = mainDescriptorSet->getComponent<VulkanDescriptorSetLayout>()->getDescriptorSetLayout(renderer->getContext());
         framebuffer = renderNode->getComponent<VulkanFramebuffer>();
         //createInstance();
         //setupDebugMessenger();
@@ -319,8 +318,8 @@ private:
         //createSwapChain();
         //createImageViews();
         //createRenderPass();
-        createDescriptorSetLayout();
-        createGraphicsPipeline();
+        //createDescriptorSetLayout();
+        //createGraphicsPipeline();
         //createFramebuffers();
         //createCommandPool();
         //createTextureImage();
