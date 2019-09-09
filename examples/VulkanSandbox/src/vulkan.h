@@ -751,6 +751,26 @@ public:
         throw std::runtime_error("failed to find suitable memory type!");
     }
 
+    VkImageView createImageView(VkImage image, VkFormat format) const {
+        VkImageViewCreateInfo viewInfo = {};
+        viewInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+        viewInfo.image = image;
+        viewInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
+        viewInfo.format = format;
+        viewInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+        viewInfo.subresourceRange.baseMipLevel = 0;
+        viewInfo.subresourceRange.levelCount = 1;
+        viewInfo.subresourceRange.baseArrayLayer = 0;
+        viewInfo.subresourceRange.layerCount = 1;
+
+        VkImageView imageView;
+        if (vkCreateImageView(device, &viewInfo, nullptr, &imageView) != VK_SUCCESS) {
+            throw std::runtime_error("failed to create texture image view!");
+        }
+
+        return imageView;
+    }
+
 private:
 	bool initialized;
 	Entity* instanceEntity;
@@ -1831,7 +1851,7 @@ public:
 			image = getEntity().getComponent<Image>();
 		}
 	}
-	
+
 	VkImage getImage(const GraphicsContext& context) const { return contextHandler.getSharedState(context)->image; }
 
 protected:
@@ -1883,6 +1903,7 @@ protected:
 		if (state.getRenderMode() == VULKAN_RENDER_CLEANUP_SHARED) {
 			ImageState* imageState = contextHandler.getSharedState(context);
 			vkDestroyImage(state.getDevice()->getDevice(), imageState->image, nullptr);
+			vkFreeMemory(state.getDevice()->getDevice(), imageState->imageMemory, nullptr);
 		}
 	}
 
@@ -2000,6 +2021,49 @@ private:
 
 	GraphicsContextHandler<ImageState,ContextState> contextHandler;
 	sandbox::Image* image;
+
+};
+
+class VulkanImageView : public VulkanRenderObject {
+public:
+	VulkanImageView() : image(NULL) { addType<VulkanImageView>(); }
+	virtual ~VulkanImageView() {}
+
+	void update() {
+		if (!image) {
+			image = getEntity().getComponent<VulkanImage>();
+		}
+	}
+
+	VkImageView getImageView(const GraphicsContext& context) const { return contextHandler.getSharedState(context)->imageView; }
+
+protected:
+	void startRender(const GraphicsContext& context, VulkanDeviceState& state) {
+		if (!image) { return; }
+
+		if (state.getRenderMode() == VULKAN_RENDER_UPDATE_SHARED) {
+			ImageViewState* imageViewState = contextHandler.getSharedState(context);
+			imageViewState->imageView = state.getDevice()->createImageView(image->getImage(context), VK_FORMAT_R8G8B8A8_UNORM);
+		}
+	}
+
+	void finishRender(const GraphicsContext& context, VulkanDeviceState& state) {
+		if (!image) { return; }
+
+		if (state.getRenderMode() == VULKAN_RENDER_CLEANUP_SHARED) {
+			ImageViewState* imageViewState = contextHandler.getSharedState(context);
+			vkDestroyImageView(state.getDevice()->getDevice(), imageViewState->imageView, nullptr);
+		}
+	}
+
+
+private:
+	struct ImageViewState : public ContextState {
+		VkImageView imageView;
+	};
+
+	GraphicsContextHandler<ImageViewState,ContextState> contextHandler;
+	VulkanImage* image;
 
 };
 
