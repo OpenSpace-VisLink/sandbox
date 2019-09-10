@@ -145,6 +145,7 @@ private:
     VkDescriptorPool descriptorPool;
     std::vector<VkDescriptorSet> descriptorSets;
     VulkanDescriptorPool* vulkanDescriptorPool;
+    VulkanDescriptorSet* descriptorSet;
 
     std::vector<VkCommandBuffer> commandBuffers;
 
@@ -186,23 +187,6 @@ private:
         app->framebufferResized = true;
     }
 
-    /*void createDevice(GLFWwindow* window) {
-        EntityNode* surfaceNode = new EntityNode(&vulkanNode);
-            surfaceNode->addComponent(new GlfwSurface(window, &vulkanNode));
-        EntityNode* deviceNode = new EntityNode(&vulkanNode);
-            deviceNode->addComponent(new VulkanDevice(&vulkanNode));
-            EntityNode* queues = new EntityNode(deviceNode);
-                graphicsQueue = new VulkanGraphicsQueue();
-                queues->addComponent(graphicsQueue);
-                queues->addComponent(new VulkanPresentQueue(surfaceNode));
-            EntityNode* renderNode = new EntityNode(deviceNode);
-                renderNode->addComponent(new VulkanBasicSwapChain(surfaceNode));
-                renderNode->addComponent(new VulkanBasicRenderPass());
-                renderNode->addComponent(new VulkanSwapChainFramebufferGroup());
-            EntityNode* commandPoolNode = new EntityNode(deviceNode);
-                commandPoolNode->addComponent(new VulkanCommandPool(graphicsQueue));
-    }*/
-
     void initVulkan() {
 
         mainImage = new EntityNode(&images);
@@ -222,12 +206,12 @@ private:
 
         EntityNode* mainDescriptorSet = new EntityNode(&descriptorSetGroup);
             mainDescriptorSet->addComponent(new VulkanDescriptorSetLayout());
-            mainDescriptorSet->addComponent(new VulkanSwapChainDescriptorPool());
-            //mainDescriptorSet->addComponent(new VulkanDescriptorSet());
+            vulkanDescriptorPool = new VulkanSwapChainDescriptorPool();
+            mainDescriptorSet->addComponent(vulkanDescriptorPool);
+            descriptorSet = new VulkanDescriptorSet();
+            mainDescriptorSet->addComponent(descriptorSet);
             mainDescriptorSet->addComponent(new VulkanDescriptor(uniformBuffer, VK_SHADER_STAGE_VERTEX_BIT));
             mainDescriptorSet->addComponent(new VulkanDescriptor(new VulkanImageViewDecorator(sampler, mainImage->getComponent<VulkanImageView>()), VK_SHADER_STAGE_FRAGMENT_BIT));
-
-        vulkanDescriptorPool = mainDescriptorSet->getComponent<VulkanDescriptorPool>();
 
         vertexArray = new VertexArray<Vertex>();
         vertexArray->value = vertices;
@@ -267,8 +251,6 @@ private:
                 renderNode->addComponent(new VulkanBasicSwapChain(surfaceNode));
                 renderNode->addComponent(new VulkanBasicRenderPass());
                 renderNode->addComponent(new VulkanSwapChainFramebuffer());
-                //renderNode->addComponent(new VulkanSwapChainDescriptorPool(mainDescriptorLayout));
-                //renderNode->addComponent(new VulkanDeviceRenderer());
                 EntityNode* graphicsNode = new EntityNode(renderNode);
                     graphicsNode->addComponent(new RenderNode(&shaderObjects));//, UPDATE_ONLY));
                     graphicsNode->addComponent(new RenderNode(&descriptorSetGroup)); //, UPDATE_ONLY));
@@ -289,10 +271,13 @@ private:
 
         vulkanNode.update();
 
-        VulkanDeviceRenderer* objectRenderer = objectNode->getComponent<VulkanDeviceRenderer>();
-        objectRenderer->render(VULKAN_RENDER_UPDATE_SHARED);
-        objectRenderer->render(VULKAN_RENDER_UPDATE);
-        objectRenderer->render(VULKAN_RENDER_OBJECT);
+        std::vector<VulkanDeviceRenderer*> renderers = deviceNode->getComponentsRecursive<VulkanDeviceRenderer>();
+        renderers[renderers.size()-1]->render(VULKAN_RENDER_UPDATE_SHARED);
+        renderers[0]->render(VULKAN_RENDER_UPDATE_SHARED);
+        for (int f = 0; f < renderers.size(); f++) {  
+            renderers[f]->render(VULKAN_RENDER_UPDATE);
+            renderers[f]->render(VULKAN_RENDER_OBJECT);
+        }
 
         //instance = vulkanNode.getComponent<VulkanInstance>()->getInstance();
         //surface = surfaceNode->getComponent<VulkanSurface>()->getSurface();
@@ -333,7 +318,7 @@ private:
         //createIndexBuffer();
         //createUniformBuffers();
         //createDescriptorPool();
-        createDescriptorSets();
+        //createDescriptorSets();
         createCommandBuffers();
         createSyncObjects();
     }
@@ -425,62 +410,9 @@ private:
         //createFramebuffers();
         //createUniformBuffers();
         //createDescriptorPool();
-        createDescriptorSets();
+        //createDescriptorSets();
         createCommandBuffers();
     }
-
-
-
-
-    void createDescriptorSets() {
-        std::vector<VkDescriptorSetLayout> layouts(swapChainImages.size(), descriptorSetLayout);
-        VkDescriptorSetAllocateInfo allocInfo = {};
-        allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-        allocInfo.descriptorPool = vulkanDescriptorPool->getDescriptorPool(renderer->getContext());
-        allocInfo.descriptorSetCount = static_cast<uint32_t>(swapChainImages.size());
-        allocInfo.pSetLayouts = layouts.data();
-
-        descriptorSets.resize(swapChainImages.size());
-        if (vkAllocateDescriptorSets(device, &allocInfo, descriptorSets.data()) != VK_SUCCESS) {
-            throw std::runtime_error("failed to allocate descriptor sets!");
-        }
-
-        for (size_t i = 0; i < swapChainImages.size(); i++) {
-            GraphicsRenderer* renderer = renderNode->getComponents<GraphicsRenderer>()[i];
-
-            VkDescriptorBufferInfo bufferInfo = {};
-            bufferInfo.buffer = uniformBuffer->getBuffer(renderer->getContext());
-            bufferInfo.offset = 0;
-            bufferInfo.range = sizeof(UniformBufferObject);
-
-            VkDescriptorImageInfo imageInfo = {};
-            imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-            imageInfo.imageView = mainImage->getComponent<VulkanImageView>()->getImageView(renderer->getContext());
-            imageInfo.sampler = sampler->getSampler(renderer->getContext());
-
-            std::array<VkWriteDescriptorSet, 2> descriptorWrites = {};
-
-            descriptorWrites[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-            descriptorWrites[0].dstSet = descriptorSets[i];
-            descriptorWrites[0].dstBinding = 0;
-            descriptorWrites[0].dstArrayElement = 0;
-            descriptorWrites[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-            descriptorWrites[0].descriptorCount = 1;
-            descriptorWrites[0].pBufferInfo = &bufferInfo;
-
-            descriptorWrites[1].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-            descriptorWrites[1].dstSet = descriptorSets[i];
-            descriptorWrites[1].dstBinding = 1;
-            descriptorWrites[1].dstArrayElement = 0;
-            descriptorWrites[1].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-            descriptorWrites[1].descriptorCount = 1;
-            descriptorWrites[1].pImageInfo = &imageInfo;
-
-            vkUpdateDescriptorSets(device, static_cast<uint32_t>(descriptorWrites.size()), descriptorWrites.data(), 0, nullptr);
-        }
-    }
-
-
 
 
     void createCommandBuffers() {
@@ -527,7 +459,9 @@ private:
 
                 vkCmdBindIndexBuffer(commandBuffers[i], indexArray->getBuffer(renderer->getContext()), 0, VK_INDEX_TYPE_UINT16);
 
-                vkCmdBindDescriptorSets(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &descriptorSets[i], 0, nullptr);
+                VkDescriptorSet descSet = descriptorSet->getDescriptorSet(renderer->getContext());
+                std::cout << descSet << std::endl;
+                vkCmdBindDescriptorSets(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &descSet, 0, nullptr);
 
                 vkCmdDrawIndexed(commandBuffers[i], static_cast<uint32_t>(indices.size()), 1, 0, 0, 0);
 
