@@ -144,6 +144,7 @@ private:
 
     VkDescriptorPool descriptorPool;
     std::vector<VkDescriptorSet> descriptorSets;
+    VulkanDescriptorPool* vulkanDescriptorPool;
 
     std::vector<VkCommandBuffer> commandBuffers;
 
@@ -221,9 +222,12 @@ private:
 
         EntityNode* mainDescriptorSet = new EntityNode(&descriptorSetGroup);
             mainDescriptorSet->addComponent(new VulkanDescriptorSetLayout());
+            mainDescriptorSet->addComponent(new VulkanSwapChainDescriptorPool());
             //mainDescriptorSet->addComponent(new VulkanDescriptorSet());
             mainDescriptorSet->addComponent(new VulkanDescriptor(uniformBuffer, VK_SHADER_STAGE_VERTEX_BIT));
             mainDescriptorSet->addComponent(new VulkanDescriptor(new VulkanImageViewDecorator(sampler, mainImage->getComponent<VulkanImageView>()), VK_SHADER_STAGE_FRAGMENT_BIT));
+
+        vulkanDescriptorPool = mainDescriptorSet->getComponent<VulkanDescriptorPool>();
 
         vertexArray = new VertexArray<Vertex>();
         vertexArray->value = vertices;
@@ -269,6 +273,7 @@ private:
                     graphicsNode->addComponent(new RenderNode(&shaderObjects));//, UPDATE_ONLY));
                     graphicsNode->addComponent(new RenderNode(&descriptorSetGroup)); //, UPDATE_ONLY));
                     graphicsNode->addComponent(new RenderNode(&pipelineNode));//, UPDATE_ONLY));
+
                     EntityNode* commandNode = new EntityNode(graphicsNode);
                         commandNode->addComponent(new VulkanCommandPool(graphicsQueue));
                         //commandNode->addComponent(new VulkanCommandBuffer());
@@ -327,7 +332,7 @@ private:
         //createVertexBuffer();
         //createIndexBuffer();
         //createUniformBuffers();
-        createDescriptorPool();
+        //createDescriptorPool();
         createDescriptorSets();
         createCommandBuffers();
         createSyncObjects();
@@ -447,7 +452,7 @@ private:
         std::vector<VkDescriptorSetLayout> layouts(swapChainImages.size(), descriptorSetLayout);
         VkDescriptorSetAllocateInfo allocInfo = {};
         allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-        allocInfo.descriptorPool = descriptorPool;
+        allocInfo.descriptorPool = vulkanDescriptorPool->getDescriptorPool(renderer->getContext());
         allocInfo.descriptorSetCount = static_cast<uint32_t>(swapChainImages.size());
         allocInfo.pSetLayouts = layouts.data();
 

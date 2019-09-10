@@ -823,17 +823,21 @@ class VulkanSwapChainState : public StateContainerItem {
 public:
 	VulkanSwapChainState() {
 		imageIndex = 0;
+		numImages = 0;
 	}
 
 	virtual ~VulkanSwapChainState() {}
 
 	int getImageIndex() const { return imageIndex; }
-	int setImageIndex(int imageIndex) { this->imageIndex = imageIndex; }
+	void setImageIndex(int imageIndex) { this->imageIndex = imageIndex; }
+	int getNumImages() const { return numImages; }
+	void setNumImages(int numImages) { this->numImages = numImages; }
 
 	static VulkanSwapChainState& get(const GraphicsContext& context) { return context.getRenderState()->getItem<VulkanSwapChainState>(); }
 
 private:
 	int imageIndex;
+	int numImages;
 };
 
 class VulkanBasicSwapChain : public VulkanSwapChain {
@@ -935,6 +939,7 @@ public:
 
         for (int f = 0; f < imageCount; f++) {
         	GraphicsContext* context = new GraphicsContext(&sharedContext, new Context(), false);
+	        VulkanSwapChainState::get(*context).setNumImages(imageCount);
         	VulkanSwapChainState::get(*context).setImageIndex(f);
         	VulkanDeviceRenderer* renderer = new VulkanDeviceRenderer(context);
 	        getEntity().addComponent(renderer);
@@ -1559,6 +1564,7 @@ public:
 
 	virtual void setBinding(VkDescriptorSetLayoutBinding& binding) {}
 	virtual void writeDescriptor(const GraphicsContext& context, VkWriteDescriptorSet& descriptorWrite, std::vector<DescriptorObject*>& descriptorObjects) {}
+	virtual void setPoolSize(VkDescriptorPoolSize& poolSize) {}
 };
 
 class VulkanUniformBuffer : public VulkanShaderObject {
@@ -1621,6 +1627,10 @@ public:
         descriptorWrites[1].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
         descriptorWrites[1].descriptorCount = 1;
         descriptorWrites[1].pImageInfo = &imageInfo;*/
+	}
+
+	void setPoolSize(VkDescriptorPoolSize& poolSize) {
+		poolSize.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
 	}
 
 protected:
@@ -2073,6 +2083,10 @@ protected:
         descriptorWrite.pImageInfo = &imageInfo;
 	}
 
+	void setPoolSize(VkDescriptorPoolSize& poolSize) {
+		poolSize.type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+	}
+
 private:
 	struct SamplerState : public ContextState {
 		VkSampler sampler;
@@ -2100,6 +2114,9 @@ public:
 	        }
         }
 	}
+	void setPoolSize(VkDescriptorPoolSize& poolSize) {
+		shaderObject->setPoolSize(poolSize);
+	}
 private:
 	VulkanShaderObject* shaderObject;
 	VulkanImageView* imageView;
@@ -2114,6 +2131,10 @@ public:
 	void setBinding(VkDescriptorSetLayoutBinding& binding) {
 		shaderObject->setBinding(binding);
 		binding.stageFlags = shaderStageFlags;
+	}
+
+	void setPoolSize(VkDescriptorPoolSize& poolSize) {
+		shaderObject->setPoolSize(poolSize);
 	}
 
 private:
@@ -2169,6 +2190,67 @@ private:
 
 	GraphicsContextHandler<DescriptorSetLayoutState,ContextState> contextHandler;
 };
+
+class VulkanDescriptorPool : public VulkanRenderObject {
+public:
+	VulkanDescriptorPool() { addType<VulkanDescriptorPool>(); }
+	virtual ~VulkanDescriptorPool() {}
+
+	virtual VkDescriptorPool getDescriptorPool(const GraphicsContext& context) const = 0;
+
+protected:
+
+	void finishRender(const GraphicsContext& context, VulkanDeviceState& state) {
+		if (state.getRenderMode() == VULKAN_RENDER_CLEANUP_SHARED) {
+			vkDestroyDescriptorPool(state.getDevice()->getDevice(), getDescriptorPool(context), nullptr);
+		}
+	}
+};
+
+class VulkanSwapChainDescriptorPool : public VulkanDescriptorPool {
+public:
+	VulkanSwapChainDescriptorPool() { addType<VulkanSwapChainDescriptorPool>(); }
+	virtual ~VulkanSwapChainDescriptorPool() {}
+
+	VkDescriptorPool getDescriptorPool(const GraphicsContext& context) const { return contextHandler.getSharedState(context)->descriptorPool; }
+
+protected:
+	void startRender(const GraphicsContext& context, VulkanDeviceState& state) {
+		if (state.getRenderMode() == VULKAN_RENDER_UPDATE_SHARED) {
+			DescriptorPoolState* descriptorPoolState = contextHandler.getSharedState(context);
+			std::vector<VulkanDescriptor*> descriptors = getEntity().getComponents<VulkanDescriptor>();
+			VulkanSwapChainState& swapChainState = VulkanSwapChainState::get(context);
+
+			std::vector<VkDescriptorPoolSize> poolSizes;
+			for (int f = 0; f < descriptors.size(); f++) {
+				VkDescriptorPoolSize poolSize = {};
+				descriptors[f]->setPoolSize(poolSize);
+				poolSize.descriptorCount = static_cast<uint32_t>(swapChainState.getNumImages());
+				poolSizes.push_back(poolSize);
+			}
+
+			VkDescriptorPoolCreateInfo poolInfo = {};
+	        poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+	        poolInfo.poolSizeCount = static_cast<uint32_t>(poolSizes.size());
+	        poolInfo.pPoolSizes = poolSizes.data();
+	        poolInfo.maxSets = static_cast<uint32_t>(swapChainState.getNumImages());
+
+			if (vkCreateDescriptorPool(state.getDevice()->getDevice(), &poolInfo, nullptr, &contextHandler.getSharedState(context)->descriptorPool) != VK_SUCCESS) {
+            	throw std::runtime_error("failed to create descriptor pool!");
+        	}
+
+        	std::cout << "created descriptor pool" << std::endl;
+		}
+	}
+
+private:
+	struct DescriptorPoolState : public ContextState {
+		VkDescriptorPool descriptorPool;
+	};
+
+	GraphicsContextHandler<DescriptorPoolState,ContextState> contextHandler;
+};
+
 
 /*class VulkanDescriptorSet : public VulkanRenderObject {
 public:
