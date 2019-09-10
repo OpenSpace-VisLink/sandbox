@@ -2308,53 +2308,6 @@ protected:
 			for (int f = 0; f < descriptorObjects.size(); f++) {
 				delete descriptorObjects[f];
 			}
-
-	        /*
-	                std::vector<VkDescriptorSetLayout> layouts(swapChainImages.size(), descriptorSetLayout);
-        VkDescriptorSetAllocateInfo allocInfo = {};
-        allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-        allocInfo.descriptorPool = vulkanDescriptorPool->getDescriptorPool(renderer->getContext());
-        allocInfo.descriptorSetCount = static_cast<uint32_t>(swapChainImages.size());
-        allocInfo.pSetLayouts = layouts.data();
-
-        descriptorSets.resize(swapChainImages.size());
-        if (vkAllocateDescriptorSets(device, &allocInfo, descriptorSets.data()) != VK_SUCCESS) {
-            throw std::runtime_error("failed to allocate descriptor sets!");
-        }
-
-        for (size_t i = 0; i < swapChainImages.size(); i++) {
-            GraphicsRenderer* renderer = renderNode->getComponents<GraphicsRenderer>()[i];
-
-            VkDescriptorBufferInfo bufferInfo = {};
-            bufferInfo.buffer = uniformBuffer->getBuffer(renderer->getContext());
-            bufferInfo.offset = 0;
-            bufferInfo.range = sizeof(UniformBufferObject);
-
-            VkDescriptorImageInfo imageInfo = {};
-            imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-            imageInfo.imageView = mainImage->getComponent<VulkanImageView>()->getImageView(renderer->getContext());
-            imageInfo.sampler = sampler->getSampler(renderer->getContext());
-
-            std::array<VkWriteDescriptorSet, 2> descriptorWrites = {};
-
-            descriptorWrites[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-            descriptorWrites[0].dstSet = descriptorSets[i];
-            descriptorWrites[0].dstBinding = 0;
-            descriptorWrites[0].dstArrayElement = 0;
-            descriptorWrites[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-            descriptorWrites[0].descriptorCount = 1;
-            descriptorWrites[0].pBufferInfo = &bufferInfo;
-
-            descriptorWrites[1].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-            descriptorWrites[1].dstSet = descriptorSets[i];
-            descriptorWrites[1].dstBinding = 1;
-            descriptorWrites[1].dstArrayElement = 0;
-            descriptorWrites[1].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-            descriptorWrites[1].descriptorCount = 1;
-            descriptorWrites[1].pImageInfo = &imageInfo;
-
-            vkUpdateDescriptorSets(device, static_cast<uint32_t>(descriptorWrites.size()), descriptorWrites.data(), 0, nullptr);
-        }*/
 		}
 	}
 
@@ -2523,7 +2476,128 @@ private:
 	VulkanDescriptorSetLayout* descriptorSetLayout;
 };
 
+class VulkanCommandBuffer : public VulkanRenderObject {
+public:
+	VulkanCommandBuffer() { addType<VulkanCommandBuffer>(); }
+	virtual ~VulkanCommandBuffer() {}
 
+	VkCommandBuffer getVulkanCommandBuffer(const GraphicsContext& context) const { return contextHandler.getState(context)->commandBuffer; }
+
+protected:
+	void startRender(const GraphicsContext& context, VulkanDeviceState& state) {
+
+		if (state.getRenderMode() == VULKAN_RENDER_UPDATE) {
+			CommandBufferState* commandBufferState = contextHandler.getState(context);
+			VkCommandBufferAllocateInfo allocInfo = {};
+			allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+	        allocInfo.commandPool = state.getCommandPool().get()->getCommandPool();
+	        allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+	        allocInfo.commandBufferCount = 1;
+
+	        if (vkAllocateCommandBuffers(state.getDevice()->getDevice(), &allocInfo, &commandBufferState->commandBuffer) != VK_SUCCESS) {
+	            throw std::runtime_error("failed to allocate command buffers!");
+	        }   
+		}
+
+		if (state.getRenderMode() == VULKAN_RENDER_COMMAND) {
+			CommandBufferState* commandBufferState = contextHandler.getState(context);
+
+			std::cout << "Render command" << std::endl;
+
+			/*if (commandBufferState->recorded) {
+				// need to reset command buffer
+			}*/
+
+			VkCommandBufferBeginInfo beginInfo = {};
+            beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+
+            if (vkBeginCommandBuffer(commandBufferState->commandBuffer, &beginInfo) != VK_SUCCESS) {
+                throw std::runtime_error("failed to begin recording command buffer!");
+            }
+
+		}
+
+/*VkCommandBufferAllocateInfo allocInfo = {};
+        allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+        allocInfo.commandPool = commandPool;
+        allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+        allocInfo.commandBufferCount = (uint32_t) commandBuffers.size();
+
+        if (vkAllocateCommandBuffers(device, &allocInfo, commandBuffers.data()) != VK_SUCCESS) {
+            throw std::runtime_error("failed to allocate command buffers!");
+        }
+
+        for (size_t i = 0; i < commandBuffers.size(); i++) {
+            GraphicsRenderer* renderer = renderNode->getComponents<GraphicsRenderer>()[i];
+
+            VkCommandBufferBeginInfo beginInfo = {};
+            beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+
+            if (vkBeginCommandBuffer(commandBuffers[i], &beginInfo) != VK_SUCCESS) {
+                throw std::runtime_error("failed to begin recording command buffer!");
+            }
+
+            VkRenderPassBeginInfo renderPassInfo = {};
+            renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+            renderPassInfo.renderPass = renderPass;
+            renderPassInfo.framebuffer = framebuffer->getFramebuffer(renderer->getContext());
+            renderPassInfo.renderArea.offset = {0, 0};
+            renderPassInfo.renderArea.extent = swapChainExtent;
+
+            VkClearValue clearColor = {0.0f, 0.0f, 0.0f, 1.0f};
+            renderPassInfo.clearValueCount = 1;
+            renderPassInfo.pClearValues = &clearColor;
+
+            vkCmdBeginRenderPass(commandBuffers[i], &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
+
+                vkCmdBindPipeline(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline);
+
+                VkBuffer vertexBuffers[] = {vertexArray->getBuffer(renderer->getContext())};
+                VkDeviceSize offsets[] = {0};
+                vkCmdBindVertexBuffers(commandBuffers[i], 0, 1, vertexBuffers, offsets);
+
+                vkCmdBindIndexBuffer(commandBuffers[i], indexArray->getBuffer(renderer->getContext()), 0, VK_INDEX_TYPE_UINT16);
+
+                VkDescriptorSet descSet = descriptorSet->getDescriptorSet(renderer->getContext());
+                std::cout << descSet << std::endl;
+                vkCmdBindDescriptorSets(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &descSet, 0, nullptr);
+
+                vkCmdDrawIndexed(commandBuffers[i], static_cast<uint32_t>(indices.size()), 1, 0, 0, 0);
+
+            vkCmdEndRenderPass(commandBuffers[i]);
+
+            if (vkEndCommandBuffer(commandBuffers[i]) != VK_SUCCESS) {
+                throw std::runtime_error("failed to record command buffer!");
+            }
+        }*/
+	}
+
+	void finishRender(const GraphicsContext& context, VulkanDeviceState& state) {
+		if (state.getRenderMode() == VULKAN_RENDER_CLEANUP) {
+			CommandBufferState* commandBufferState = contextHandler.getState(context);
+			vkFreeCommandBuffers(state.getDevice()->getDevice(), state.getCommandPool().get()->getCommandPool(), 1, &commandBufferState->commandBuffer);
+		}
+
+		if (state.getRenderMode() == VULKAN_RENDER_COMMAND) {
+			CommandBufferState* commandBufferState = contextHandler.getState(context);
+			if (vkEndCommandBuffer(commandBufferState->commandBuffer) != VK_SUCCESS) {
+                throw std::runtime_error("failed to record command buffer!");
+            }
+
+			//commandBufferState->recorded = true;
+		}
+	}
+
+
+private:
+	struct CommandBufferState : public ContextState {
+		CommandBufferState() {} //: recorded(false) {}
+		VkCommandBuffer commandBuffer;
+		//bool recorded;
+	};
+
+	GraphicsContextHandler<ContextState,CommandBufferState> contextHandler;
+};
 
 
 }

@@ -258,7 +258,7 @@ private:
 
                     EntityNode* commandNode = new EntityNode(graphicsNode);
                         commandNode->addComponent(new VulkanCommandPool(graphicsQueue));
-                        //commandNode->addComponent(new VulkanCommandBuffer());
+                        commandNode->addComponent(new VulkanCommandBuffer());
                         //commandNode->addComponent(new RenderNode(scene, RENDER_ONLY));
             objectNode = new EntityNode(deviceNode);
                 objectNode->addComponent(new VulkanDeviceRenderer(new GraphicsContext(renderNode->getComponent<VulkanBasicSwapChain>()->getSharedContext(), new Context(), false)));
@@ -416,6 +416,7 @@ private:
 
 
     void createCommandBuffers() {
+
         commandBuffers.resize(swapChainImageViews.size());
 
         VkCommandBufferAllocateInfo allocInfo = {};
@@ -429,7 +430,8 @@ private:
         }
 
         for (size_t i = 0; i < commandBuffers.size(); i++) {
-            GraphicsRenderer* renderer = renderNode->getComponents<GraphicsRenderer>()[i];
+            VulkanDeviceRenderer* renderer = renderNode->getComponents<VulkanDeviceRenderer>()[i];
+            renderer->render(VULKAN_RENDER_COMMAND);
 
             VkCommandBufferBeginInfo beginInfo = {};
             beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
