@@ -1525,7 +1525,40 @@ public:
 	VulkanShaderObject() { addType<VulkanShaderObject>(); }
 	virtual ~VulkanShaderObject() {}
 
+	class DescriptorObject {
+	public:
+		DescriptorObject(void* value) : value(value) {}
+		virtual ~DescriptorObject() {}
+
+		template<typename T>
+		T* asType() {
+			static const std::type_info& type = typeid(T);
+			if (isType(type)) {
+				return static_cast<T*>(value); 
+			}
+			else {
+				return NULL;
+			}
+		}
+		bool isType(const std::type_info& type) { return false; }
+
+		void* value;
+	};
+
+	template<typename T>
+	class TypedDescriptorObject : public DescriptorObject {
+	public:
+		TypedDescriptorObject(T* value) : DescriptorObject(value) {}
+		virtual ~TypedDescriptorObject() { delete static_cast<T*>(value); }
+
+		bool isType(const std::type_info& type) {
+			static const std::type_info& objectType = typeid(T);
+			return (type == objectType);
+		}
+	};
+
 	virtual void setBinding(VkDescriptorSetLayoutBinding& binding) {}
+	virtual void writeDescriptor(const GraphicsContext& context, VkWriteDescriptorSet& descriptorWrite, std::vector<DescriptorObject*>& descriptorObjects) {}
 };
 
 class VulkanUniformBuffer : public VulkanShaderObject {
@@ -1556,6 +1589,38 @@ public:
 		binding.descriptorCount = 1;
 	    binding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
 	    binding.pImmutableSamplers = nullptr;
+	}
+
+	void writeDescriptor(const GraphicsContext& context, VkWriteDescriptorSet& descriptorWrite, std::vector<DescriptorObject*>& descriptorObjects) {
+        VkDescriptorBufferInfo& bufferInfo = *(new VkDescriptorBufferInfo());
+        //*bufferInfo = {};
+        bufferInfo.buffer = getBuffer(context);
+        bufferInfo.offset = 0;
+        bufferInfo.range = getBufferSize();
+        descriptorObjects.push_back(new TypedDescriptorObject<VkDescriptorBufferInfo>(&bufferInfo));
+
+        /*VkDescriptorImageInfo imageInfo = {};
+        imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+        imageInfo.imageView = mainImage->getComponent<VulkanImageView>()->getImageView(renderer->getContext());
+        imageInfo.sampler = sampler->getSampler(renderer->getContext());*/
+
+        //std::array<VkWriteDescriptorSet, 2> descriptorWrites = {};
+
+        //descriptorWrites[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        //descriptorWrites[0].dstSet = descriptorSets[i];
+        //descriptorWrites[0].dstBinding = 0;
+        //descriptorWrites[0].dstArrayElement = 0;
+        descriptorWrite.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+        descriptorWrite.descriptorCount = 1;
+        descriptorWrite.pBufferInfo = &bufferInfo;
+
+        /*descriptorWrites[1].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        descriptorWrites[1].dstSet = descriptorSets[i];
+        descriptorWrites[1].dstBinding = 1;
+        descriptorWrites[1].dstArrayElement = 0;
+        descriptorWrites[1].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+        descriptorWrites[1].descriptorCount = 1;
+        descriptorWrites[1].pImageInfo = &imageInfo;*/
 	}
 
 protected:
@@ -1977,12 +2042,67 @@ protected:
 	    binding.pImmutableSamplers = nullptr;
 	}
 
+	void writeDescriptor(const GraphicsContext& context, VkWriteDescriptorSet& descriptorWrite, std::vector<DescriptorObject*>& descriptorObjects) {
+        /*VkDescriptorBufferInfo bufferInfo = {};
+        bufferInfo.buffer = getBuffer(context);
+        bufferInfo.offset = 0;
+        bufferInfo.range = getBufferSize();*/
+
+        VkDescriptorImageInfo& imageInfo = *(new VkDescriptorImageInfo());
+        imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+        //imageInfo.imageView = mainImage->getComponent<VulkanImageView>()->getImageView(renderer->getContext());
+        imageInfo.sampler = getSampler(context);
+        descriptorObjects.push_back(new TypedDescriptorObject<VkDescriptorImageInfo>(&imageInfo));
+
+        //std::array<VkWriteDescriptorSet, 2> descriptorWrites = {};
+
+        //descriptorWrites[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        //descriptorWrites[0].dstSet = descriptorSets[i];
+        //descriptorWrites[0].dstBinding = 0;
+        //descriptorWrites[0].dstArrayElement = 0;
+        //descriptorWrite.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+        //descriptorWrite.descriptorCount = 1;
+        //descriptorWrite.pBufferInfo = &bufferInfo;
+
+        //descriptorWrites[1].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        //descriptorWrites[1].dstSet = descriptorSets[i];
+        //descriptorWrites[1].dstBinding = 1;
+        //descriptorWrites[1].dstArrayElement = 0;
+        descriptorWrite.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+        descriptorWrite.descriptorCount = 1;
+        descriptorWrite.pImageInfo = &imageInfo;
+	}
+
 private:
 	struct SamplerState : public ContextState {
 		VkSampler sampler;
 	};
 
 	GraphicsContextHandler<SamplerState,ContextState> contextHandler;
+};
+
+class VulkanImageViewDecorator : public VulkanShaderObject {
+public:
+	VulkanImageViewDecorator(VulkanShaderObject* shaderObject, VulkanImageView* imageView) : shaderObject(shaderObject), imageView(imageView) { addType<VulkanImageViewDecorator>(); }
+	virtual ~VulkanImageViewDecorator() {}
+
+	void setBinding(VkDescriptorSetLayoutBinding& binding) {
+		shaderObject->setBinding(binding);
+	}
+	void writeDescriptor(const GraphicsContext& context, VkWriteDescriptorSet& descriptorWrite, std::vector<DescriptorObject*>& descriptorObjects) {
+		shaderObject->writeDescriptor(context, descriptorWrite, descriptorObjects);
+
+        for (int f = 0; f < descriptorObjects.size(); f++) {
+        	void* value = descriptorObjects[f]->value;
+	        VkDescriptorImageInfo* imageInfo = descriptorObjects[f]->asType<VkDescriptorImageInfo>();
+	        if (imageInfo) {
+	        	imageInfo->imageView = imageView->getImageView(context);
+	        }
+        }
+	}
+private:
+	VulkanShaderObject* shaderObject;
+	VulkanImageView* imageView;
 };
 
 class VulkanDescriptor : public VulkanComponent { //
@@ -2007,9 +2127,6 @@ public:
 	VulkanDescriptorSetLayout() { addType<VulkanDescriptorSetLayout>(); }
 	virtual ~VulkanDescriptorSetLayout() {}
 
-	void update() {
-	}
-
 	VkDescriptorSetLayout getDescriptorSetLayout(const GraphicsContext& context) const { return contextHandler.getSharedState(context)->descriptorSetLayout; }
 
 protected:
@@ -2025,22 +2142,7 @@ protected:
 				descriptors[f]->setBinding(binding);
 				bindings.push_back(binding);
 			}
-	        /*VkDescriptorSetLayoutBinding uboLayoutBinding = {};
-	        uboLayoutBinding.binding = 0;
-	        uboLayoutBinding.descriptorCount = 1;
-	        uboLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-	        uboLayoutBinding.pImmutableSamplers = nullptr;
-	        uboLayoutBinding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;*/
 
-	        /*VkDescriptorSetLayoutBinding samplerLayoutBinding = {};
-	        samplerLayoutBinding.binding = 1;
-	        samplerLayoutBinding.descriptorCount = 1;
-	        samplerLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-	        samplerLayoutBinding.pImmutableSamplers = nullptr;
-	        samplerLayoutBinding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
-	        bindings.push_back(samplerLayoutBinding);*/
-
-	        //std::array<VkDescriptorSetLayoutBinding, 2> bindings = {uboLayoutBinding, samplerLayoutBinding};
 	        VkDescriptorSetLayoutCreateInfo layoutInfo = {};
 	        layoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
 	        layoutInfo.bindingCount = static_cast<uint32_t>(bindings.size());
@@ -2067,6 +2169,54 @@ private:
 
 	GraphicsContextHandler<DescriptorSetLayoutState,ContextState> contextHandler;
 };
+
+/*class VulkanDescriptorSet : public VulkanRenderObject {
+public:
+	VulkanDescriptorSet() { addType<VulkanDescriptorSet>(); }
+	virtual ~VulkanDescriptorSet() {}
+
+	VkDescriptorSetLayout getDescriptorSetLayout(const GraphicsContext& context) const { return contextHandler.getSharedState(context)->descriptorSetLayout; }
+
+protected:
+	void startRender(const GraphicsContext& context, VulkanDeviceState& state) {
+		if (state.getRenderMode() == VULKAN_RENDER_UPDATE_SHARED) {
+			DescriptorSetState* descriptorSetState = contextHandler.getState(context);
+			std::vector<VulkanDescriptor*> descriptors = getEntity().getComponents<VulkanDescriptor>();
+
+			std::vector<VkDescriptorSetLayoutBinding> bindings;
+			for (int f = 0; f < descriptors.size(); f++) {
+				VkDescriptorSetLayoutBinding binding = {};
+				binding.binding = f;
+				descriptors[f]->setBinding(binding);
+				bindings.push_back(binding);
+			}
+
+	        VkDescriptorSetLayoutCreateInfo layoutInfo = {};
+	        layoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+	        layoutInfo.bindingCount = static_cast<uint32_t>(bindings.size());
+	        layoutInfo.pBindings = bindings.data();
+
+	        if (vkCreateDescriptorSetLayout(state.getDevice()->getDevice(), &layoutInfo, nullptr, &layoutState->descriptorSetLayout) != VK_SUCCESS) {
+	            throw std::runtime_error("failed to create descriptor set layout!");
+	        }
+		}
+	}
+
+	void finishRender(const GraphicsContext& context, VulkanDeviceState& state) {
+		if (state.getRenderMode() == VULKAN_RENDER_CLEANUP_SHARED) {
+			DescriptorSetState* descriptorSetState = contextHandler.getState(context);
+			//vkDestroyDescriptorSetLayout(state.getDevice()->getDevice(), layoutState->descriptorSetLayout, nullptr);
+		}
+	}
+
+
+private:
+	struct DescriptorSetState : public ContextState {
+		VkDescriptorSetLayout descriptorSetLayout;
+	};
+
+	GraphicsContextHandler<ContextState,DescriptorSetState> contextHandler;
+};*/
 
 class VulkanGraphicsPipeline : public VulkanRenderObject {
 public:
