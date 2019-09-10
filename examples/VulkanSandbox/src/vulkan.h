@@ -2220,12 +2220,14 @@ protected:
 			DescriptorPoolState* descriptorPoolState = contextHandler.getSharedState(context);
 			std::vector<VulkanDescriptor*> descriptors = getEntity().getComponents<VulkanDescriptor>();
 			VulkanSwapChainState& swapChainState = VulkanSwapChainState::get(context);
+			int numImages = swapChainState.getNumImages();
+			if (numImages == 0) { numImages = 1; }
 
 			std::vector<VkDescriptorPoolSize> poolSizes;
 			for (int f = 0; f < descriptors.size(); f++) {
 				VkDescriptorPoolSize poolSize = {};
 				descriptors[f]->setPoolSize(poolSize);
-				poolSize.descriptorCount = static_cast<uint32_t>(swapChainState.getNumImages());
+				poolSize.descriptorCount = static_cast<uint32_t>(numImages);
 				poolSizes.push_back(poolSize);
 			}
 
@@ -2233,7 +2235,7 @@ protected:
 	        poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
 	        poolInfo.poolSizeCount = static_cast<uint32_t>(poolSizes.size());
 	        poolInfo.pPoolSizes = poolSizes.data();
-	        poolInfo.maxSets = static_cast<uint32_t>(swapChainState.getNumImages());
+	        poolInfo.maxSets = static_cast<uint32_t>(numImages);
 
 			if (vkCreateDescriptorPool(state.getDevice()->getDevice(), &poolInfo, nullptr, &contextHandler.getSharedState(context)->descriptorPool) != VK_SUCCESS) {
             	throw std::runtime_error("failed to create descriptor pool!");
