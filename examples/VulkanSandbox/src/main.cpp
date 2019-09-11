@@ -161,6 +161,7 @@ private:
     EntityNode shaderObjects;
     EntityNode graphicsObjects;
     EntityNode descriptorSetGroup;
+    EntityNode scene;
     EntityNode images;
     Entity* mainImage;
     Entity* renderNode;
@@ -226,15 +227,15 @@ private:
         vertexInput->addAttribute(VK_FORMAT_R32G32_SFLOAT, offsetof(Vertex, pos));
         vertexInput->addAttribute(VK_FORMAT_R32G32B32_SFLOAT, offsetof(Vertex, color));
         vertexInput->addAttribute(VK_FORMAT_R32G32_SFLOAT, offsetof(Vertex, texCoord));
+        pipelineNode.addComponent(new VulkanBasicRenderPass());
+        pipelineNode.addComponent(new VulkanSwapChainFramebuffer());
         pipelineNode.addComponent(new VulkanGraphicsPipeline(mainDescriptorSet->getComponent<VulkanDescriptorSetLayout>()));
         pipelineNode.addComponent(vertexInput);
 
-
-        /*EntityNode* scene;
-            scene->addComponent(VertexBuffer);
-            scene->addComponent(Image);*/
-
-        
+        scene.addComponent(new RenderNode(&pipelineNode, RENDER_ACTION_START));
+        EntityNode* drawObject = new EntityNode(&scene);
+            drawObject->addComponent(new RenderNode(&graphicsObjects));
+            drawObject->addComponent(new RenderNode(&pipelineNode, RENDER_ACTION_END));
 
         vulkanNode.addComponent(new VulkanInstance());
         EntityNode* surfaceNode = new EntityNode(&vulkanNode);
@@ -249,22 +250,29 @@ private:
                 queues->addComponent(new VulkanPresentQueue(surfaceNode));
             renderNode = new EntityNode(deviceNode);
                 renderNode->addComponent(new VulkanBasicSwapChain(surfaceNode));
-                renderNode->addComponent(new VulkanBasicRenderPass());
-                renderNode->addComponent(new VulkanSwapChainFramebuffer());
-                EntityNode* graphicsNode = new EntityNode(renderNode);
-                    graphicsNode->addComponent(new RenderNode(&shaderObjects));//, UPDATE_ONLY));
-                    graphicsNode->addComponent(new RenderNode(&descriptorSetGroup)); //, UPDATE_ONLY));
-                    graphicsNode->addComponent(new RenderNode(&pipelineNode));//, UPDATE_ONLY));
-
-                    EntityNode* commandNode = new EntityNode(graphicsNode);
-                        commandNode->addComponent(new VulkanCommandPool(graphicsQueue));
-                        commandNode->addComponent(new VulkanCommandBuffer());
-                        //commandNode->addComponent(new RenderNode(scene, RENDER_ONLY));
+                EntityNode* updateSharedNode = new EntityNode(renderNode);
+                    updateSharedNode->addComponent(new AllowRenderModes(VULKAN_RENDER_UPDATE_SHARED | VULKAN_RENDER_OBJECT));
+                    //updateSharedNode->addComponent(new VulkanDeviceRenderer(new GraphicsContext(renderNode->getComponent<VulkanBasicSwapChain>()->getSharedContext(), new Context(), false)));
+                    updateSharedNode->addComponent(new VulkanCommandPool(graphicsQueue));
+                    updateSharedNode->addComponent(new RenderNode(&graphicsObjects));
+                    updateSharedNode->addComponent(new RenderNode(&images));
+                EntityNode* updateNode = new EntityNode(renderNode);
+                    updateNode->addComponent(new AllowRenderModes(VULKAN_RENDER_UPDATE_ONLY | VULKAN_RENDER_OBJECT));
+                    updateNode->addComponent(new RenderNode(&shaderObjects));//, UPDATE_ONLY));
+                    updateNode->addComponent(new RenderNode(&descriptorSetGroup)); //, UPDATE_ONLY));
+                    updateNode->addComponent(new RenderNode(&pipelineNode));//, UPDATE_ONLY));
+                EntityNode* commandNode = new EntityNode(renderNode);
+                    commandNode->addComponent(new VulkanCommandPool(graphicsQueue));
+                    commandNode->addComponent(new VulkanCommandBuffer());
+                    EntityNode* commands = new EntityNode(commandNode);
+                        commands->addComponent(new AllowRenderModes(VULKAN_RENDER_COMMAND));
+                        commands->addComponent(new RenderNode(&scene));
+                    //commandNode->addComponent(new RenderNode(scene, RENDER_ONLY));
             objectNode = new EntityNode(deviceNode);
                 objectNode->addComponent(new VulkanDeviceRenderer(new GraphicsContext(renderNode->getComponent<VulkanBasicSwapChain>()->getSharedContext(), new Context(), false)));
                 objectNode->addComponent(new VulkanCommandPool(graphicsQueue));
-                objectNode->addComponent(new RenderNode(&graphicsObjects));
-                objectNode->addComponent(new RenderNode(&images));
+                //objectNode->addComponent(new RenderNode(&graphicsObjects));
+                //objectNode->addComponent(new RenderNode(&images));
 
 
         //createDevice(window2);
@@ -272,7 +280,7 @@ private:
         vulkanNode.update();
 
         std::vector<VulkanDeviceRenderer*> renderers = deviceNode->getComponentsRecursive<VulkanDeviceRenderer>();
-        renderers[renderers.size()-1]->render(VULKAN_RENDER_UPDATE_SHARED);
+        //renderers[renderers.size()-1]->render(VULKAN_RENDER_UPDATE_SHARED);
         renderers[0]->render(VULKAN_RENDER_UPDATE_SHARED);
         for (int f = 0; f < renderers.size(); f++) {  
             renderers[f]->render(VULKAN_RENDER_UPDATE);
@@ -293,12 +301,12 @@ private:
         swapChainImageViews = renderNode->getComponent<VulkanBasicSwapChain>()->swapChainImageViews;
         commandPool = commandNode->getComponent<VulkanCommandPool>()->getCommandPool();
         renderer = renderNode->getComponents<GraphicsRenderer>()[1];
-        renderPass = renderNode->getComponent<VulkanRenderPass>()->getRenderPass(renderer->getContext());
+        renderPass = pipelineNode.getComponent<VulkanRenderPass>()->getRenderPass(renderer->getContext());
 
         graphicsPipeline = pipelineNode.getComponent<VulkanGraphicsPipeline>()->getGraphicsPipeline(renderer->getContext());
         pipelineLayout = pipelineNode.getComponent<VulkanGraphicsPipeline>()->getPipelineLayout(renderer->getContext());
         descriptorSetLayout = mainDescriptorSet->getComponent<VulkanDescriptorSetLayout>()->getDescriptorSetLayout(renderer->getContext());
-        framebuffer = renderNode->getComponent<VulkanFramebuffer>();
+        framebuffer = pipelineNode.getComponent<VulkanFramebuffer>();
         //createInstance();
         //setupDebugMessenger();
         //createSurface();

@@ -29,9 +29,17 @@ public:
 	virtual void finishRender(const GraphicsContext& context) {}
 };
 
+
+enum RenderAction {
+	RENDER_ACTION_RENDER,
+	RENDER_ACTION_START,
+	RENDER_ACTION_END
+};
+
 class RenderNode : public RenderObject {
 public:
-	RenderNode(Entity* proxyEntity) : proxyEntity(proxyEntity) { addType<RenderNode>(); }
+
+	RenderNode(Entity* proxyEntity, RenderAction action = RENDER_ACTION_RENDER) : proxyEntity(proxyEntity), action(action) { addType<RenderNode>(); }
 	virtual ~RenderNode() {}
 
 	void render(const GraphicsContext& context) {
@@ -48,21 +56,28 @@ public:
 private:
 	void render(Entity* entity, const GraphicsContext& context) {
 		std::vector<RenderObject*> components = entity->getComponents<RenderObject>();
-		for (int f = 0; f < components.size(); f++) {
-			components[f]->startRender(context);
+		
+		if (action == RENDER_ACTION_RENDER || action == RENDER_ACTION_START) {
+			for (int f = 0; f < components.size(); f++) {
+				components[f]->startRender(context);
+			}
+
+			const std::vector<Entity*>& children = entity->getChildren();
+			for (int f = 0; f < entity->getChildren().size(); f++) {
+				render(children[f], context);
+			}
+
 		}
 
-		const std::vector<Entity*>& children = entity->getChildren();
-		for (int f = 0; f < entity->getChildren().size(); f++) {
-			render(children[f], context);
-		}
-
-		for (int f = components.size()-1; f >= 0; f--) {
-			components[f]->finishRender(context);
+		if (action == RENDER_ACTION_RENDER || action == RENDER_ACTION_END) {
+			for (int f = components.size()-1; f >= 0; f--) {
+				components[f]->finishRender(context);
+			}	
 		}
 	}
 
 	Entity* proxyEntity;
+	RenderAction action;
 };
 
 class GraphicsRenderer : public Component {
@@ -146,7 +161,11 @@ enum VulkanRenderMode {
 	VULKAN_RENDER_UPDATE_SHARED = 4,
 	VULKAN_RENDER_UPDATE = 8,
 	VULKAN_RENDER_OBJECT = 16,
-	VULKAN_RENDER_COMMAND = 32
+	VULKAN_RENDER_COMMAND = 32,
+	VULKAN_RENDER_CLEANUP_ONLY = VULKAN_RENDER_CLEANUP_SHARED | VULKAN_RENDER_CLEANUP,
+	VULKAN_RENDER_UPDATE_ONLY = VULKAN_RENDER_UPDATE_SHARED | VULKAN_RENDER_UPDATE,
+	VULKAN_RENDER_RENDER_ONLY = VULKAN_RENDER_COMMAND | VULKAN_RENDER_OBJECT,
+	VULKAN_RENDER_ALL = VULKAN_RENDER_CLEANUP_SHARED | VULKAN_RENDER_CLEANUP | VULKAN_RENDER_UPDATE_SHARED | VULKAN_RENDER_UPDATE | VULKAN_RENDER_OBJECT | VULKAN_RENDER_COMMAND
 };
 
 
@@ -824,6 +843,7 @@ public:
 	VulkanSwapChainState() {
 		imageIndex = 0;
 		numImages = 0;
+		swapChain = NULL;
 	}
 
 	virtual ~VulkanSwapChainState() {}
@@ -832,12 +852,15 @@ public:
 	void setImageIndex(int imageIndex) { this->imageIndex = imageIndex; }
 	int getNumImages() const { return numImages; }
 	void setNumImages(int numImages) { this->numImages = numImages; }
+	VulkanSwapChain* getSwapChain() const { return swapChain; }
+	void setSwapChain(VulkanSwapChain* swapChain) { this->swapChain = swapChain; }
 
 	static VulkanSwapChainState& get(const GraphicsContext& context) { return context.getRenderState()->getItem<VulkanSwapChainState>(); }
 
 private:
 	int imageIndex;
 	int numImages;
+	VulkanSwapChain* swapChain;
 };
 
 class VulkanBasicSwapChain : public VulkanSwapChain {
@@ -939,6 +962,7 @@ public:
 
         for (int f = 0; f < imageCount; f++) {
         	GraphicsContext* context = new GraphicsContext(&sharedContext, new Context(), false);
+	        VulkanSwapChainState::get(*context).setSwapChain(this);
 	        VulkanSwapChainState::get(*context).setNumImages(imageCount);
         	VulkanSwapChainState::get(*context).setImageIndex(f);
         	VulkanDeviceRenderer* renderer = new VulkanDeviceRenderer(context);
@@ -1050,6 +1074,9 @@ public:
 	virtual ~VulkanRenderPass() {}
 
 	virtual VkRenderPass getRenderPass(const GraphicsContext& context) const = 0;
+
+	void startRender(const GraphicsContext& context, VulkanDeviceState& state);
+	void finishRender(const GraphicsContext& context, VulkanDeviceState& state);
 };
 
 class VulkanCommandPool : public VulkanRenderObject {
@@ -1120,44 +1147,72 @@ private:
 	VulkanDevice* device;
 };
 
+class VulkanCommandBuffer : public VulkanRenderObject {
+public:
+	VulkanCommandBuffer() { addType<VulkanCommandBuffer>(); }
+	virtual ~VulkanCommandBuffer() {}
+
+	VkCommandBuffer getCommandBuffer(const GraphicsContext& context) const { return contextHandler.getState(context)->commandBuffer; }
+
+protected:
+	void startRender(const GraphicsContext& context, VulkanDeviceState& state);
+	void finishRender(const GraphicsContext& context, VulkanDeviceState& state);
+
+private:
+	struct CommandBufferState : public ContextState {
+		CommandBufferState() {} 
+		VkCommandBuffer commandBuffer;
+	};
+
+	GraphicsContextHandler<ContextState,CommandBufferState> contextHandler;
+};
+
+
 
 class VulkanDeviceState : public StateContainerItem {
 public:
 	VulkanDeviceState() {
 		device = NULL;
-		renderMode = VULKAN_RENDER_NONE;
-		renderPass = NULL;
+		renderMode.set(VULKAN_RENDER_NONE);
+		renderPass.set(NULL);
 		//imageView = NULL;
 		extent.width = 0;
 		extent.height = 0;
 		commandPool.set(NULL);
-
+		imageFormat.set(VK_FORMAT_UNDEFINED);
+		commandBuffer.set(NULL);
 	}
 
 	virtual ~VulkanDeviceState() {}
 
 	const VulkanDevice* getDevice() const { return device; }
 	void setDevice(VulkanDevice* device) { this->device = device; }
-	VulkanRenderMode getRenderMode() const { return renderMode; }
-	void setRenderMode(VulkanRenderMode renderMode) { this->renderMode = renderMode; }
-	VulkanRenderPass* getRenderPass() const { return renderPass; }
-	void setRenderPass(VulkanRenderPass* renderPass) { this->renderPass = renderPass; }
+	StateContainerItemStack<VulkanRenderMode>& getRenderMode() { return renderMode; }
+	//VulkanRenderPass* getRenderPass() const { return renderPass; }
+	//void setRenderPass(VulkanRenderPass* renderPass) { this->renderPass = renderPass; }
 	//VulkanImageView* getImageView() const { return imageView; }
 	//void setImageView(VulkanImageView* renderPass) { this->imageView = imageView; }
 	const VkExtent2D& getExtent() const { return extent; }
 	void setExtent(VkExtent2D extent) { this->extent = extent; }
 	StateContainerItemStack<VulkanCommandPool*>& getCommandPool() { return commandPool; }
+	StateContainerItemStack<VkFormat>& getImageFormat() { return imageFormat; }
+	StateContainerItemStack<VulkanRenderPass*>& getRenderPass() { return renderPass; }
+	StateContainerItemStack<VulkanCommandBuffer*>& getCommandBuffer() { return commandBuffer; }
 
 	static VulkanDeviceState& get(const GraphicsContext& context) { return context.getRenderState()->getItem<VulkanDeviceState>(); }
 
 private:
 	VulkanDevice* device;
-	VulkanRenderMode renderMode;
-	VulkanRenderPass* renderPass;
+	StateContainerItemStack<VulkanRenderPass*> renderPass;
 	//VulkanImageView* imageView;
 	VkExtent2D extent;
 	StateContainerItemStack<VulkanCommandPool*> commandPool;
+	StateContainerItemStack<VulkanRenderMode> renderMode;
+	StateContainerItemStack<VkFormat> imageFormat;
+	StateContainerItemStack<VulkanCommandBuffer*> commandBuffer;
+
 };
+
 
 class VulkanFramebuffer : public VulkanRenderObject {
 public:
@@ -1165,13 +1220,45 @@ public:
 	virtual ~VulkanFramebuffer() {}
 
 	void finishRender(const GraphicsContext& context, VulkanDeviceState& state) {
-		if (state.getRenderMode() == VULKAN_RENDER_CLEANUP) {
+		if (state.getRenderMode().get() == VULKAN_RENDER_CLEANUP) {
 			vkDestroyFramebuffer(state.getDevice()->getDevice(), getFramebuffer(context), nullptr);
 		}
 	}
 
 	virtual VkFramebuffer getFramebuffer(const GraphicsContext& context) const = 0;
 };
+
+
+void VulkanRenderPass::startRender(const GraphicsContext& context, VulkanDeviceState& state) {
+	state.getRenderPass().push(this);
+
+	if ((state.getRenderMode().get() & VULKAN_RENDER_COMMAND) == VULKAN_RENDER_COMMAND) {
+		VkRenderPassBeginInfo renderPassInfo = {};
+        renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+        renderPassInfo.renderPass = getRenderPass(context);
+        renderPassInfo.framebuffer = getEntity().getComponent<VulkanFramebuffer>()->getFramebuffer(context);
+        renderPassInfo.renderArea.offset = {0, 0};
+        renderPassInfo.renderArea.extent = state.getExtent();
+
+        VkClearValue clearColor = {0.0f, 0.0f, 0.0f, 1.0f};
+        renderPassInfo.clearValueCount = 1;
+        renderPassInfo.pClearValues = &clearColor;
+
+        vkCmdBeginRenderPass(state.getCommandBuffer().get()->getCommandBuffer(context), &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
+        std::cout << "Begin render pass command" << std::endl;
+	}
+	        
+}
+
+void VulkanRenderPass::finishRender(const GraphicsContext& context, VulkanDeviceState& state) {
+	if ((state.getRenderMode().get() & VULKAN_RENDER_COMMAND) == VULKAN_RENDER_COMMAND) {
+        std::cout << "End render pass command" << std::endl;
+        vkCmdEndRenderPass(state.getCommandBuffer().get()->getCommandBuffer(context));
+	}
+
+	state.getRenderPass().pop();
+}
+
 
 
 void VulkanCommandPool::startRender(const GraphicsContext& context, VulkanDeviceState& state) {
@@ -1189,8 +1276,9 @@ public:
 	virtual ~VulkanSwapChainFramebuffer() {}
 
 	void startRender(const GraphicsContext& context, VulkanDeviceState& state) {
-		if (state.getRenderMode() == VULKAN_RENDER_UPDATE) {
-			VulkanSwapChain* swapChain = getEntity().getComponent<VulkanSwapChain>();
+		if (state.getRenderMode().get() == VULKAN_RENDER_UPDATE) {
+			VulkanSwapChainState& swapChainState = VulkanSwapChainState::get(context);
+			VulkanSwapChain* swapChain = swapChainState.getSwapChain();
 
 	        VkImageView attachments[] = {
 	            //swapChain->getImageViews()[0]
@@ -1200,7 +1288,7 @@ public:
 
 	        VkFramebufferCreateInfo framebufferInfo = {};
 	        framebufferInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
-	        framebufferInfo.renderPass = state.getRenderPass()->getRenderPass(context);
+	        framebufferInfo.renderPass = state.getRenderPass().get()->getRenderPass(context);
 	        framebufferInfo.attachmentCount = 1;
 	        framebufferInfo.pAttachments = attachments;
 	        framebufferInfo.width = state.getExtent().width;
@@ -1237,10 +1325,11 @@ inline void VulkanDeviceRenderer::update() {
 		device = getEntity().getComponentRecursive<VulkanDevice>(false);
 		if (device) {
 			state->setDevice(device);
-			state->setRenderPass(getEntity().getComponent<VulkanRenderPass>());
+			//state->setRenderPass(getEntity().getComponent<VulkanRenderPass>());
 			VulkanSwapChain* swapChain = getEntity().getComponent<VulkanSwapChain>();
 			if (swapChain) {
-				state->setExtent(getEntity().getComponent<VulkanSwapChain>()->getExtent());	
+				state->setExtent(swapChain->getExtent());	
+				state->getImageFormat().set(swapChain->getImageFormat());
 			}
 		}
 	}
@@ -1249,14 +1338,15 @@ inline void VulkanDeviceRenderer::update() {
 }
 
 inline void VulkanDeviceRenderer::render(VulkanRenderMode renderMode) {
-	state->setRenderMode(renderMode);
+	state->getRenderMode().push(renderMode);
 	GraphicsRenderer::render();
+	state->getRenderMode().pop();
 }
 
 
 inline void VulkanRenderObject::startRender(const GraphicsContext& context) {
 	VulkanDeviceState& state = VulkanDeviceState::get(context);
-	/*switch (state.getRenderMode()) {
+	/*switch (state.getRenderMode().get()) {
 		case VULKAN_RENDER_OBJECT:
 			updateObject(context, state);
 			break;
@@ -1289,7 +1379,7 @@ public:
 
 protected:
 	void startRender(const GraphicsContext& context, VulkanDeviceState& state) {
-		if (state.getRenderMode() == VULKAN_RENDER_UPDATE_SHARED) {
+		if (state.getRenderMode().get() == VULKAN_RENDER_UPDATE_SHARED) {
 			VkShaderModuleCreateInfo createInfo = {};
 	        createInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
 	        createInfo.codeSize = code.size();
@@ -1302,7 +1392,7 @@ protected:
 	}
 
 	void finishRender(const GraphicsContext& context, VulkanDeviceState& state) {
-		if (state.getRenderMode() == VULKAN_RENDER_CLEANUP_SHARED) {
+		if (state.getRenderMode().get() == VULKAN_RENDER_CLEANUP_SHARED) {
 			vkDestroyShaderModule(state.getDevice()->getDevice(), contextHandler.getSharedState(context)->shaderModule, nullptr);
 		}
 	}
@@ -1383,10 +1473,12 @@ public:
 	virtual ~VulkanBasicRenderPass() {}
 
 	void startRender(const GraphicsContext& context, VulkanDeviceState& state) {
-		if (state.getRenderMode() == VULKAN_RENDER_UPDATE_SHARED) {
+		VulkanRenderPass::startRender(context, state);
+
+		if (state.getRenderMode().get() == VULKAN_RENDER_UPDATE_SHARED) {
 			RenderPassState* sharedState = contextHandler.getSharedState(context);
 			VkAttachmentDescription colorAttachment = {};
-	        colorAttachment.format = getEntity().getComponent<VulkanSwapChain>()->getImageFormat();
+	        colorAttachment.format = state.getImageFormat().get();
 	        colorAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
 	        colorAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
 	        colorAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
@@ -1428,9 +1520,11 @@ public:
 	}
 
 	void finishRender(const GraphicsContext& context, VulkanDeviceState& state) {
-		if (state.getRenderMode() == VULKAN_RENDER_CLEANUP_SHARED) {
+		if (state.getRenderMode().get() == VULKAN_RENDER_CLEANUP_SHARED) {
 			vkDestroyRenderPass(state.getDevice()->getDevice(), contextHandler.getSharedState(context)->renderPass, nullptr);
 		}
+
+		VulkanRenderPass::finishRender(context, state);
 	}
 
 	VkRenderPass getRenderPass(const GraphicsContext& context) const {
@@ -1574,18 +1668,18 @@ public:
 
 	void startRender(const GraphicsContext& context, VulkanDeviceState& state) {
 		UniformBufferState* uboState = contextHandler.getState(context);
-		if (state.getRenderMode() == VULKAN_RENDER_UPDATE) {
+		if (state.getRenderMode().get() == VULKAN_RENDER_UPDATE) {
 			int bufferSize = getBufferSize();
 			std::cout << "Create Buffer" << std::endl;
 			uboState->buffer = new VulkanBuffer(state.getDevice(), bufferSize, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
 		}
 		
-		if (state.getRenderMode() == VULKAN_RENDER_OBJECT) {
+		if (state.getRenderMode().get() == VULKAN_RENDER_OBJECT) {
 			updateBuffer(context, state, uboState->buffer);
 		}
 	}
 	void finishRender(const GraphicsContext& context, VulkanDeviceState& state) {
-		if (state.getRenderMode() == VULKAN_RENDER_CLEANUP) {
+		if (state.getRenderMode().get() == VULKAN_RENDER_CLEANUP) {
 			delete contextHandler.getState(context)->buffer;
 		}
 	}
@@ -1705,7 +1799,7 @@ protected:
 			bufferState->buffer = new VulkanBuffer(state.getDevice(), bufferSize, usage, properties);
 		}
 		
-		if (state.getRenderMode() == VULKAN_RENDER_OBJECT) {
+		if (state.getRenderMode().get() == VULKAN_RENDER_OBJECT) {
 			VkDeviceSize bufferSize = getBufferSize();
 			VulkanBuffer* stagingBuffer = new VulkanBuffer(state.getDevice(), bufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
 			updateBuffer(context, state, stagingBuffer);
@@ -1723,8 +1817,8 @@ protected:
 
 
 protected:
-	virtual bool handleUpdate(const GraphicsContext& context,VulkanDeviceState& state) const { return state.getRenderMode() == updateMode; }
-	virtual bool handleCleanup(const GraphicsContext& context,VulkanDeviceState& state) const { return state.getRenderMode() == cleanupMode; }
+	virtual bool handleUpdate(const GraphicsContext& context,VulkanDeviceState& state) const { return state.getRenderMode().get() == updateMode; }
+	virtual bool handleCleanup(const GraphicsContext& context,VulkanDeviceState& state) const { return state.getRenderMode().get() == cleanupMode; }
 	virtual VkDeviceSize getBufferSize() const = 0;
 	virtual void updateBuffer(const GraphicsContext& context, VulkanDeviceState& state, VulkanBuffer* buffer) = 0;
 
@@ -1783,7 +1877,19 @@ public:
 	virtual ~ObjectArray() {}
 };
 
-typedef ObjectArray<uint16_t> IndexArray;
+//typedef ObjectArray<uint16_t> IndexArray;
+class IndexArray : public ObjectArray<uint16_t> {
+protected:
+	void startRender(const GraphicsContext& context, VulkanDeviceState& state) {
+		ObjectArray<uint16_t>::startRender(context, state);
+
+		if ((state.getRenderMode().get() & VULKAN_RENDER_COMMAND) == VULKAN_RENDER_COMMAND) {
+			std::cout << "bind index array and draw" << std::endl;
+            vkCmdBindIndexBuffer(state.getCommandBuffer().get()->getCommandBuffer(context), getBuffer(context), 0, VK_INDEX_TYPE_UINT16);
+            vkCmdDrawIndexed(state.getCommandBuffer().get()->getCommandBuffer(context), static_cast<uint32_t>(value.size()), 1, 0, 0, 0);
+		}
+	}
+};
 
 class VulkanImage : public VulkanRenderObject {
 public:
@@ -1802,7 +1908,7 @@ protected:
 	void startRender(const GraphicsContext& context, VulkanDeviceState& state) {
 		if (!image) { return; }
 
-		if (state.getRenderMode() == VULKAN_RENDER_UPDATE_SHARED) {
+		if (state.getRenderMode().get() == VULKAN_RENDER_UPDATE_SHARED) {
 			ImageState* imageState = contextHandler.getSharedState(context);
 			int texWidth, texHeight, texChannels;
 	        texHeight = image->getHeight();
@@ -1844,7 +1950,7 @@ protected:
 	void finishRender(const GraphicsContext& context, VulkanDeviceState& state) {
 		if (!image) { return; }
 
-		if (state.getRenderMode() == VULKAN_RENDER_CLEANUP_SHARED) {
+		if (state.getRenderMode().get() == VULKAN_RENDER_CLEANUP_SHARED) {
 			ImageState* imageState = contextHandler.getSharedState(context);
 			vkDestroyImage(state.getDevice()->getDevice(), imageState->image, nullptr);
 			vkFreeMemory(state.getDevice()->getDevice(), imageState->imageMemory, nullptr);
@@ -1985,7 +2091,7 @@ protected:
 	void startRender(const GraphicsContext& context, VulkanDeviceState& state) {
 		if (!image) { return; }
 
-		if (state.getRenderMode() == VULKAN_RENDER_UPDATE_SHARED) {
+		if (state.getRenderMode().get() == VULKAN_RENDER_UPDATE_SHARED) {
 			std::cout << "Created Image View" << std::endl;
 			ImageViewState* imageViewState = contextHandler.getSharedState(context);
 			imageViewState->imageView = state.getDevice()->createImageView(image->getImage(context), VK_FORMAT_R8G8B8A8_UNORM);
@@ -1995,7 +2101,7 @@ protected:
 	void finishRender(const GraphicsContext& context, VulkanDeviceState& state) {
 		if (!image) { return; }
 
-		if (state.getRenderMode() == VULKAN_RENDER_CLEANUP_SHARED) {
+		if (state.getRenderMode().get() == VULKAN_RENDER_CLEANUP_SHARED) {
 			ImageViewState* imageViewState = contextHandler.getSharedState(context);
 			vkDestroyImageView(state.getDevice()->getDevice(), imageViewState->imageView, nullptr);
 		}
@@ -2021,7 +2127,7 @@ public:
 
 protected:
 	void startRender(const GraphicsContext& context, VulkanDeviceState& state) {
-		if (state.getRenderMode() == VULKAN_RENDER_UPDATE_SHARED) {
+		if (state.getRenderMode().get() == VULKAN_RENDER_UPDATE_SHARED) {
 			VkSamplerCreateInfo samplerInfo = {};
 	        samplerInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
 	        samplerInfo.magFilter = VK_FILTER_LINEAR;
@@ -2044,7 +2150,7 @@ protected:
 	}
 
 	void finishRender(const GraphicsContext& context, VulkanDeviceState& state) {
-		if (state.getRenderMode() == VULKAN_RENDER_CLEANUP_SHARED) {
+		if (state.getRenderMode().get() == VULKAN_RENDER_CLEANUP_SHARED) {
 			vkDestroySampler(state.getDevice()->getDevice(), contextHandler.getSharedState(context)->sampler, nullptr);
 		}
 	}
@@ -2163,7 +2269,7 @@ public:
 
 protected:
 	void startRender(const GraphicsContext& context, VulkanDeviceState& state) {
-		if (state.getRenderMode() == VULKAN_RENDER_UPDATE_SHARED) {
+		if (state.getRenderMode().get() == VULKAN_RENDER_UPDATE_SHARED) {
 			DescriptorSetLayoutState* layoutState = contextHandler.getSharedState(context);
 			std::vector<VulkanDescriptor*> descriptors = getEntity().getComponents<VulkanDescriptor>();
 			std::cout << descriptors.size() << std::endl;
@@ -2187,7 +2293,7 @@ protected:
 	}
 
 	void finishRender(const GraphicsContext& context, VulkanDeviceState& state) {
-		if (state.getRenderMode() == VULKAN_RENDER_CLEANUP_SHARED) {
+		if (state.getRenderMode().get() == VULKAN_RENDER_CLEANUP_SHARED) {
 			DescriptorSetLayoutState* layoutState = contextHandler.getSharedState(context);
 			vkDestroyDescriptorSetLayout(state.getDevice()->getDevice(), layoutState->descriptorSetLayout, nullptr);
 		}
@@ -2212,7 +2318,7 @@ public:
 protected:
 
 	void finishRender(const GraphicsContext& context, VulkanDeviceState& state) {
-		if (state.getRenderMode() == VULKAN_RENDER_CLEANUP_SHARED) {
+		if (state.getRenderMode().get() == VULKAN_RENDER_CLEANUP_SHARED) {
 			vkDestroyDescriptorPool(state.getDevice()->getDevice(), getDescriptorPool(context), nullptr);
 		}
 	}
@@ -2227,7 +2333,7 @@ public:
 
 protected:
 	void startRender(const GraphicsContext& context, VulkanDeviceState& state) {
-		if (state.getRenderMode() == VULKAN_RENDER_UPDATE_SHARED) {
+		if (state.getRenderMode().get() == VULKAN_RENDER_UPDATE_SHARED) {
 			DescriptorPoolState* descriptorPoolState = contextHandler.getSharedState(context);
 			std::vector<VulkanDescriptor*> descriptors = getEntity().getComponents<VulkanDescriptor>();
 			VulkanSwapChainState& swapChainState = VulkanSwapChainState::get(context);
@@ -2274,7 +2380,7 @@ public:
 
 protected:
 	void startRender(const GraphicsContext& context, VulkanDeviceState& state) {
-		if (state.getRenderMode() == VULKAN_RENDER_UPDATE) {
+		if (state.getRenderMode().get() == VULKAN_RENDER_UPDATE) {
 			DescriptorSetState* descriptorSetState = contextHandler.getState(context);
 			std::vector<VulkanDescriptor*> descriptors = getEntity().getComponents<VulkanDescriptor>();
 
@@ -2312,7 +2418,7 @@ protected:
 	}
 
 	void finishRender(const GraphicsContext& context, VulkanDeviceState& state) {
-		/*if (state.getRenderMode() == VULKAN_RENDER_CLEANUP_SHARED) {
+		/*if (state.getRenderMode().get() == VULKAN_RENDER_CLEANUP_SHARED) {
 			DescriptorSetState* descriptorSetState = contextHandler.getState(context);
 			//vkDestroyDescriptorPool(state.getDevice()->getDevice(), descriptorSetState->descriptorSet, nullptr);
 			// Doesn't appear necessary to destroy?
@@ -2338,7 +2444,7 @@ public:
 
 protected:
 	void startRender(const GraphicsContext& context, VulkanDeviceState& state) {
-		if (state.getRenderMode() == VULKAN_RENDER_UPDATE_SHARED) {
+		if (state.getRenderMode().get() == VULKAN_RENDER_UPDATE_SHARED) {
 			GraphicsPipelineState* pipelineState = contextHandler.getSharedState(context);
 			VkDevice device = state.getDevice()->getDevice();
 
@@ -2449,7 +2555,7 @@ protected:
 	        pipelineInfo.pMultisampleState = &multisampling;
 	        pipelineInfo.pColorBlendState = &colorBlending;
 	        pipelineInfo.layout = pipelineState->pipelineLayout;
-	        pipelineInfo.renderPass = state.getRenderPass()->getRenderPass(context);
+	        pipelineInfo.renderPass = state.getRenderPass().get()->getRenderPass(context);
 	        pipelineInfo.subpass = 0;
 	        pipelineInfo.basePipelineHandle = VK_NULL_HANDLE;
 
@@ -2457,9 +2563,15 @@ protected:
 	            throw std::runtime_error("failed to create graphics pipeline!");
 	        }			
 		}
+
+		if ((state.getRenderMode().get() & VULKAN_RENDER_COMMAND) == VULKAN_RENDER_COMMAND) {
+			GraphicsPipelineState* pipelineState = contextHandler.getSharedState(context);
+			vkCmdBindPipeline(state.getCommandBuffer().get()->getCommandBuffer(context), VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineState->graphicsPipeline);
+			std::cout << "bind pipeline" << std::endl;
+		}
 	}
 	void finishRender(const GraphicsContext& context, VulkanDeviceState& state) {
-		if (state.getRenderMode() == VULKAN_RENDER_CLEANUP_SHARED) {
+		if (state.getRenderMode().get() == VULKAN_RENDER_CLEANUP_SHARED) {
 			GraphicsPipelineState* pipelineState = contextHandler.getSharedState(context);
 			vkDestroyPipeline(state.getDevice()->getDevice(), pipelineState->graphicsPipeline, nullptr);
 	        vkDestroyPipelineLayout(state.getDevice()->getDevice(), pipelineState->pipelineLayout, nullptr);
@@ -2476,129 +2588,78 @@ private:
 	VulkanDescriptorSetLayout* descriptorSetLayout;
 };
 
-class VulkanCommandBuffer : public VulkanRenderObject {
-public:
-	VulkanCommandBuffer() { addType<VulkanCommandBuffer>(); }
-	virtual ~VulkanCommandBuffer() {}
 
-	VkCommandBuffer getVulkanCommandBuffer(const GraphicsContext& context) const { return contextHandler.getState(context)->commandBuffer; }
+inline void VulkanCommandBuffer::startRender(const GraphicsContext& context, VulkanDeviceState& state) {
+	state.getCommandBuffer().push(this);
+
+	if (state.getRenderMode().get() == VULKAN_RENDER_UPDATE) {
+		CommandBufferState* commandBufferState = contextHandler.getState(context);
+		VkCommandBufferAllocateInfo allocInfo = {};
+		allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+        allocInfo.commandPool = state.getCommandPool().get()->getCommandPool();
+        allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+        allocInfo.commandBufferCount = 1;
+
+        if (vkAllocateCommandBuffers(state.getDevice()->getDevice(), &allocInfo, &commandBufferState->commandBuffer) != VK_SUCCESS) {
+            throw std::runtime_error("failed to allocate command buffers!");
+        }   
+	}
+
+	if ((state.getRenderMode().get() & VULKAN_RENDER_COMMAND) == VULKAN_RENDER_COMMAND) {
+		CommandBufferState* commandBufferState = contextHandler.getState(context);
+
+		std::cout << "Render command" << std::endl;
+
+		/*if (commandBufferState->recorded) {
+			// need to reset command buffer
+		}*/
+
+		VkCommandBufferBeginInfo beginInfo = {};
+        beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+
+        if (vkBeginCommandBuffer(commandBufferState->commandBuffer, &beginInfo) != VK_SUCCESS) {
+            throw std::runtime_error("failed to begin recording command buffer!");
+        }
+
+	}
+}
+
+inline void VulkanCommandBuffer::finishRender(const GraphicsContext& context, VulkanDeviceState& state) {
+	if (state.getRenderMode().get() == VULKAN_RENDER_CLEANUP) {
+		CommandBufferState* commandBufferState = contextHandler.getState(context);
+		vkFreeCommandBuffers(state.getDevice()->getDevice(), state.getCommandPool().get()->getCommandPool(), 1, &commandBufferState->commandBuffer);
+	}
+
+	if (state.getRenderMode().get() == VULKAN_RENDER_COMMAND) {
+		CommandBufferState* commandBufferState = contextHandler.getState(context);
+		if (vkEndCommandBuffer(commandBufferState->commandBuffer) != VK_SUCCESS) {
+            throw std::runtime_error("failed to record command buffer!");
+        }
+
+	}
+
+	state.getCommandBuffer().pop();
+}
+
+class AllowRenderModes : public VulkanRenderObject {
+public:
+	AllowRenderModes(VulkanRenderMode renderMode) : renderMode(renderMode) { addType<AllowRenderModes>(); }
+	AllowRenderModes(int renderMode) : renderMode(static_cast<VulkanRenderMode>(renderMode)) { addType<AllowRenderModes>(); }
+	virtual ~AllowRenderModes() {}
 
 protected:
 	void startRender(const GraphicsContext& context, VulkanDeviceState& state) {
-
-		if (state.getRenderMode() == VULKAN_RENDER_UPDATE) {
-			CommandBufferState* commandBufferState = contextHandler.getState(context);
-			VkCommandBufferAllocateInfo allocInfo = {};
-			allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-	        allocInfo.commandPool = state.getCommandPool().get()->getCommandPool();
-	        allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-	        allocInfo.commandBufferCount = 1;
-
-	        if (vkAllocateCommandBuffers(state.getDevice()->getDevice(), &allocInfo, &commandBufferState->commandBuffer) != VK_SUCCESS) {
-	            throw std::runtime_error("failed to allocate command buffers!");
-	        }   
-		}
-
-		if (state.getRenderMode() == VULKAN_RENDER_COMMAND) {
-			CommandBufferState* commandBufferState = contextHandler.getState(context);
-
-			std::cout << "Render command" << std::endl;
-
-			/*if (commandBufferState->recorded) {
-				// need to reset command buffer
-			}*/
-
-			VkCommandBufferBeginInfo beginInfo = {};
-            beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-
-            if (vkBeginCommandBuffer(commandBufferState->commandBuffer, &beginInfo) != VK_SUCCESS) {
-                throw std::runtime_error("failed to begin recording command buffer!");
-            }
-
-		}
-
-/*VkCommandBufferAllocateInfo allocInfo = {};
-        allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-        allocInfo.commandPool = commandPool;
-        allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-        allocInfo.commandBufferCount = (uint32_t) commandBuffers.size();
-
-        if (vkAllocateCommandBuffers(device, &allocInfo, commandBuffers.data()) != VK_SUCCESS) {
-            throw std::runtime_error("failed to allocate command buffers!");
-        }
-
-        for (size_t i = 0; i < commandBuffers.size(); i++) {
-            GraphicsRenderer* renderer = renderNode->getComponents<GraphicsRenderer>()[i];
-
-            VkCommandBufferBeginInfo beginInfo = {};
-            beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-
-            if (vkBeginCommandBuffer(commandBuffers[i], &beginInfo) != VK_SUCCESS) {
-                throw std::runtime_error("failed to begin recording command buffer!");
-            }
-
-            VkRenderPassBeginInfo renderPassInfo = {};
-            renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-            renderPassInfo.renderPass = renderPass;
-            renderPassInfo.framebuffer = framebuffer->getFramebuffer(renderer->getContext());
-            renderPassInfo.renderArea.offset = {0, 0};
-            renderPassInfo.renderArea.extent = swapChainExtent;
-
-            VkClearValue clearColor = {0.0f, 0.0f, 0.0f, 1.0f};
-            renderPassInfo.clearValueCount = 1;
-            renderPassInfo.pClearValues = &clearColor;
-
-            vkCmdBeginRenderPass(commandBuffers[i], &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
-
-                vkCmdBindPipeline(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline);
-
-                VkBuffer vertexBuffers[] = {vertexArray->getBuffer(renderer->getContext())};
-                VkDeviceSize offsets[] = {0};
-                vkCmdBindVertexBuffers(commandBuffers[i], 0, 1, vertexBuffers, offsets);
-
-                vkCmdBindIndexBuffer(commandBuffers[i], indexArray->getBuffer(renderer->getContext()), 0, VK_INDEX_TYPE_UINT16);
-
-                VkDescriptorSet descSet = descriptorSet->getDescriptorSet(renderer->getContext());
-                std::cout << descSet << std::endl;
-                vkCmdBindDescriptorSets(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &descSet, 0, nullptr);
-
-                vkCmdDrawIndexed(commandBuffers[i], static_cast<uint32_t>(indices.size()), 1, 0, 0, 0);
-
-            vkCmdEndRenderPass(commandBuffers[i]);
-
-            if (vkEndCommandBuffer(commandBuffers[i]) != VK_SUCCESS) {
-                throw std::runtime_error("failed to record command buffer!");
-            }
-        }*/
+		VulkanRenderMode currentRenderMode = state.getRenderMode().get();
+		state.getRenderMode().push(static_cast<VulkanRenderMode>(renderMode & currentRenderMode));
 	}
 
 	void finishRender(const GraphicsContext& context, VulkanDeviceState& state) {
-		if (state.getRenderMode() == VULKAN_RENDER_CLEANUP) {
-			CommandBufferState* commandBufferState = contextHandler.getState(context);
-			vkFreeCommandBuffers(state.getDevice()->getDevice(), state.getCommandPool().get()->getCommandPool(), 1, &commandBufferState->commandBuffer);
-		}
-
-		if (state.getRenderMode() == VULKAN_RENDER_COMMAND) {
-			CommandBufferState* commandBufferState = contextHandler.getState(context);
-			if (vkEndCommandBuffer(commandBufferState->commandBuffer) != VK_SUCCESS) {
-                throw std::runtime_error("failed to record command buffer!");
-            }
-
-			//commandBufferState->recorded = true;
-		}
+		state.getRenderMode().pop();
 	}
 
-
 private:
-	struct CommandBufferState : public ContextState {
-		CommandBufferState() {} //: recorded(false) {}
-		VkCommandBuffer commandBuffer;
-		//bool recorded;
-	};
-
-	GraphicsContextHandler<ContextState,CommandBufferState> contextHandler;
+	VulkanRenderMode renderMode;
 };
-
 
 }
 
