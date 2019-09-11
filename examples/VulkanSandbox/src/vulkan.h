@@ -1868,6 +1868,17 @@ class VertexArray : public VulkanArrayBuffer<T> {
 public:
 	VertexArray() : VulkanArrayBuffer<T>(VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, true) {}
 	virtual ~VertexArray() {}
+
+	void startRender(const GraphicsContext& context, VulkanDeviceState& state) {
+		VulkanArrayBuffer<T>::startRender(context, state);
+
+		if ((state.getRenderMode().get() & VULKAN_RENDER_COMMAND) == VULKAN_RENDER_COMMAND) {
+			std::cout << "bind vertex array" << std::endl;
+			VkBuffer vertexBuffers[] = {VulkanArrayBuffer<T>::getBuffer(context)};
+            VkDeviceSize offsets[] = {0};
+            vkCmdBindVertexBuffers(state.getCommandBuffer().get()->getCommandBuffer(context), 0, 1, vertexBuffers, offsets);
+		}
+	}
 };
 
 template<typename T>
@@ -2588,6 +2599,25 @@ private:
 	VulkanDescriptorSetLayout* descriptorSetLayout;
 };
 
+
+class VulkanCmdBindDescriptorSet : public VulkanRenderObject {
+public:
+	VulkanCmdBindDescriptorSet(VulkanDescriptorSet* descriptorSet, VulkanGraphicsPipeline* graphicsPipeline) : descriptorSet(descriptorSet), graphicsPipeline(graphicsPipeline) { addType<VulkanCmdBindDescriptorSet>(); }
+	virtual ~VulkanCmdBindDescriptorSet() {}
+
+protected:
+	void startRender(const GraphicsContext& context, VulkanDeviceState& state) {
+		if ((state.getRenderMode().get() & VULKAN_RENDER_COMMAND) == VULKAN_RENDER_COMMAND) {
+			VkDescriptorSet descSet = descriptorSet->getDescriptorSet(context);
+            std::cout << descSet << std::endl;
+            vkCmdBindDescriptorSets(state.getCommandBuffer().get()->getCommandBuffer(context), VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline->getPipelineLayout(context), 0, 1, &descSet, 0, nullptr);
+		}
+	}
+
+private:
+	VulkanDescriptorSet* descriptorSet;
+	VulkanGraphicsPipeline* graphicsPipeline;
+};
 
 inline void VulkanCommandBuffer::startRender(const GraphicsContext& context, VulkanDeviceState& state) {
 	state.getCommandBuffer().push(this);

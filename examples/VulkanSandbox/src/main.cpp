@@ -148,6 +148,7 @@ private:
     VulkanDescriptorSet* descriptorSet;
 
     std::vector<VkCommandBuffer> commandBuffers;
+    VulkanCommandBuffer* commandBuffer;
 
     std::vector<VkSemaphore> imageAvailableSemaphores;
     std::vector<VkSemaphore> renderFinishedSemaphores;
@@ -235,24 +236,28 @@ private:
         scene.addComponent(new RenderNode(&pipelineNode, RENDER_ACTION_START));
         EntityNode* drawObject = new EntityNode(&scene);
             drawObject->addComponent(new RenderNode(&graphicsObjects));
+            drawObject->addComponent(new VulkanCmdBindDescriptorSet(mainDescriptorSet->getComponent<VulkanDescriptorSet>(), pipelineNode.getComponent<VulkanGraphicsPipeline>()));
             drawObject->addComponent(new RenderNode(&pipelineNode, RENDER_ACTION_END));
 
         vulkanNode.addComponent(new VulkanInstance());
         EntityNode* surfaceNode = new EntityNode(&vulkanNode);
             surfaceNode->addComponent(new GlfwSurface(window, &vulkanNode));
         EntityNode* surface2Node = new EntityNode(&vulkanNode);
-            surfaceNode->addComponent(new GlfwSurface(window2, &vulkanNode));
+            surface2Node->addComponent(new GlfwSurface(window2, &vulkanNode));
         EntityNode* deviceNode = new EntityNode(&vulkanNode);
             deviceNode->addComponent(new VulkanDevice(&vulkanNode));
             EntityNode* queues = new EntityNode(deviceNode);
                 graphicsQueue = new VulkanGraphicsQueue();
                 queues->addComponent(graphicsQueue);
                 queues->addComponent(new VulkanPresentQueue(surfaceNode));
+                queues->addComponent(new VulkanPresentQueue(surface2Node));
             renderNode = new EntityNode(deviceNode);
+                EntityNode* commandNode;
+                setupSwapChain(renderNode, surface2Node, commandNode);
+            /*renderNode = new EntityNode(deviceNode);
                 renderNode->addComponent(new VulkanBasicSwapChain(surfaceNode));
                 EntityNode* updateSharedNode = new EntityNode(renderNode);
                     updateSharedNode->addComponent(new AllowRenderModes(VULKAN_RENDER_UPDATE_SHARED | VULKAN_RENDER_OBJECT));
-                    //updateSharedNode->addComponent(new VulkanDeviceRenderer(new GraphicsContext(renderNode->getComponent<VulkanBasicSwapChain>()->getSharedContext(), new Context(), false)));
                     updateSharedNode->addComponent(new VulkanCommandPool(graphicsQueue));
                     updateSharedNode->addComponent(new RenderNode(&graphicsObjects));
                     updateSharedNode->addComponent(new RenderNode(&images));
@@ -266,13 +271,7 @@ private:
                     commandNode->addComponent(new VulkanCommandBuffer());
                     EntityNode* commands = new EntityNode(commandNode);
                         commands->addComponent(new AllowRenderModes(VULKAN_RENDER_COMMAND));
-                        commands->addComponent(new RenderNode(&scene));
-                    //commandNode->addComponent(new RenderNode(scene, RENDER_ONLY));
-            objectNode = new EntityNode(deviceNode);
-                objectNode->addComponent(new VulkanDeviceRenderer(new GraphicsContext(renderNode->getComponent<VulkanBasicSwapChain>()->getSharedContext(), new Context(), false)));
-                objectNode->addComponent(new VulkanCommandPool(graphicsQueue));
-                //objectNode->addComponent(new RenderNode(&graphicsObjects));
-                //objectNode->addComponent(new RenderNode(&images));
+                        commands->addComponent(new RenderNode(&scene));*/
 
 
         //createDevice(window2);
@@ -285,6 +284,7 @@ private:
         for (int f = 0; f < renderers.size(); f++) {  
             renderers[f]->render(VULKAN_RENDER_UPDATE);
             renderers[f]->render(VULKAN_RENDER_OBJECT);
+            renderers[f]->render(VULKAN_RENDER_COMMAND);
         }
 
         //instance = vulkanNode.getComponent<VulkanInstance>()->getInstance();
@@ -307,6 +307,7 @@ private:
         pipelineLayout = pipelineNode.getComponent<VulkanGraphicsPipeline>()->getPipelineLayout(renderer->getContext());
         descriptorSetLayout = mainDescriptorSet->getComponent<VulkanDescriptorSetLayout>()->getDescriptorSetLayout(renderer->getContext());
         framebuffer = pipelineNode.getComponent<VulkanFramebuffer>();
+        commandBuffer = renderNode->getComponentRecursive<VulkanCommandBuffer>();
         //createInstance();
         //setupDebugMessenger();
         //createSurface();
@@ -327,8 +328,29 @@ private:
         //createUniformBuffers();
         //createDescriptorPool();
         //createDescriptorSets();
-        createCommandBuffers();
+        //createCommandBuffers();
         createSyncObjects();
+    }
+
+    void setupSwapChain(Entity* renderNode, Entity* surfaceNode, EntityNode*& commandNode) {
+            //renderNode = new EntityNode(deviceNode);
+                renderNode->addComponent(new VulkanBasicSwapChain(surfaceNode));
+                EntityNode* updateSharedNode = new EntityNode(renderNode);
+                    updateSharedNode->addComponent(new AllowRenderModes(VULKAN_RENDER_UPDATE_SHARED | VULKAN_RENDER_OBJECT));
+                    updateSharedNode->addComponent(new VulkanCommandPool(graphicsQueue));
+                    updateSharedNode->addComponent(new RenderNode(&graphicsObjects));
+                    updateSharedNode->addComponent(new RenderNode(&images));
+                EntityNode* updateNode = new EntityNode(renderNode);
+                    updateNode->addComponent(new AllowRenderModes(VULKAN_RENDER_UPDATE_ONLY | VULKAN_RENDER_OBJECT));
+                    updateNode->addComponent(new RenderNode(&shaderObjects));//, UPDATE_ONLY));
+                    updateNode->addComponent(new RenderNode(&descriptorSetGroup)); //, UPDATE_ONLY));
+                    updateNode->addComponent(new RenderNode(&pipelineNode));//, UPDATE_ONLY));
+                commandNode = new EntityNode(renderNode);
+                    commandNode->addComponent(new VulkanCommandPool(graphicsQueue));
+                    commandNode->addComponent(new VulkanCommandBuffer());
+                    EntityNode* commands = new EntityNode(commandNode);
+                        commands->addComponent(new AllowRenderModes(VULKAN_RENDER_COMMAND));
+                        commands->addComponent(new RenderNode(&scene));
     }
 
     void mainLoop() {
@@ -419,68 +441,7 @@ private:
         //createUniformBuffers();
         //createDescriptorPool();
         //createDescriptorSets();
-        createCommandBuffers();
-    }
-
-
-    void createCommandBuffers() {
-
-        commandBuffers.resize(swapChainImageViews.size());
-
-        VkCommandBufferAllocateInfo allocInfo = {};
-        allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-        allocInfo.commandPool = commandPool;
-        allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-        allocInfo.commandBufferCount = (uint32_t) commandBuffers.size();
-
-        if (vkAllocateCommandBuffers(device, &allocInfo, commandBuffers.data()) != VK_SUCCESS) {
-            throw std::runtime_error("failed to allocate command buffers!");
-        }
-
-        for (size_t i = 0; i < commandBuffers.size(); i++) {
-            VulkanDeviceRenderer* renderer = renderNode->getComponents<VulkanDeviceRenderer>()[i];
-            renderer->render(VULKAN_RENDER_COMMAND);
-
-            VkCommandBufferBeginInfo beginInfo = {};
-            beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-
-            if (vkBeginCommandBuffer(commandBuffers[i], &beginInfo) != VK_SUCCESS) {
-                throw std::runtime_error("failed to begin recording command buffer!");
-            }
-
-            VkRenderPassBeginInfo renderPassInfo = {};
-            renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-            renderPassInfo.renderPass = renderPass;
-            renderPassInfo.framebuffer = framebuffer->getFramebuffer(renderer->getContext());
-            renderPassInfo.renderArea.offset = {0, 0};
-            renderPassInfo.renderArea.extent = swapChainExtent;
-
-            VkClearValue clearColor = {0.0f, 0.0f, 0.0f, 1.0f};
-            renderPassInfo.clearValueCount = 1;
-            renderPassInfo.pClearValues = &clearColor;
-
-            vkCmdBeginRenderPass(commandBuffers[i], &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
-
-                vkCmdBindPipeline(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline);
-
-                VkBuffer vertexBuffers[] = {vertexArray->getBuffer(renderer->getContext())};
-                VkDeviceSize offsets[] = {0};
-                vkCmdBindVertexBuffers(commandBuffers[i], 0, 1, vertexBuffers, offsets);
-
-                vkCmdBindIndexBuffer(commandBuffers[i], indexArray->getBuffer(renderer->getContext()), 0, VK_INDEX_TYPE_UINT16);
-
-                VkDescriptorSet descSet = descriptorSet->getDescriptorSet(renderer->getContext());
-                std::cout << descSet << std::endl;
-                vkCmdBindDescriptorSets(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &descSet, 0, nullptr);
-
-                vkCmdDrawIndexed(commandBuffers[i], static_cast<uint32_t>(indices.size()), 1, 0, 0, 0);
-
-            vkCmdEndRenderPass(commandBuffers[i]);
-
-            if (vkEndCommandBuffer(commandBuffers[i]) != VK_SUCCESS) {
-                throw std::runtime_error("failed to record command buffer!");
-            }
-        }
+        //createCommandBuffers();
     }
 
     void createSyncObjects() {
@@ -531,7 +492,8 @@ private:
         submitInfo.pWaitDstStageMask = waitStages;
 
         submitInfo.commandBufferCount = 1;
-        submitInfo.pCommandBuffers = &commandBuffers[imageIndex];
+        VkCommandBuffer cmdBuffer = commandBuffer->getCommandBuffer(vulkanRenderer->getContext());
+        submitInfo.pCommandBuffers = &cmdBuffer;// commandBuffers[imageIndex];
 
         VkSemaphore signalSemaphores[] = {renderFinishedSemaphores[currentFrame]};
         submitInfo.signalSemaphoreCount = 1;
