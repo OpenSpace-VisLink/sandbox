@@ -835,6 +835,7 @@ public:
 	virtual VkFormat getImageFormat() const = 0;
 	virtual const std::vector<VkImageView>& getImageViews() const = 0;
 	virtual VkExtent2D getExtent() const = 0;
+    virtual VkSwapchainKHR getSwapChain() const = 0;
 };
 
 
@@ -865,7 +866,7 @@ private:
 
 class VulkanBasicSwapChain : public VulkanSwapChain {
 public:
-	VulkanBasicSwapChain(Entity* surfaceEntity) : surfaceEntity(surfaceEntity) { addType<VulkanBasicSwapChain>(); }
+	VulkanBasicSwapChain(Entity* surfaceEntity) : surfaceEntity(surfaceEntity), initialized(false) { addType<VulkanBasicSwapChain>(); }
 	virtual ~VulkanBasicSwapChain() {
 		cleanup();
 	}
@@ -878,6 +879,19 @@ public:
 	}
 
 	void cleanup() {
+		std::vector<VulkanDeviceRenderer*> renderers = getEntity().getComponentsRecursive<VulkanDeviceRenderer>();
+		for (int f = 0; f < renderers.size(); f++) {
+			renderers[f]->render(VULKAN_RENDER_CLEANUP);	
+		}
+		renderers[0]->render(VULKAN_RENDER_CLEANUP_SHARED);
+		
+		for (auto imageView : swapChainImageViews) {
+            vkDestroyImageView(getDevice().getDevice(), imageView, nullptr);
+			std::cout << "Destroy image view." << std::endl;
+        }
+
+        vkDestroySwapchainKHR(getDevice().getDevice(), swapChain, nullptr);
+			std::cout << "Destroy swap chain." << std::endl;
         /*for (auto framebuffer : swapChainFramebuffers) {
             vkDestroyFramebuffer(device, framebuffer, nullptr);
         }
@@ -905,6 +919,11 @@ public:
     }
 
 	void update() {
+		if (initialized) {
+			cleanup();
+			//return;
+		}
+
 		VulkanSurface* surface = surfaceEntity->getComponent<VulkanSurface>();
 
         SwapChainSupportDetails swapChainSupport = getDevice().getInstance().querySwapChainSupport(getDevice().getPhysicalDevice(), surface->getSurface());
@@ -960,19 +979,24 @@ public:
         swapChainExtent = extent;
         createImageViews();
 
-        for (int f = 0; f < imageCount; f++) {
-        	GraphicsContext* context = new GraphicsContext(&sharedContext, new Context(), false);
-	        VulkanSwapChainState::get(*context).setSwapChain(this);
-	        VulkanSwapChainState::get(*context).setNumImages(imageCount);
-        	VulkanSwapChainState::get(*context).setImageIndex(f);
-        	VulkanDeviceRenderer* renderer = new VulkanDeviceRenderer(context);
-	        getEntity().addComponent(renderer);
-	        renderer->update();
-	        /*if (f == 0) {
-	        	renderer->render(VULKAN_RENDER_UPDATE_SHARED);
+
+        if (!initialized) {
+        	for (int f = 0; f < imageCount; f++) {
+	        	GraphicsContext* context = new GraphicsContext(&sharedContext, new Context(), false);
+		        VulkanSwapChainState::get(*context).setSwapChain(this);
+		        VulkanSwapChainState::get(*context).setNumImages(imageCount);
+	        	VulkanSwapChainState::get(*context).setImageIndex(f);
+	        	VulkanDeviceRenderer* renderer = new VulkanDeviceRenderer(context);
+		        getEntity().addComponent(renderer);
+		        renderer->update();
+		        /*if (f == 0) {
+		        	renderer->render(VULKAN_RENDER_UPDATE_SHARED);
+		        }
+		        renderer->render(VULKAN_RENDER_UPDATE);*/
 	        }
-	        renderer->render(VULKAN_RENDER_UPDATE);*/
         }
+
+        initialized = true;
 	}
 
 	VkSurfaceFormatKHR chooseSwapSurfaceFormat(const std::vector<VkSurfaceFormatKHR>& availableFormats) {
@@ -1053,11 +1077,13 @@ public:
     }
 
     VkFormat getImageFormat() const { return swapChainImageFormat; }
+    VkSwapchainKHR getSwapChain() const { return swapChain; }
     const std::vector<VkImageView>& getImageViews() const { return swapChainImageViews; }
     VkExtent2D getExtent() const { return swapChainExtent; }
     Context* getSharedContext() { return &sharedContext; };
 
 //private:
+    bool initialized;
 	Entity* surfaceEntity;
 	VulkanSurface* surface;
 	VkSwapchainKHR swapChain;
@@ -1084,6 +1110,7 @@ public:
 	VulkanCommandPool(VulkanQueue* queue) : queue(queue) { addType<VulkanCommandPool>(); }
 	virtual ~VulkanCommandPool() {
 		vkDestroyCommandPool(device->getDevice(), commandPool, nullptr);
+		std::cout << "Destroy command pool." << std::endl;
 	}
 
 	void update() {
@@ -1222,6 +1249,7 @@ public:
 	void finishRender(const GraphicsContext& context, VulkanDeviceState& state) {
 		if (state.getRenderMode().get() == VULKAN_RENDER_CLEANUP) {
 			vkDestroyFramebuffer(state.getDevice()->getDevice(), getFramebuffer(context), nullptr);
+			std::cout << "Destroy framebuffer." << std::endl;
 		}
 	}
 
@@ -1323,14 +1351,16 @@ inline void VulkanDeviceRenderer::update() {
 
 	if (!device) {
 		device = getEntity().getComponentRecursive<VulkanDevice>(false);
-		if (device) {
-			state->setDevice(device);
-			//state->setRenderPass(getEntity().getComponent<VulkanRenderPass>());
-			VulkanSwapChain* swapChain = getEntity().getComponent<VulkanSwapChain>();
-			if (swapChain) {
-				state->setExtent(swapChain->getExtent());	
-				state->getImageFormat().set(swapChain->getImageFormat());
-			}
+	}
+
+	if (device) {
+		state->setDevice(device);
+		//state->setRenderPass(getEntity().getComponent<VulkanRenderPass>());
+		VulkanSwapChain* swapChain = getEntity().getComponent<VulkanSwapChain>();
+		if (swapChain) {
+			std::cout << "set render state -> swapChain" << std::endl;
+			state->setExtent(swapChain->getExtent());	
+			state->getImageFormat().set(swapChain->getImageFormat());
 		}
 	}
 	
@@ -1522,6 +1552,8 @@ public:
 	void finishRender(const GraphicsContext& context, VulkanDeviceState& state) {
 		if (state.getRenderMode().get() == VULKAN_RENDER_CLEANUP_SHARED) {
 			vkDestroyRenderPass(state.getDevice()->getDevice(), contextHandler.getSharedState(context)->renderPass, nullptr);
+
+			std::cout << "Destroy render pass." << std::endl;
 		}
 
 		VulkanRenderPass::finishRender(context, state);
@@ -2307,6 +2339,7 @@ protected:
 		if (state.getRenderMode().get() == VULKAN_RENDER_CLEANUP_SHARED) {
 			DescriptorSetLayoutState* layoutState = contextHandler.getSharedState(context);
 			vkDestroyDescriptorSetLayout(state.getDevice()->getDevice(), layoutState->descriptorSetLayout, nullptr);
+			std::cout << "destroy descriptor layout" << std::endl;
 		}
 	}
 
@@ -2330,6 +2363,7 @@ protected:
 
 	void finishRender(const GraphicsContext& context, VulkanDeviceState& state) {
 		if (state.getRenderMode().get() == VULKAN_RENDER_CLEANUP_SHARED) {
+			std::cout << "destroy descriptor pool" << std::endl;
 			vkDestroyDescriptorPool(state.getDevice()->getDevice(), getDescriptorPool(context), nullptr);
 		}
 	}
@@ -2586,6 +2620,7 @@ protected:
 			GraphicsPipelineState* pipelineState = contextHandler.getSharedState(context);
 			vkDestroyPipeline(state.getDevice()->getDevice(), pipelineState->graphicsPipeline, nullptr);
 	        vkDestroyPipelineLayout(state.getDevice()->getDevice(), pipelineState->pipelineLayout, nullptr);
+			std::cout << "Destroy pipeline." << std::endl;
 		}
 	}
 

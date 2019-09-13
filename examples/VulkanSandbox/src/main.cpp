@@ -111,11 +111,11 @@ private:
     VulkanQueue* graphicsQueue;
     VulkanQueue* presentQueue;
 
-    VkSwapchainKHR swapChain;
+    /*VkSwapchainKHR swapChain;
     std::vector<VkImage> swapChainImages;
     VkFormat swapChainImageFormat;
     VkExtent2D swapChainExtent;
-    std::vector<VkImageView> swapChainImageViews;
+    std::vector<VkImageView> swapChainImageViews;*/
     VulkanFramebuffer* framebuffer;
 
     VkRenderPass renderPass;
@@ -166,6 +166,8 @@ private:
     EntityNode images;
     Entity* mainImage;
     Entity* renderNode;
+    Entity* renderNode2;
+    Entity* deviceNode;
     GraphicsRenderer* renderer;
     EntityNode* objectNode;
 
@@ -177,6 +179,7 @@ private:
         window = glfwCreateWindow(WIDTH, HEIGHT, "Vulkan", nullptr, nullptr);
         glfwSetWindowUserPointer(window, this);
         glfwSetFramebufferSizeCallback(window, framebufferResizeCallback);
+        glfwSetWindowPos (window, 0, 0);
 
         window2 = glfwCreateWindow(WIDTH, HEIGHT, "Vulkan", nullptr, nullptr);
         glfwSetWindowUserPointer(window2, this);
@@ -244,7 +247,7 @@ private:
             surfaceNode->addComponent(new GlfwSurface(window, &vulkanNode));
         EntityNode* surface2Node = new EntityNode(&vulkanNode);
             surface2Node->addComponent(new GlfwSurface(window2, &vulkanNode));
-        EntityNode* deviceNode = new EntityNode(&vulkanNode);
+        deviceNode = new EntityNode(&vulkanNode);
             deviceNode->addComponent(new VulkanDevice(&vulkanNode));
             EntityNode* queues = new EntityNode(deviceNode);
                 graphicsQueue = new VulkanGraphicsQueue();
@@ -252,8 +255,11 @@ private:
                 queues->addComponent(new VulkanPresentQueue(surfaceNode));
                 queues->addComponent(new VulkanPresentQueue(surface2Node));
             renderNode = new EntityNode(deviceNode);
+            renderNode2 = new EntityNode(deviceNode);
                 EntityNode* commandNode;
-                setupSwapChain(renderNode, surface2Node, commandNode);
+                setupSwapChain(renderNode, surfaceNode, commandNode);
+                EntityNode* commandNode2;
+                setupSwapChain(renderNode2, surface2Node, commandNode2);
             /*renderNode = new EntityNode(deviceNode);
                 renderNode->addComponent(new VulkanBasicSwapChain(surfaceNode));
                 EntityNode* updateSharedNode = new EntityNode(renderNode);
@@ -281,6 +287,8 @@ private:
         std::vector<VulkanDeviceRenderer*> renderers = deviceNode->getComponentsRecursive<VulkanDeviceRenderer>();
         //renderers[renderers.size()-1]->render(VULKAN_RENDER_UPDATE_SHARED);
         renderers[0]->render(VULKAN_RENDER_UPDATE_SHARED);
+        VulkanDeviceRenderer* renderer2 = renderNode2->getComponentRecursive<VulkanDeviceRenderer>();
+        renderer2->render(VULKAN_RENDER_UPDATE_SHARED);
         for (int f = 0; f < renderers.size(); f++) {  
             renderers[f]->render(VULKAN_RENDER_UPDATE);
             renderers[f]->render(VULKAN_RENDER_OBJECT);
@@ -294,11 +302,11 @@ private:
         graphicsQueue = queues->getComponent<VulkanGraphicsQueue>();
         presentQueue = queues->getComponent<VulkanPresentQueue>();
 
-        swapChain = renderNode->getComponent<VulkanBasicSwapChain>()->swapChain;
-        swapChainImages = renderNode->getComponent<VulkanBasicSwapChain>()->swapChainImages;
+        //swapChain = renderNode->getComponent<VulkanBasicSwapChain>()->swapChain;
+        //swapChainImages = renderNode->getComponent<VulkanBasicSwapChain>()->swapChainImages;
         //swapChainImageFormat = renderNode->getComponent<VulkanBasicSwapChain>()->swapChainImageFormat;
-        swapChainExtent = renderNode->getComponent<VulkanBasicSwapChain>()->swapChainExtent;
-        swapChainImageViews = renderNode->getComponent<VulkanBasicSwapChain>()->swapChainImageViews;
+        //swapChainExtent = renderNode->getComponent<VulkanBasicSwapChain>()->swapChainExtent;
+        //swapChainImageViews = renderNode->getComponent<VulkanBasicSwapChain>()->swapChainImageViews;
         commandPool = commandNode->getComponent<VulkanCommandPool>()->getCommandPool();
         renderer = renderNode->getComponents<GraphicsRenderer>()[1];
         renderPass = pipelineNode.getComponent<VulkanRenderPass>()->getRenderPass(renderer->getContext());
@@ -336,12 +344,12 @@ private:
             //renderNode = new EntityNode(deviceNode);
                 renderNode->addComponent(new VulkanBasicSwapChain(surfaceNode));
                 EntityNode* updateSharedNode = new EntityNode(renderNode);
-                    updateSharedNode->addComponent(new AllowRenderModes(VULKAN_RENDER_UPDATE_SHARED | VULKAN_RENDER_OBJECT));
+                    updateSharedNode->addComponent(new AllowRenderModes(VULKAN_RENDER_UPDATE_SHARED | VULKAN_RENDER_OBJECT | VULKAN_RENDER_CLEANUP_SHARED));
                     updateSharedNode->addComponent(new VulkanCommandPool(graphicsQueue));
                     updateSharedNode->addComponent(new RenderNode(&graphicsObjects));
                     updateSharedNode->addComponent(new RenderNode(&images));
                 EntityNode* updateNode = new EntityNode(renderNode);
-                    updateNode->addComponent(new AllowRenderModes(VULKAN_RENDER_UPDATE_ONLY | VULKAN_RENDER_OBJECT));
+                    updateNode->addComponent(new AllowRenderModes(VULKAN_RENDER_UPDATE_ONLY | VULKAN_RENDER_OBJECT | VULKAN_RENDER_CLEANUP | VULKAN_RENDER_CLEANUP_SHARED));
                     updateNode->addComponent(new RenderNode(&shaderObjects));//, UPDATE_ONLY));
                     updateNode->addComponent(new RenderNode(&descriptorSetGroup)); //, UPDATE_ONLY));
                     updateNode->addComponent(new RenderNode(&pipelineNode));//, UPDATE_ONLY));
@@ -356,16 +364,19 @@ private:
     void mainLoop() {
         while (!glfwWindowShouldClose(window)) {
             glfwPollEvents();
-            drawFrame();
+            drawFrame(renderNode);
+            drawFrame(renderNode2);
+
+            currentFrame = (currentFrame + 1) % MAX_FRAMES_IN_FLIGHT;
         }
 
         vkDeviceWaitIdle(device);
     }
 
-    void cleanupSwapChain() {
-        /*for (auto framebuffer : swapChainFramebuffers) {
+    /*void cleanupSwapChain() {
+        for (auto framebuffer : swapChainFramebuffers) {
             vkDestroyFramebuffer(device, framebuffer, nullptr);
-        }*/
+        }
 
         vkFreeCommandBuffers(device, commandPool, static_cast<uint32_t>(commandBuffers.size()), commandBuffers.data());
 
@@ -385,10 +396,10 @@ private:
         }
 
         vkDestroyDescriptorPool(device, descriptorPool, nullptr);
-    }
+    }*/
 
     void cleanup() {
-        cleanupSwapChain();
+        //cleanupSwapChain();
 
         vkDestroySampler(device, textureSampler, nullptr);
         vkDestroyImageView(device, textureImageView, nullptr);
@@ -422,7 +433,7 @@ private:
         glfwTerminate();
     }
 
-    void recreateSwapChain() {
+    void recreateSwapChain(VulkanSwapChain* swapChain) {
         int width = 0, height = 0;
         while (width == 0 || height == 0) {
             glfwGetFramebufferSize(window, &width, &height);
@@ -431,7 +442,7 @@ private:
 
         vkDeviceWaitIdle(device);
 
-        cleanupSwapChain();
+        //cleanupSwapChain();
 
         //createSwapChain();
         //createImageViews();
@@ -442,6 +453,31 @@ private:
         //createDescriptorPool();
         //createDescriptorSets();
         //createCommandBuffers();
+
+        /*std::vector<VulkanDeviceRenderer*> renderers = deviceNode->getComponentsRecursive<VulkanDeviceRenderer>();
+        renderers[0]->render(VULKAN_RENDER_CLEANUP_SHARED);
+        renderers[0]->render(VULKAN_RENDER_UPDATE_SHARED);
+        VulkanDeviceRenderer* renderer2 = renderNode2->getComponentRecursive<VulkanDeviceRenderer>();
+        renderer2->render(VULKAN_RENDER_CLEANUP_SHARED);
+        renderer2->render(VULKAN_RENDER_UPDATE_SHARED);
+        for (int f = 0; f < renderers.size(); f++) {  
+            renderers[f]->render(VULKAN_RENDER_UPDATE);
+            renderers[f]->render(VULKAN_RENDER_OBJECT);
+            renderers[f]->render(VULKAN_RENDER_COMMAND);
+
+        }*/
+
+        swapChain->getEntity().incrementVersion();
+        swapChain->getEntity().update();
+
+        std::vector<VulkanDeviceRenderer*> renderers = swapChain->getEntity().getComponentsRecursive<VulkanDeviceRenderer>();
+        renderers[0]->render(VULKAN_RENDER_UPDATE_SHARED);
+        for (int f = 0; f < renderers.size(); f++) {  
+            renderers[f]->render(VULKAN_RENDER_UPDATE);
+            renderers[f]->render(VULKAN_RENDER_OBJECT);
+            renderers[f]->render(VULKAN_RENDER_COMMAND);
+
+        }
     }
 
     void createSyncObjects() {
@@ -465,14 +501,16 @@ private:
         }
     }
 
-    void drawFrame() {
+    void drawFrame(Entity* renderNode) {
         vkWaitForFences(device, 1, &inFlightFences[currentFrame], VK_TRUE, UINT64_MAX);
+
+        VkSwapchainKHR swapChain = renderNode->getComponent<VulkanSwapChain>()->getSwapChain();
 
         uint32_t imageIndex;
         VkResult result = vkAcquireNextImageKHR(device, swapChain, UINT64_MAX, imageAvailableSemaphores[currentFrame], VK_NULL_HANDLE, &imageIndex);
 
         if (result == VK_ERROR_OUT_OF_DATE_KHR) {
-            recreateSwapChain();
+            recreateSwapChain(renderNode->getComponent<VulkanSwapChain>());
             return;
         } else if (result != VK_SUCCESS && result != VK_SUBOPTIMAL_KHR) {
             throw std::runtime_error("failed to acquire swap chain image!");
@@ -480,7 +518,8 @@ private:
 
         //updateUniformBuffer(imageIndex);
         VulkanDeviceRenderer* vulkanRenderer = renderNode->getComponents<VulkanDeviceRenderer>()[imageIndex];
-        vulkanRenderer->render(VULKAN_RENDER_OBJECT);
+        if (!(this->renderNode == renderNode))
+            vulkanRenderer->render(VULKAN_RENDER_OBJECT);
 
         VkSubmitInfo submitInfo = {};
         submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
@@ -492,7 +531,7 @@ private:
         submitInfo.pWaitDstStageMask = waitStages;
 
         submitInfo.commandBufferCount = 1;
-        VkCommandBuffer cmdBuffer = commandBuffer->getCommandBuffer(vulkanRenderer->getContext());
+        VkCommandBuffer cmdBuffer = renderNode->getComponentRecursive<VulkanCommandBuffer>()->getCommandBuffer(vulkanRenderer->getContext());
         submitInfo.pCommandBuffers = &cmdBuffer;// commandBuffers[imageIndex];
 
         VkSemaphore signalSemaphores[] = {renderFinishedSemaphores[currentFrame]};
@@ -521,19 +560,13 @@ private:
 
         if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR || framebufferResized) {
             framebufferResized = false;
-            recreateSwapChain();
+            recreateSwapChain(renderNode->getComponent<VulkanSwapChain>());
         } else if (result != VK_SUCCESS) {
             throw std::runtime_error("failed to present swap chain image!");
         }
 
-        currentFrame = (currentFrame + 1) % MAX_FRAMES_IN_FLIGHT;
     }
 
-    static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity, VkDebugUtilsMessageTypeFlagsEXT messageType, const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData, void* pUserData) {
-        std::cerr << "validation layer: " << pCallbackData->pMessage << std::endl;
-
-        return VK_FALSE;
-    }
 };
 
 int main() {
