@@ -561,6 +561,7 @@ public:
 
 	virtual void getFramebufferSize(int &width, int &height) const {
 		glfwGetFramebufferSize(window, &width, &height);
+		std::cout << width << " -- " << height <<std::endl; 
 	}
 
 private:
@@ -924,7 +925,7 @@ public:
 			//return;
 		}
 
-		VulkanSurface* surface = surfaceEntity->getComponent<VulkanSurface>();
+		surface = surfaceEntity->getComponent<VulkanSurface>();
 
         SwapChainSupportDetails swapChainSupport = getDevice().getInstance().querySwapChainSupport(getDevice().getPhysicalDevice(), surface->getSurface());
 
@@ -1020,7 +1021,7 @@ public:
     }
 
     VkExtent2D chooseSwapExtent(const VkSurfaceCapabilitiesKHR& capabilities) {
-        if (capabilities.currentExtent.width != UINT32_MAX) {
+        if (false) {//capabilities.currentExtent.width != UINT32_MAX) {
             return capabilities.currentExtent;
         } else {
             int width, height;
@@ -1358,7 +1359,7 @@ inline void VulkanDeviceRenderer::update() {
 		//state->setRenderPass(getEntity().getComponent<VulkanRenderPass>());
 		VulkanSwapChain* swapChain = getEntity().getComponent<VulkanSwapChain>();
 		if (swapChain) {
-			std::cout << "set render state -> swapChain" << std::endl;
+			std::cout << "set render state -> swapChain" << " " << swapChain->getExtent().width << " " << swapChain->getExtent().height << std::endl;
 			state->setExtent(swapChain->getExtent());	
 			state->getImageFormat().set(swapChain->getImageFormat());
 		}
@@ -1799,11 +1800,15 @@ protected:
         auto currentTime = std::chrono::high_resolution_clock::now();
         float time = std::chrono::duration<float, std::chrono::seconds::period>(currentTime - startTime).count();
 		//UniformBufferObject ubo = {};
-        value.model = glm::rotate(glm::mat4(1.0f), time * glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f));
-        value.view = glm::lookAt(glm::vec3(2.0f, 2.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
-        value.proj = glm::perspective(glm::radians(45.0f), (float) state.getExtent().width / (float) state.getExtent().height, 0.1f, 10.0f);
-        value.proj[1][1] *= -1;
-		VulkanUniformBufferValue<UniformBufferObject>::updateBuffer(context, state, buffer);
+		UniformBufferObject ubo = {};
+        ubo.model = glm::rotate(glm::mat4(1.0f), time * glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+        ubo.view = glm::lookAt(glm::vec3(2.0f, 2.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+        ubo.proj = glm::perspective(glm::radians(45.0f), (float) state.getExtent().width / (float) state.getExtent().height, 0.1f, 10.0f);
+        std::cout << &state << " " << state.getExtent().width << " " << (float) state.getExtent().height << std::endl;
+        ubo.proj[1][1] *= -1;
+		//VulkanUniformBufferValue<UniformBufferObject>::updateBuffer(context, state, buffer);
+
+		buffer->update(&ubo, sizeof(ubo));
 	}
 };
 

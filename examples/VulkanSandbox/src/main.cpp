@@ -29,8 +29,8 @@
 
 using namespace sandbox;
 
-const int WIDTH = 800;
-const int HEIGHT = 600;
+const int WIDTH = 400;
+const int HEIGHT = 300;
 
 const int MAX_FRAMES_IN_FLIGHT = 2;
 
@@ -101,6 +101,7 @@ public:
 private:
     GLFWwindow* window;
     GLFWwindow* window2;
+    GLFWwindow* window3;
 
     VkInstance instance;
     VkSurfaceKHR surface;
@@ -118,7 +119,7 @@ private:
     std::vector<VkImageView> swapChainImageViews;*/
     VulkanFramebuffer* framebuffer;
 
-    VkRenderPass renderPass;
+    /*VkRenderPass renderPass;
     VkDescriptorSetLayout descriptorSetLayout;
     VkPipelineLayout pipelineLayout;
     VkPipeline graphicsPipeline;
@@ -134,20 +135,22 @@ private:
     VkBuffer vertexBuffer;
     VkDeviceMemory vertexBufferMemory;
     VkBuffer indexBuffer;
-    VkDeviceMemory indexBufferMemory;
+    VkDeviceMemory indexBufferMemory;*/
     VertexArray<Vertex>* vertexArray;
     IndexArray* indexArray;
 
-    std::vector<VkBuffer> uniformBuffers;
-    std::vector<VkDeviceMemory> uniformBuffersMemory;
+    VulkanSampler* sampler;
+
+    //std::vector<VkBuffer> uniformBuffers;
+    //std::vector<VkDeviceMemory> uniformBuffersMemory;
     VulkanUniformBuffer* uniformBuffer;
 
-    VkDescriptorPool descriptorPool;
-    std::vector<VkDescriptorSet> descriptorSets;
+    //VkDescriptorPool descriptorPool;
+    //std::vector<VkDescriptorSet> descriptorSets;
     VulkanDescriptorPool* vulkanDescriptorPool;
     VulkanDescriptorSet* descriptorSet;
 
-    std::vector<VkCommandBuffer> commandBuffers;
+    //std::vector<VkCommandBuffer> commandBuffers;
     VulkanCommandBuffer* commandBuffer;
 
     std::vector<VkSemaphore> imageAvailableSemaphores;
@@ -156,6 +159,7 @@ private:
     size_t currentFrame = 0;
 
     bool framebufferResized = false;
+    bool framebufferResized2 = false;
 
     EntityNode vulkanNode;
     EntityNode pipelineNode;
@@ -165,13 +169,14 @@ private:
     EntityNode scene;
     EntityNode images;
     Entity* mainImage;
-    Entity* renderNode;
+    Entity* renderNode0;
     Entity* renderNode2;
+    Entity* renderNode3;
     Entity* deviceNode;
-    GraphicsRenderer* renderer;
+    //GraphicsRenderer* renderer;
     EntityNode* objectNode;
 
-    void initWindow() {
+    void initWindow() { 
         glfwInit();
 
         glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
@@ -181,15 +186,23 @@ private:
         glfwSetFramebufferSizeCallback(window, framebufferResizeCallback);
         glfwSetWindowPos (window, 0, 0);
 
-        window2 = glfwCreateWindow(WIDTH, HEIGHT, "Vulkan", nullptr, nullptr);
+        window2 = glfwCreateWindow(WIDTH, HEIGHT-100, "Vulkan", nullptr, nullptr);
         glfwSetWindowUserPointer(window2, this);
         glfwSetFramebufferSizeCallback(window2, framebufferResizeCallback);
         glfwSetWindowPos (window2, WIDTH+5, 0);
+
+        window3 = glfwCreateWindow(WIDTH, HEIGHT-100, "Vulkan", nullptr, nullptr);
+        glfwSetWindowUserPointer(window3, this);
+        glfwSetFramebufferSizeCallback(window3, framebufferResizeCallback);
+        glfwSetWindowPos (window3, 2*(WIDTH+5), 0);
     }
+
 
     static void framebufferResizeCallback(GLFWwindow* window, int width, int height) {
         auto app = reinterpret_cast<HelloTriangleApplication*>(glfwGetWindowUserPointer(window));
-        app->framebufferResized = true;
+        std::cout << "window " << window << std::endl;
+        //app->framebufferResized = true;
+        //app->framebufferResized2 = true;
     }
 
     void initVulkan() {
@@ -247,6 +260,8 @@ private:
             surfaceNode->addComponent(new GlfwSurface(window, &vulkanNode));
         EntityNode* surface2Node = new EntityNode(&vulkanNode);
             surface2Node->addComponent(new GlfwSurface(window2, &vulkanNode));
+        EntityNode* surface3Node = new EntityNode(&vulkanNode);
+            surface3Node->addComponent(new GlfwSurface(window3, &vulkanNode));
         deviceNode = new EntityNode(&vulkanNode);
             deviceNode->addComponent(new VulkanDevice(&vulkanNode));
             EntityNode* queues = new EntityNode(deviceNode);
@@ -254,12 +269,16 @@ private:
                 queues->addComponent(graphicsQueue);
                 queues->addComponent(new VulkanPresentQueue(surfaceNode));
                 queues->addComponent(new VulkanPresentQueue(surface2Node));
-            renderNode = new EntityNode(deviceNode);
+                queues->addComponent(new VulkanPresentQueue(surface3Node));
+            renderNode0 = new EntityNode(deviceNode);
             renderNode2 = new EntityNode(deviceNode);
+            renderNode3 = new EntityNode(deviceNode);
                 EntityNode* commandNode;
-                setupSwapChain(renderNode, surfaceNode, commandNode);
+                setupSwapChain(renderNode0, surfaceNode, commandNode);
                 EntityNode* commandNode2;
                 setupSwapChain(renderNode2, surface2Node, commandNode2);
+                EntityNode* commandNode3;
+                setupSwapChain(renderNode3, surface3Node, commandNode3);
             /*renderNode = new EntityNode(deviceNode);
                 renderNode->addComponent(new VulkanBasicSwapChain(surfaceNode));
                 EntityNode* updateSharedNode = new EntityNode(renderNode);
@@ -289,6 +308,8 @@ private:
         renderers[0]->render(VULKAN_RENDER_UPDATE_SHARED);
         VulkanDeviceRenderer* renderer2 = renderNode2->getComponentRecursive<VulkanDeviceRenderer>();
         renderer2->render(VULKAN_RENDER_UPDATE_SHARED);
+        VulkanDeviceRenderer* renderer3 = renderNode3->getComponentRecursive<VulkanDeviceRenderer>();
+        renderer3->render(VULKAN_RENDER_UPDATE_SHARED);
         for (int f = 0; f < renderers.size(); f++) {  
             renderers[f]->render(VULKAN_RENDER_UPDATE);
             renderers[f]->render(VULKAN_RENDER_OBJECT);
@@ -301,6 +322,7 @@ private:
         physicalDevice = deviceNode->getComponent<VulkanDevice>()->getPhysicalDevice();
         graphicsQueue = queues->getComponent<VulkanGraphicsQueue>();
         presentQueue = queues->getComponent<VulkanPresentQueue>();
+        /*
 
         //swapChain = renderNode->getComponent<VulkanBasicSwapChain>()->swapChain;
         //swapChainImages = renderNode->getComponent<VulkanBasicSwapChain>()->swapChainImages;
@@ -315,7 +337,8 @@ private:
         pipelineLayout = pipelineNode.getComponent<VulkanGraphicsPipeline>()->getPipelineLayout(renderer->getContext());
         descriptorSetLayout = mainDescriptorSet->getComponent<VulkanDescriptorSetLayout>()->getDescriptorSetLayout(renderer->getContext());
         framebuffer = pipelineNode.getComponent<VulkanFramebuffer>();
-        commandBuffer = renderNode->getComponentRecursive<VulkanCommandBuffer>();
+        commandBuffer = renderNode->getComponentRecursive<VulkanCommandBuffer>();*/
+
         //createInstance();
         //setupDebugMessenger();
         //createSurface();
@@ -364,10 +387,16 @@ private:
     void mainLoop() {
         while (!glfwWindowShouldClose(window)) {
             glfwPollEvents();
-            drawFrame(renderNode);
+            //std::cout << "draw frame renderNode" << std::endl;
+            drawFrame(renderNode3);
+            //std::cout << "draw frame renderNode2" << std::endl;
             drawFrame(renderNode2);
+            drawFrame(renderNode0);
 
             currentFrame = (currentFrame + 1) % MAX_FRAMES_IN_FLIGHT;
+            if (framebufferResized2) {
+                exit(0);
+            }
         }
 
         vkDeviceWaitIdle(device);
@@ -399,7 +428,7 @@ private:
     }*/
 
     void cleanup() {
-        //cleanupSwapChain();
+        /*//cleanupSwapChain();
 
         vkDestroySampler(device, textureSampler, nullptr);
         vkDestroyImageView(device, textureImageView, nullptr);
@@ -425,10 +454,11 @@ private:
 
         //vkDestroyDevice(device, nullptr);
 
-        //vkDestroySurfaceKHR(instance, surface, nullptr);
+        //vkDestroySurfaceKHR(instance, surface, nullptr);*/
 
         glfwDestroyWindow(window);
         glfwDestroyWindow(window2);
+        glfwDestroyWindow(window3);
 
         glfwTerminate();
     }
@@ -437,6 +467,9 @@ private:
         int width = 0, height = 0;
         while (width == 0 || height == 0) {
             glfwGetFramebufferSize(window, &width, &height);
+            std::cout << "Window 1 " << width << " " << height << std::endl;
+            glfwGetFramebufferSize(window2, &width, &height);
+            std::cout << "Window 2 " << width << " " << height << std::endl;
             glfwWaitEvents();
         }
 
@@ -470,7 +503,9 @@ private:
         swapChain->getEntity().incrementVersion();
         swapChain->getEntity().update();
 
+        std::cout << swapChain << std::endl;
         std::vector<VulkanDeviceRenderer*> renderers = swapChain->getEntity().getComponentsRecursive<VulkanDeviceRenderer>();
+        std::cout << "num renderers: " << renderers.size() << std::endl;
         renderers[0]->render(VULKAN_RENDER_UPDATE_SHARED);
         for (int f = 0; f < renderers.size(); f++) {  
             renderers[f]->render(VULKAN_RENDER_UPDATE);
@@ -478,6 +513,7 @@ private:
             renderers[f]->render(VULKAN_RENDER_COMMAND);
 
         }
+
     }
 
     void createSyncObjects() {
@@ -510,6 +546,7 @@ private:
         VkResult result = vkAcquireNextImageKHR(device, swapChain, UINT64_MAX, imageAvailableSemaphores[currentFrame], VK_NULL_HANDLE, &imageIndex);
 
         if (result == VK_ERROR_OUT_OF_DATE_KHR) {
+            std::cout << "Out of date" << std::endl;
             recreateSwapChain(renderNode->getComponent<VulkanSwapChain>());
             return;
         } else if (result != VK_SUCCESS && result != VK_SUBOPTIMAL_KHR) {
@@ -518,7 +555,7 @@ private:
 
         //updateUniformBuffer(imageIndex);
         VulkanDeviceRenderer* vulkanRenderer = renderNode->getComponents<VulkanDeviceRenderer>()[imageIndex];
-        if (!(this->renderNode == renderNode))
+        //if (!(this->renderNode == renderNode))
             vulkanRenderer->render(VULKAN_RENDER_OBJECT);
 
         VkSubmitInfo submitInfo = {};
@@ -559,6 +596,7 @@ private:
         result = vkQueuePresentKHR(presentQueue->getQueue(), &presentInfo);
 
         if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR || framebufferResized) {
+            std::cout << "Out of date / suboptimal / resized" << std::endl;
             framebufferResized = false;
             recreateSwapChain(renderNode->getComponent<VulkanSwapChain>());
         } else if (result != VK_SUCCESS) {
