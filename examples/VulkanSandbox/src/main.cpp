@@ -255,8 +255,8 @@ private:
 
         scene.addComponent(new RenderNode(&pipelineNode, RENDER_ACTION_START));
         EntityNode* drawObject = new EntityNode(&scene);
-            drawObject->addComponent(new RenderNode(&graphicsObjects));
             drawObject->addComponent(new VulkanCmdBindDescriptorSet(mainDescriptorSet->getComponent<VulkanDescriptorSet>(), pipelineNode.getComponent<VulkanGraphicsPipeline>()));
+            drawObject->addComponent(new RenderNode(&graphicsObjects));
             drawObject->addComponent(new RenderNode(&pipelineNode, RENDER_ACTION_END));
 
         vulkanNode.addComponent(new VulkanInstance());
