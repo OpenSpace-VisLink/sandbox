@@ -837,6 +837,7 @@ public:
 	virtual const std::vector<VkImageView>& getImageViews() const = 0;
 	virtual VkExtent2D getExtent() const = 0;
     virtual VkSwapchainKHR getSwapChain() const = 0;
+    virtual const std::string& getName() const = 0;
 };
 
 
@@ -867,7 +868,7 @@ private:
 
 class VulkanBasicSwapChain : public VulkanSwapChain {
 public:
-	VulkanBasicSwapChain(Entity* surfaceEntity) : surfaceEntity(surfaceEntity), initialized(false) { addType<VulkanBasicSwapChain>(); }
+	VulkanBasicSwapChain(const std::string& name, Entity* surfaceEntity) : name(name), surfaceEntity(surfaceEntity), initialized(false) { addType<VulkanBasicSwapChain>(); }
 	virtual ~VulkanBasicSwapChain() {
 		cleanup();
 	}
@@ -1082,6 +1083,7 @@ public:
     const std::vector<VkImageView>& getImageViews() const { return swapChainImageViews; }
     VkExtent2D getExtent() const { return swapChainExtent; }
     Context* getSharedContext() { return &sharedContext; };
+    const std::string& getName() const { return name; }
 
 //private:
     bool initialized;
@@ -1093,6 +1095,7 @@ public:
     VkExtent2D swapChainExtent;
     std::vector<VkImageView> swapChainImageViews;
     Context sharedContext;
+    std::string name;
 };
 
 class VulkanRenderPass : public VulkanRenderObject {
@@ -1110,31 +1113,21 @@ class VulkanCommandPool : public VulkanRenderObject {
 public:
 	VulkanCommandPool(VulkanQueue* queue) : queue(queue) { addType<VulkanCommandPool>(); }
 	virtual ~VulkanCommandPool() {
-		vkDestroyCommandPool(device->getDevice(), commandPool, nullptr);
-		std::cout << "Destroy command pool." << std::endl;
+	}
+
+	VkCommandPool getCommandPool(const GraphicsContext& context) const {
+		return contextHandler.getSharedState(context)->commandPool;
 	}
 
 	void update() {
 		device = getEntity().getComponentRecursive<VulkanDevice>(false);
-
-        VkCommandPoolCreateInfo poolInfo = {};
-        poolInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
-        poolInfo.queueFamilyIndex = queue->getIndex();
-
-        if (vkCreateCommandPool(device->getDevice(), &poolInfo, nullptr, &commandPool) != VK_SUCCESS) {
-            throw std::runtime_error("failed to create graphics command pool!");
-        }
 	}
 
-	VkCommandPool getCommandPool() const {
-		return commandPool;
-	}
-
-	VkCommandBuffer beginSingleTimeCommands() {
+	VkCommandBuffer beginSingleTimeCommands(const GraphicsContext& context) {
         VkCommandBufferAllocateInfo allocInfo = {};
         allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
         allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-        allocInfo.commandPool = commandPool;
+        allocInfo.commandPool = getCommandPool(context);
         allocInfo.commandBufferCount = 1;
 
         VkCommandBuffer commandBuffer;
@@ -1149,7 +1142,7 @@ public:
         return commandBuffer;
     }
 
-    void endSingleTimeCommands(VkCommandBuffer commandBuffer) {
+    void endSingleTimeCommands(const GraphicsContext& context, VkCommandBuffer commandBuffer) {
         vkEndCommandBuffer(commandBuffer);
 
         VkSubmitInfo submitInfo = {};
@@ -1160,7 +1153,7 @@ public:
         vkQueueSubmit(queue->getQueue(), 1, &submitInfo, VK_NULL_HANDLE);
         vkQueueWaitIdle(queue->getQueue());
 
-        vkFreeCommandBuffers(device->getDevice(), commandPool, 1, &commandBuffer);
+        vkFreeCommandBuffers(device->getDevice(), getCommandPool(context), 1, &commandBuffer);
     }
 
 protected:
@@ -1170,9 +1163,15 @@ protected:
 
 
 private:
-	VkCommandPool commandPool;
+	//VkCommandPool commandPool;
 	VulkanQueue* queue;
 	VulkanDevice* device;
+
+	struct CommandPoolState : public ContextState {
+		VkCommandPool commandPool;
+	};
+
+	GraphicsContextHandler<CommandPoolState,ContextState> contextHandler;
 };
 
 class VulkanCommandBuffer : public VulkanRenderObject {
@@ -1270,6 +1269,12 @@ void VulkanRenderPass::startRender(const GraphicsContext& context, VulkanDeviceS
         renderPassInfo.renderArea.extent = state.getExtent();
 
         VkClearValue clearColor = {0.0f, 0.0f, 0.0f, 1.0f};
+        if (VulkanSwapChainState::get(context).getSwapChain()->getName() == "window 2") {
+        	clearColor = {1.0f, 0.0f, 0.0f, 1.0f};
+		}
+		if (VulkanSwapChainState::get(context).getSwapChain()->getName() == "window 3") {
+        	clearColor = {0.0f, 0.0f, 1.0f, 1.0f};
+		}
         renderPassInfo.clearValueCount = 1;
         renderPassInfo.pClearValues = &clearColor;
 
@@ -1292,9 +1297,24 @@ void VulkanRenderPass::finishRender(const GraphicsContext& context, VulkanDevice
 
 void VulkanCommandPool::startRender(const GraphicsContext& context, VulkanDeviceState& state) {
 	state.getCommandPool().push(this);
+
+	if (state.getRenderMode().get() == VULKAN_RENDER_UPDATE_SHARED) {
+		VkCommandPoolCreateInfo poolInfo = {};
+        poolInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+        poolInfo.queueFamilyIndex = queue->getIndex();
+
+        if (vkCreateCommandPool(device->getDevice(), &poolInfo, nullptr, &contextHandler.getSharedState(context)->commandPool) != VK_SUCCESS) {
+            throw std::runtime_error("failed to create graphics command pool!");
+        }
+    }
 }
 
 void VulkanCommandPool::finishRender(const GraphicsContext& context, VulkanDeviceState& state) {
+	if (state.getRenderMode().get() == VULKAN_RENDER_CLEANUP_SHARED) {
+		vkDestroyCommandPool(device->getDevice(), getCommandPool(context), nullptr);
+		std::cout << "Destroy command pool." << std::endl;
+	}
+
 	state.getCommandPool().pop();
 }
 
@@ -1596,14 +1616,14 @@ public:
         vkUnmapMemory(device->getDevice(), bufferMemory);
 	}
 
-	void copyTo(VulkanBuffer* vulkanBuffer, VkDeviceSize size, VulkanCommandPool* commandPool) {
-        VkCommandBuffer commandBuffer = commandPool->beginSingleTimeCommands();
+	void copyTo(VulkanBuffer* vulkanBuffer, VkDeviceSize size, VulkanCommandPool* commandPool, const GraphicsContext& context) {
+        VkCommandBuffer commandBuffer = commandPool->beginSingleTimeCommands(context);
 
         VkBufferCopy copyRegion = {};
         copyRegion.size = size;
         vkCmdCopyBuffer(commandBuffer, buffer, vulkanBuffer->buffer, 1, &copyRegion);
 
-        commandPool->endSingleTimeCommands(commandBuffer);
+        commandPool->endSingleTimeCommands(context, commandBuffer);
     }
 
 	VkBuffer getBuffer() const { return buffer; }
@@ -1802,9 +1822,15 @@ protected:
 		//UniformBufferObject ubo = {};
 		UniformBufferObject ubo = {};
         ubo.model = glm::rotate(glm::mat4(1.0f), time * glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+		if (VulkanSwapChainState::get(context).getSwapChain()->getName() == "window 2") {
+        	ubo.model = glm::rotate(glm::mat4(1.0f), time * glm::radians(-90.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+		}
+		if (VulkanSwapChainState::get(context).getSwapChain()->getName() == "window 3") {
+        	ubo.model = glm::rotate(glm::mat4(1.0f), time * glm::radians(90.0f), glm::vec3(1.0f, 0.0f, 0.0f));
+		}
         ubo.view = glm::lookAt(glm::vec3(2.0f, 2.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
         ubo.proj = glm::perspective(glm::radians(45.0f), (float) state.getExtent().width / (float) state.getExtent().height, 0.1f, 10.0f);
-        std::cout << &state << " " << state.getExtent().width << " " << (float) state.getExtent().height << std::endl;
+        //std::cout << VulkanSwapChainState::get(context).getSwapChain()->getName() << " " << state.getExtent().width << " " << (float) state.getExtent().height << std::endl;
         ubo.proj[1][1] *= -1;
 		//VulkanUniformBufferValue<UniformBufferObject>::updateBuffer(context, state, buffer);
 
@@ -1840,7 +1866,7 @@ protected:
 			VkDeviceSize bufferSize = getBufferSize();
 			VulkanBuffer* stagingBuffer = new VulkanBuffer(state.getDevice(), bufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
 			updateBuffer(context, state, stagingBuffer);
-			stagingBuffer->copyTo(bufferState->buffer, bufferSize, state.getCommandPool().get());
+			stagingBuffer->copyTo(bufferState->buffer, bufferSize, state.getCommandPool().get(), context);
 			delete stagingBuffer;
 		}
 	}
@@ -1985,9 +2011,9 @@ protected:
 
 	        createImage(state.getDevice(), texWidth, texHeight, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, imageState->image, imageState->imageMemory);
 
-	        transitionImageLayout(imageState->image, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, state.getCommandPool().get());
-	            copyBufferToImage(stagingBuffer->getBuffer(), imageState->image, static_cast<uint32_t>(texWidth), static_cast<uint32_t>(texHeight), state.getCommandPool().get());
-	        transitionImageLayout(imageState->image, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, state.getCommandPool().get());
+	        transitionImageLayout(imageState->image, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, state.getCommandPool().get(), context);
+	            copyBufferToImage(stagingBuffer->getBuffer(), imageState->image, static_cast<uint32_t>(texWidth), static_cast<uint32_t>(texHeight), state.getCommandPool().get(), context);
+	        transitionImageLayout(imageState->image, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, state.getCommandPool().get(), context);
 
 	        //vkDestroyBuffer(state.getDevice()->getDevice(), stagingBuffer, nullptr);
 	        //vkFreeMemory(state.getDevice()->getDevice(), stagingBufferMemory, nullptr);
@@ -2047,8 +2073,8 @@ private:
         vkBindImageMemory(device->getDevice(), image, imageMemory, 0);
     }
 
-    void transitionImageLayout(VkImage image, VkFormat format, VkImageLayout oldLayout, VkImageLayout newLayout, VulkanCommandPool* commandPool) {
-        VkCommandBuffer commandBuffer = commandPool->beginSingleTimeCommands();
+    void transitionImageLayout(VkImage image, VkFormat format, VkImageLayout oldLayout, VkImageLayout newLayout, VulkanCommandPool* commandPool, const GraphicsContext& context) {
+        VkCommandBuffer commandBuffer = commandPool->beginSingleTimeCommands(context);
 
         VkImageMemoryBarrier barrier = {};
         barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
@@ -2091,11 +2117,11 @@ private:
             1, &barrier
         );
 
-        commandPool->endSingleTimeCommands(commandBuffer);
+        commandPool->endSingleTimeCommands(context, commandBuffer);
     }
 
-    void copyBufferToImage(VkBuffer buffer, VkImage image, uint32_t width, uint32_t height, VulkanCommandPool* commandPool) {
-        VkCommandBuffer commandBuffer = commandPool->beginSingleTimeCommands();
+    void copyBufferToImage(VkBuffer buffer, VkImage image, uint32_t width, uint32_t height, VulkanCommandPool* commandPool, const GraphicsContext& context) {
+        VkCommandBuffer commandBuffer = commandPool->beginSingleTimeCommands(context);
 
         VkBufferImageCopy region = {};
         region.bufferOffset = 0;
@@ -2114,7 +2140,7 @@ private:
 
         vkCmdCopyBufferToImage(commandBuffer, buffer, image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region);
 
-        commandPool->endSingleTimeCommands(commandBuffer);
+        commandPool->endSingleTimeCommands(context, commandBuffer);
     }
 
 	GraphicsContextHandler<ImageState,ContextState> contextHandler;
@@ -2269,8 +2295,13 @@ public:
 	        VkDescriptorImageInfo* imageInfo = descriptorObjects[f]->asType<VkDescriptorImageInfo>();
 	        std::cout << f << " ";
 	        if (imageInfo) {
-	        	std::cout << " image view bound" << std::endl;
-	        	imageInfo->imageView = imageView->getImageView(context);
+	        	std::cout << VulkanSwapChainState::get(context).getSwapChain()->getName() << " image view bound" << std::endl;
+	        	if (VulkanSwapChainState::get(context).getSwapChain()->getName() == "window 2") {
+	        		imageInfo->imageView = imageView->getEntity().getParent()->getComponentsRecursive<VulkanImageView>()[1]->getImageView(context);
+	        	}
+	        	else {
+	        		imageInfo->imageView = imageView->getImageView(context);
+	        	}
 	        }
         }
 	}
@@ -2649,7 +2680,7 @@ protected:
 	void startRender(const GraphicsContext& context, VulkanDeviceState& state) {
 		if ((state.getRenderMode().get() & VULKAN_RENDER_COMMAND) == VULKAN_RENDER_COMMAND) {
 			VkDescriptorSet descSet = descriptorSet->getDescriptorSet(context);
-            std::cout << descSet << std::endl;
+            std::cout << VulkanSwapChainState::get(context).getSwapChain()->getName() << " " << descSet << std::endl;
             vkCmdBindDescriptorSets(state.getCommandBuffer().get()->getCommandBuffer(context), VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline->getPipelineLayout(context), 0, 1, &descSet, 0, nullptr);
 		}
 	}
@@ -2666,7 +2697,7 @@ inline void VulkanCommandBuffer::startRender(const GraphicsContext& context, Vul
 		CommandBufferState* commandBufferState = contextHandler.getState(context);
 		VkCommandBufferAllocateInfo allocInfo = {};
 		allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-        allocInfo.commandPool = state.getCommandPool().get()->getCommandPool();
+        allocInfo.commandPool = state.getCommandPool().get()->getCommandPool(context);
         allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
         allocInfo.commandBufferCount = 1;
 
@@ -2697,7 +2728,7 @@ inline void VulkanCommandBuffer::startRender(const GraphicsContext& context, Vul
 inline void VulkanCommandBuffer::finishRender(const GraphicsContext& context, VulkanDeviceState& state) {
 	if (state.getRenderMode().get() == VULKAN_RENDER_CLEANUP) {
 		CommandBufferState* commandBufferState = contextHandler.getState(context);
-		vkFreeCommandBuffers(state.getDevice()->getDevice(), state.getCommandPool().get()->getCommandPool(), 1, &commandBufferState->commandBuffer);
+		vkFreeCommandBuffers(state.getDevice()->getDevice(), state.getCommandPool().get()->getCommandPool(context), 1, &commandBufferState->commandBuffer);
 	}
 
 	if (state.getRenderMode().get() == VULKAN_RENDER_COMMAND) {

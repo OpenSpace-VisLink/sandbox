@@ -211,6 +211,10 @@ private:
             mainImage->addComponent(new Image("examples/VulkanExample/textures/texture.jpg"));
             mainImage->addComponent(new VulkanImage());
             mainImage->addComponent(new VulkanImageView());
+        Entity* anotherImage = new EntityNode(&images);
+            anotherImage->addComponent(new Image("/home/dan/Downloads/back.jpg"));
+            anotherImage->addComponent(new VulkanImage());
+            anotherImage->addComponent(new VulkanImageView());
         images.update();
 
         //shaderObjects.addComponent(uniformBuffer);
@@ -274,11 +278,11 @@ private:
             renderNode2 = new EntityNode(deviceNode);
             renderNode3 = new EntityNode(deviceNode);
                 EntityNode* commandNode;
-                setupSwapChain(renderNode0, surfaceNode, commandNode);
+                setupSwapChain(renderNode0, surfaceNode, commandNode, "window 1");
                 EntityNode* commandNode2;
-                setupSwapChain(renderNode2, surface2Node, commandNode2);
+                setupSwapChain(renderNode2, surface2Node, commandNode2, "window 2");
                 EntityNode* commandNode3;
-                setupSwapChain(renderNode3, surface3Node, commandNode3);
+                setupSwapChain(renderNode3, surface3Node, commandNode3, "window 3");
             /*renderNode = new EntityNode(deviceNode);
                 renderNode->addComponent(new VulkanBasicSwapChain(surfaceNode));
                 EntityNode* updateSharedNode = new EntityNode(renderNode);
@@ -363,9 +367,9 @@ private:
         createSyncObjects();
     }
 
-    void setupSwapChain(Entity* renderNode, Entity* surfaceNode, EntityNode*& commandNode) {
+    void setupSwapChain(Entity* renderNode, Entity* surfaceNode, EntityNode*& commandNode, std::string name) {
             //renderNode = new EntityNode(deviceNode);
-                renderNode->addComponent(new VulkanBasicSwapChain(surfaceNode));
+                renderNode->addComponent(new VulkanBasicSwapChain(name, surfaceNode));
                 EntityNode* updateSharedNode = new EntityNode(renderNode);
                     updateSharedNode->addComponent(new AllowRenderModes(VULKAN_RENDER_UPDATE_SHARED | VULKAN_RENDER_OBJECT | VULKAN_RENDER_CLEANUP_SHARED));
                     updateSharedNode->addComponent(new VulkanCommandPool(graphicsQueue));
@@ -386,17 +390,31 @@ private:
 
     void mainLoop() {
         while (!glfwWindowShouldClose(window)) {
+            static int frame = 0;
             glfwPollEvents();
             //std::cout << "draw frame renderNode" << std::endl;
-            drawFrame(renderNode3);
-            //std::cout << "draw frame renderNode2" << std::endl;
-            drawFrame(renderNode2);
-            drawFrame(renderNode0);
+            if (frame > 5000) {
+                drawFrame(renderNode3);
+                //std::cout << "draw frame renderNode2" << std::endl;
+                drawFrame(renderNode2);
+                drawFrame(renderNode0);
+            }
+            else {
+                drawFrame(renderNode0);
+                //std::cout << "draw frame renderNode2" << std::endl;
+                drawFrame(renderNode2);
+                drawFrame(renderNode3);
+                //drawFrame(renderNode2);
+            }
 
-            currentFrame = (currentFrame + 1) % MAX_FRAMES_IN_FLIGHT;
             if (framebufferResized2) {
                 exit(0);
             }
+
+            //std::cout << frame << std::endl;
+
+            currentFrame = (currentFrame + 1) % MAX_FRAMES_IN_FLIGHT;
+            frame++;
         }
 
         vkDeviceWaitIdle(device);
