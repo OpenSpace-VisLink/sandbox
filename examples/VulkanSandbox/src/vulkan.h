@@ -20,6 +20,17 @@
 
 namespace sandbox {
 
+class SharedContext : public Component {
+public:
+	SharedContext() { addType<SharedContext>(); }
+	virtual ~SharedContext() {}
+
+	Context& getContext() { return context; }
+
+private:
+	Context context;
+};
+
 class RenderObject : public Component {
 public:
 	RenderObject() { addType<RenderObject>(); }
@@ -84,10 +95,6 @@ class GraphicsRenderer : public Component {
 public:
 	GraphicsRenderer(GraphicsContext* context = NULL) : context(context), node(NULL) {
 		addType<GraphicsRenderer>();
-		if (!this->context) {
-			std::cout << context << std::endl;
-			this->context = new GraphicsContext();
-		}
 	}
 	virtual ~GraphicsRenderer() {
 		if (node) {
@@ -99,6 +106,16 @@ public:
 	void update() {
 		if (!node) {
 			node = new RenderNode(&getEntity());
+		}
+
+		if (!context) {
+			SharedContext* sharedContext = getEntity().getComponentRecursive<SharedContext>(false);
+			if (sharedContext) {
+				this->context = new GraphicsContext(&sharedContext->getContext(), new Context(), false);
+			}
+			else {
+				this->context = new GraphicsContext();
+			}
 		}
 	}
 
@@ -162,9 +179,12 @@ enum VulkanRenderMode {
 	VULKAN_RENDER_UPDATE = 8,
 	VULKAN_RENDER_OBJECT = 16,
 	VULKAN_RENDER_COMMAND = 32,
-	VULKAN_RENDER_CLEANUP_ONLY = VULKAN_RENDER_CLEANUP_SHARED | VULKAN_RENDER_CLEANUP,
-	VULKAN_RENDER_UPDATE_ONLY = VULKAN_RENDER_UPDATE_SHARED | VULKAN_RENDER_UPDATE,
-	VULKAN_RENDER_RENDER_ONLY = VULKAN_RENDER_COMMAND | VULKAN_RENDER_OBJECT,
+	VULKAN_RENDER_CLEANUP_DISPLAY = 64,
+	VULKAN_RENDER_UPDATE_DISPLAY = 128,
+	VULKAN_RENDER_CLEANUP_ALL = VULKAN_RENDER_CLEANUP_SHARED | VULKAN_RENDER_CLEANUP | VULKAN_RENDER_CLEANUP_DISPLAY,
+	VULKAN_RENDER_UPDATE_ALL = VULKAN_RENDER_UPDATE_SHARED | VULKAN_RENDER_UPDATE | VULKAN_RENDER_UPDATE_DISPLAY,
+	VULKAN_RENDER_RENDER_ALL = VULKAN_RENDER_COMMAND | VULKAN_RENDER_OBJECT,
+	VULKAN_RENDER_SHARED_ONLY = VULKAN_RENDER_UPDATE_SHARED | VULKAN_RENDER_CLEANUP_SHARED,
 	VULKAN_RENDER_ALL = VULKAN_RENDER_CLEANUP_SHARED | VULKAN_RENDER_CLEANUP | VULKAN_RENDER_UPDATE_SHARED | VULKAN_RENDER_UPDATE | VULKAN_RENDER_OBJECT | VULKAN_RENDER_COMMAND
 };
 
@@ -885,7 +905,7 @@ public:
 		for (int f = 0; f < renderers.size(); f++) {
 			renderers[f]->render(VULKAN_RENDER_CLEANUP);	
 		}
-		renderers[0]->render(VULKAN_RENDER_CLEANUP_SHARED);
+		renderers[0]->render(VULKAN_RENDER_CLEANUP_DISPLAY);
 		
 		for (auto imageView : swapChainImageViews) {
             vkDestroyImageView(getDevice().getDevice(), imageView, nullptr);
@@ -983,8 +1003,14 @@ public:
 
 
         if (!initialized) {
+        	Context* shared = &swapChainContext;
+        	SharedContext* sharedContextComponent = getEntity().getComponentRecursive<SharedContext>(false);
+        	if (sharedContextComponent) {
+        		std::cout << "Use shared" << std::endl;
+        		shared = &sharedContextComponent->getContext();
+        	}
         	for (int f = 0; f < imageCount; f++) {
-	        	GraphicsContext* context = new GraphicsContext(&sharedContext, new Context(), false);
+	        	GraphicsContext* context = new GraphicsContext(shared, &swapChainContext, new Context(), false, false);
 		        VulkanSwapChainState::get(*context).setSwapChain(this);
 		        VulkanSwapChainState::get(*context).setNumImages(imageCount);
 	        	VulkanSwapChainState::get(*context).setImageIndex(f);
@@ -1082,7 +1108,7 @@ public:
     VkSwapchainKHR getSwapChain() const { return swapChain; }
     const std::vector<VkImageView>& getImageViews() const { return swapChainImageViews; }
     VkExtent2D getExtent() const { return swapChainExtent; }
-    Context* getSharedContext() { return &sharedContext; };
+    //Context* getSharedContext() { return &sharedContext; };
     const std::string& getName() const { return name; }
 
 //private:
@@ -1094,7 +1120,7 @@ public:
     VkFormat swapChainImageFormat;
     VkExtent2D swapChainExtent;
     std::vector<VkImageView> swapChainImageViews;
-    Context sharedContext;
+    Context swapChainContext;
     std::string name;
 };
 
@@ -1360,6 +1386,8 @@ private:
 
 
 inline void VulkanDeviceRenderer::update() {
+	GraphicsRenderer::update();
+
 	if (!state) {
 		state = &VulkanDeviceState::get(getContext());
 	}
@@ -1379,7 +1407,6 @@ inline void VulkanDeviceRenderer::update() {
 		}
 	}
 	
-	GraphicsRenderer::update();
 }
 
 inline void VulkanDeviceRenderer::render(VulkanRenderMode renderMode) {
@@ -1520,8 +1547,8 @@ public:
 	void startRender(const GraphicsContext& context, VulkanDeviceState& state) {
 		VulkanRenderPass::startRender(context, state);
 
-		if (state.getRenderMode().get() == VULKAN_RENDER_UPDATE_SHARED) {
-			RenderPassState* sharedState = contextHandler.getSharedState(context);
+		if (state.getRenderMode().get() == VULKAN_RENDER_UPDATE_DISPLAY) {
+			RenderPassState* sharedState = contextHandler.getDisplayState(context);
 			VkAttachmentDescription colorAttachment = {};
 	        colorAttachment.format = state.getImageFormat().get();
 	        colorAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
@@ -1565,8 +1592,8 @@ public:
 	}
 
 	void finishRender(const GraphicsContext& context, VulkanDeviceState& state) {
-		if (state.getRenderMode().get() == VULKAN_RENDER_CLEANUP_SHARED) {
-			vkDestroyRenderPass(state.getDevice()->getDevice(), contextHandler.getSharedState(context)->renderPass, nullptr);
+		if (state.getRenderMode().get() == VULKAN_RENDER_CLEANUP_DISPLAY) {
+			vkDestroyRenderPass(state.getDevice()->getDevice(), contextHandler.getDisplayState(context)->renderPass, nullptr);
 
 			std::cout << "Destroy render pass." << std::endl;
 		}
@@ -1575,7 +1602,7 @@ public:
 	}
 
 	VkRenderPass getRenderPass(const GraphicsContext& context) const {
-		return contextHandler.getSharedState(context)->renderPass;
+		return contextHandler.getDisplayState(context)->renderPass;
 	}
 
 private:
@@ -1584,7 +1611,7 @@ private:
 	};
 
 	
-	GraphicsContextHandler<RenderPassState,ContextState> contextHandler;
+	DisplayContextHandler<ContextState,RenderPassState,ContextState> contextHandler;
 };
 
 struct UniformBufferObject {
@@ -2357,6 +2384,7 @@ protected:
 	        if (vkCreateDescriptorSetLayout(state.getDevice()->getDevice(), &layoutInfo, nullptr, &layoutState->descriptorSetLayout) != VK_SUCCESS) {
 	            throw std::runtime_error("failed to create descriptor set layout!");
 	        }
+			std::cout << "created descriptor layout "  << layoutState->descriptorSetLayout << std::endl;
 		}
 	}
 
@@ -2383,15 +2411,6 @@ public:
 	virtual ~VulkanDescriptorPool() {}
 
 	virtual VkDescriptorPool getDescriptorPool(const GraphicsContext& context) const = 0;
-
-protected:
-
-	void finishRender(const GraphicsContext& context, VulkanDeviceState& state) {
-		if (state.getRenderMode().get() == VULKAN_RENDER_CLEANUP_SHARED) {
-			std::cout << "destroy descriptor pool" << std::endl;
-			vkDestroyDescriptorPool(state.getDevice()->getDevice(), getDescriptorPool(context), nullptr);
-		}
-	}
 };
 
 class VulkanSwapChainDescriptorPool : public VulkanDescriptorPool {
@@ -2399,12 +2418,12 @@ public:
 	VulkanSwapChainDescriptorPool() { addType<VulkanSwapChainDescriptorPool>(); }
 	virtual ~VulkanSwapChainDescriptorPool() {}
 
-	VkDescriptorPool getDescriptorPool(const GraphicsContext& context) const { return contextHandler.getSharedState(context)->descriptorPool; }
+	VkDescriptorPool getDescriptorPool(const GraphicsContext& context) const { return contextHandler.getDisplayState(context)->descriptorPool; }
 
 protected:
 	void startRender(const GraphicsContext& context, VulkanDeviceState& state) {
-		if (state.getRenderMode().get() == VULKAN_RENDER_UPDATE_SHARED) {
-			DescriptorPoolState* descriptorPoolState = contextHandler.getSharedState(context);
+		if (state.getRenderMode().get() == VULKAN_RENDER_UPDATE_DISPLAY) {
+			DescriptorPoolState* descriptorPoolState = contextHandler.getDisplayState(context);
 			std::vector<VulkanDescriptor*> descriptors = getEntity().getComponents<VulkanDescriptor>();
 			VulkanSwapChainState& swapChainState = VulkanSwapChainState::get(context);
 			int numImages = swapChainState.getNumImages();
@@ -2424,11 +2443,18 @@ protected:
 	        poolInfo.pPoolSizes = poolSizes.data();
 	        poolInfo.maxSets = static_cast<uint32_t>(numImages);
 
-			if (vkCreateDescriptorPool(state.getDevice()->getDevice(), &poolInfo, nullptr, &contextHandler.getSharedState(context)->descriptorPool) != VK_SUCCESS) {
+			if (vkCreateDescriptorPool(state.getDevice()->getDevice(), &poolInfo, nullptr, &contextHandler.getDisplayState(context)->descriptorPool) != VK_SUCCESS) {
             	throw std::runtime_error("failed to create descriptor pool!");
         	}
 
         	std::cout << "created descriptor pool" << std::endl;
+		}
+	}
+
+	void finishRender(const GraphicsContext& context, VulkanDeviceState& state) {
+		if (state.getRenderMode().get() == VULKAN_RENDER_CLEANUP_DISPLAY) {
+			std::cout << "destroy descriptor pool" << std::endl;
+			vkDestroyDescriptorPool(state.getDevice()->getDevice(), getDescriptorPool(context), nullptr);
 		}
 	}
 
@@ -2437,7 +2463,7 @@ private:
 		VkDescriptorPool descriptorPool;
 	};
 
-	GraphicsContextHandler<DescriptorPoolState,ContextState> contextHandler;
+	DisplayContextHandler<ContextState,DescriptorPoolState,ContextState> contextHandler;
 };
 
 
@@ -2460,6 +2486,8 @@ protected:
 	        allocInfo.descriptorPool = getEntity().getComponent<VulkanDescriptorPool>()->getDescriptorPool(context);
 	        allocInfo.descriptorSetCount = 1;
 	        allocInfo.pSetLayouts = &layout;
+
+	        std::cout << "Layout " <<   layout << std::endl;
 
 	        if (vkAllocateDescriptorSets(state.getDevice()->getDevice(), &allocInfo, &descriptorSetState->descriptorSet) != VK_SUCCESS) {
 	            throw std::runtime_error("failed to allocate descriptor sets!");
@@ -2509,13 +2537,13 @@ public:
 	VulkanGraphicsPipeline(VulkanDescriptorSetLayout* descriptorSetLayout) : descriptorSetLayout(descriptorSetLayout) { addType<VulkanGraphicsPipeline>(); }
 	virtual ~VulkanGraphicsPipeline() {}
 
-	VkPipeline getGraphicsPipeline(const GraphicsContext& context) const { return contextHandler.getSharedState(context)->graphicsPipeline; }
-	VkPipelineLayout getPipelineLayout(const GraphicsContext& context) const { return contextHandler.getSharedState(context)->pipelineLayout; }
+	VkPipeline getGraphicsPipeline(const GraphicsContext& context) const { return contextHandler.getDisplayState(context)->graphicsPipeline; }
+	VkPipelineLayout getPipelineLayout(const GraphicsContext& context) const { return contextHandler.getDisplayState(context)->pipelineLayout; }
 
 protected:
 	void startRender(const GraphicsContext& context, VulkanDeviceState& state) {
-		if (state.getRenderMode().get() == VULKAN_RENDER_UPDATE_SHARED) {
-			GraphicsPipelineState* pipelineState = contextHandler.getSharedState(context);
+		if (state.getRenderMode().get() == VULKAN_RENDER_UPDATE_DISPLAY) {
+			GraphicsPipelineState* pipelineState = contextHandler.getDisplayState(context);
 			VkDevice device = state.getDevice()->getDevice();
 
 			std::vector<VkPipelineShaderStageCreateInfo> shaderStages;
@@ -2635,14 +2663,14 @@ protected:
 		}
 
 		if ((state.getRenderMode().get() & VULKAN_RENDER_COMMAND) == VULKAN_RENDER_COMMAND) {
-			GraphicsPipelineState* pipelineState = contextHandler.getSharedState(context);
+			GraphicsPipelineState* pipelineState = contextHandler.getDisplayState(context);
 			vkCmdBindPipeline(state.getCommandBuffer().get()->getCommandBuffer(context), VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineState->graphicsPipeline);
 			std::cout << "bind pipeline" << std::endl;
 		}
 	}
 	void finishRender(const GraphicsContext& context, VulkanDeviceState& state) {
-		if (state.getRenderMode().get() == VULKAN_RENDER_CLEANUP_SHARED) {
-			GraphicsPipelineState* pipelineState = contextHandler.getSharedState(context);
+		if (state.getRenderMode().get() == VULKAN_RENDER_CLEANUP_DISPLAY) {
+			GraphicsPipelineState* pipelineState = contextHandler.getDisplayState(context);
 			vkDestroyPipeline(state.getDevice()->getDevice(), pipelineState->graphicsPipeline, nullptr);
 	        vkDestroyPipelineLayout(state.getDevice()->getDevice(), pipelineState->pipelineLayout, nullptr);
 			std::cout << "Destroy pipeline." << std::endl;
@@ -2655,7 +2683,7 @@ private:
 		VkPipelineLayout pipelineLayout;
 	};
 
-	GraphicsContextHandler<GraphicsPipelineState,ContextState> contextHandler;
+	DisplayContextHandler<ContextState,GraphicsPipelineState,ContextState> contextHandler;
 	VulkanDescriptorSetLayout* descriptorSetLayout;
 };
 

@@ -8,8 +8,9 @@ namespace sandbox {
 
 class GraphicsContext {
 public:
-	GraphicsContext() : sharedContext(new Context()), context(new Context()), renderState(new StateContainer()), deleteSharedContext(true), deleteContext(true) {}
-	GraphicsContext(Context* sharedContext, Context* context, bool deleteSharedContext = true, bool deleteContext = true) : sharedContext(sharedContext), context(context), renderState(new StateContainer()), deleteSharedContext(deleteSharedContext), deleteContext(deleteContext) {}
+	GraphicsContext() : sharedContext(new Context()), context(new Context()), displayContext(new Context()), renderState(new StateContainer()), deleteSharedContext(true), deleteDisplayContext(true), deleteContext(true) {}
+	GraphicsContext(Context* sharedContext, Context* context, bool deleteSharedContext = true, bool deleteContext = true) : sharedContext(sharedContext), displayContext(new Context), context(context), renderState(new StateContainer()), deleteSharedContext(deleteSharedContext), deleteContext(deleteContext), deleteDisplayContext(true) {}
+	GraphicsContext(Context* sharedContext, Context* displayContext, Context* context, bool deleteSharedContext = true, bool deleteDisplayContext = true, bool deleteContext = true) : sharedContext(sharedContext), displayContext(displayContext), context(context), renderState(new StateContainer()), deleteSharedContext(deleteSharedContext), deleteContext(deleteContext), deleteDisplayContext(deleteDisplayContext) {}
 	virtual ~GraphicsContext() {
 		if (deleteSharedContext) {
 			delete sharedContext;
@@ -17,18 +18,24 @@ public:
 		if (deleteContext) {
 			delete context;	
 		}
+		if (deleteDisplayContext) {
+			delete displayContext;	
+		}
 		delete renderState;
 	}
 
 	Context* getSharedContext() const { return sharedContext; }
+	Context* getDisplayContext() const { return displayContext; }
 	Context* getContext() const { return context; }
 	StateContainer* getRenderState() const { return renderState; }
 
 private:
 	Context* sharedContext;
+	Context* displayContext;
 	Context* context;
 	StateContainer* renderState;
 	bool deleteSharedContext;
+	bool deleteDisplayContext;
 	bool deleteContext;
 };
 
@@ -53,6 +60,20 @@ public:
 		}
 
 		return static_cast<StateType*>(state);
+	}
+};
+
+template<typename SharedStateType, typename DisplayStateType, typename StateType>
+class DisplayContextHandler : GraphicsContextHandler<SharedStateType, StateType> {
+public:
+	DisplayStateType* getDisplayState(const GraphicsContext& GraphicsContext) const {
+		ContextState* state = GraphicsContext.getDisplayContext()->getState(this);
+		if (!state) {
+			state = new DisplayStateType();
+			GraphicsContext.getDisplayContext()->setState(this, state);
+		}
+
+		return static_cast<DisplayStateType*>(state);
 	}
 };
 

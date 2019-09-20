@@ -263,6 +263,7 @@ private:
         EntityNode* surface3Node = new EntityNode(&vulkanNode);
             surface3Node->addComponent(new GlfwSurface(window3, &vulkanNode));
         deviceNode = new EntityNode(&vulkanNode);
+            deviceNode->addComponent(new SharedContext());
             deviceNode->addComponent(new VulkanDevice(&vulkanNode));
             EntityNode* queues = new EntityNode(deviceNode);
                 graphicsQueue = new VulkanGraphicsQueue();
@@ -270,15 +271,27 @@ private:
                 queues->addComponent(new VulkanPresentQueue(surfaceNode));
                 queues->addComponent(new VulkanPresentQueue(surface2Node));
                 queues->addComponent(new VulkanPresentQueue(surface3Node));
-            renderNode0 = new EntityNode(deviceNode);
-            renderNode2 = new EntityNode(deviceNode);
-            renderNode3 = new EntityNode(deviceNode);
-                EntityNode* commandNode;
-                setupSwapChain(renderNode0, surfaceNode, commandNode, "window 1");
-                EntityNode* commandNode2;
-                setupSwapChain(renderNode2, surface2Node, commandNode2, "window 2");
-                EntityNode* commandNode3;
-                setupSwapChain(renderNode3, surface3Node, commandNode3, "window 3");
+            EntityNode* updateSharedNode = new EntityNode(deviceNode);
+                updateSharedNode->addComponent(new AllowRenderModes(VULKAN_RENDER_UPDATE_SHARED | VULKAN_RENDER_OBJECT | VULKAN_RENDER_CLEANUP_SHARED));
+                updateSharedNode->addComponent(new VulkanDeviceRenderer());
+                updateSharedNode->addComponent(new VulkanCommandPool(graphicsQueue));
+                updateSharedNode->addComponent(new RenderNode(&graphicsObjects));
+                updateSharedNode->addComponent(new RenderNode(&images));
+                EntityNode* renderSpecific = new EntityNode(updateSharedNode);
+                    renderSpecific->addComponent(new AllowRenderModes(VULKAN_RENDER_SHARED_ONLY));
+                    renderSpecific->addComponent(new RenderNode(&shaderObjects));//, UPDATE_ONLY));
+                    renderSpecific->addComponent(new RenderNode(&descriptorSetGroup));
+                    renderSpecific->addComponent(new RenderNode(&pipelineNode));//, UPDATE_ONLY));
+            EntityNode* windowNodes = new EntityNode(deviceNode);
+                renderNode0 = new EntityNode(windowNodes);
+                renderNode2 = new EntityNode(windowNodes);
+                renderNode3 = new EntityNode(windowNodes);
+                    EntityNode* commandNode;
+                    setupSwapChain(renderNode0, surfaceNode, commandNode, "window 1");
+                    EntityNode* commandNode2;
+                    setupSwapChain(renderNode2, surface2Node, commandNode2, "window 2");
+                    EntityNode* commandNode3;
+                    setupSwapChain(renderNode3, surface3Node, commandNode3, "window 3");
             /*renderNode = new EntityNode(deviceNode);
                 renderNode->addComponent(new VulkanBasicSwapChain(surfaceNode));
                 EntityNode* updateSharedNode = new EntityNode(renderNode);
@@ -287,7 +300,7 @@ private:
                     updateSharedNode->addComponent(new RenderNode(&graphicsObjects));
                     updateSharedNode->addComponent(new RenderNode(&images));
                 EntityNode* updateNode = new EntityNode(renderNode);
-                    updateNode->addComponent(new AllowRenderModes(VULKAN_RENDER_UPDATE_ONLY | VULKAN_RENDER_OBJECT));
+                    updateNode->addComponent(new AllowRenderModes(VULKAN_RENDER_UPDATE_ALL | VULKAN_RENDER_OBJECT));
                     updateNode->addComponent(new RenderNode(&shaderObjects));//, UPDATE_ONLY));
                     updateNode->addComponent(new RenderNode(&descriptorSetGroup)); //, UPDATE_ONLY));
                     updateNode->addComponent(new RenderNode(&pipelineNode));//, UPDATE_ONLY));
@@ -303,13 +316,22 @@ private:
 
         vulkanNode.update();
 
-        std::vector<VulkanDeviceRenderer*> renderers = deviceNode->getComponentsRecursive<VulkanDeviceRenderer>();
-        //renderers[renderers.size()-1]->render(VULKAN_RENDER_UPDATE_SHARED);
-        renderers[0]->render(VULKAN_RENDER_UPDATE_SHARED);
+        VulkanDeviceRenderer* sharedRenderer = updateSharedNode->getComponentRecursive<VulkanDeviceRenderer>();
+        sharedRenderer->render(VULKAN_RENDER_UPDATE_SHARED);
+        sharedRenderer->render(VULKAN_RENDER_OBJECT);
+
+        std::vector<VulkanDeviceRenderer*> renderers = windowNodes->getComponentsRecursive<VulkanDeviceRenderer>();
+        //renderers[0]->render(VULKAN_RENDER_UPDATE_SHARED);
+        //renderers[0]->render(VULKAN_RENDER_OBJECT);
+        VulkanDeviceRenderer* renderer1 = renderNode0->getComponentRecursive<VulkanDeviceRenderer>();
+        renderer1->render(VULKAN_RENDER_UPDATE_SHARED);
+        renderer1->render(VULKAN_RENDER_UPDATE_DISPLAY);
         VulkanDeviceRenderer* renderer2 = renderNode2->getComponentRecursive<VulkanDeviceRenderer>();
         renderer2->render(VULKAN_RENDER_UPDATE_SHARED);
+        renderer2->render(VULKAN_RENDER_UPDATE_DISPLAY);
         VulkanDeviceRenderer* renderer3 = renderNode3->getComponentRecursive<VulkanDeviceRenderer>();
         renderer3->render(VULKAN_RENDER_UPDATE_SHARED);
+        renderer3->render(VULKAN_RENDER_UPDATE_DISPLAY);
         for (int f = 0; f < renderers.size(); f++) {  
             renderers[f]->render(VULKAN_RENDER_UPDATE);
             renderers[f]->render(VULKAN_RENDER_OBJECT);
@@ -366,13 +388,8 @@ private:
     void setupSwapChain(Entity* renderNode, Entity* surfaceNode, EntityNode*& commandNode, std::string name) {
             //renderNode = new EntityNode(deviceNode);
                 renderNode->addComponent(new VulkanBasicSwapChain(name, surfaceNode));
-                EntityNode* updateSharedNode = new EntityNode(renderNode);
-                    updateSharedNode->addComponent(new AllowRenderModes(VULKAN_RENDER_UPDATE_SHARED | VULKAN_RENDER_OBJECT | VULKAN_RENDER_CLEANUP_SHARED));
-                    updateSharedNode->addComponent(new VulkanCommandPool(graphicsQueue));
-                    updateSharedNode->addComponent(new RenderNode(&graphicsObjects));
-                    updateSharedNode->addComponent(new RenderNode(&images));
                 EntityNode* updateNode = new EntityNode(renderNode);
-                    updateNode->addComponent(new AllowRenderModes(VULKAN_RENDER_UPDATE_ONLY | VULKAN_RENDER_OBJECT | VULKAN_RENDER_CLEANUP | VULKAN_RENDER_CLEANUP_SHARED));
+                    updateNode->addComponent(new AllowRenderModes(VULKAN_RENDER_UPDATE_DISPLAY | VULKAN_RENDER_UPDATE | VULKAN_RENDER_OBJECT | VULKAN_RENDER_CLEANUP_DISPLAY | VULKAN_RENDER_CLEANUP));
                     updateNode->addComponent(new RenderNode(&shaderObjects));//, UPDATE_ONLY));
                     updateNode->addComponent(new RenderNode(&descriptorSetGroup)); //, UPDATE_ONLY));
                     updateNode->addComponent(new RenderNode(&pipelineNode));//, UPDATE_ONLY));
