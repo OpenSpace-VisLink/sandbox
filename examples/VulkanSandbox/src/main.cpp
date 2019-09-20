@@ -103,55 +103,11 @@ private:
     GLFWwindow* window2;
     GLFWwindow* window3;
 
-    VkInstance instance;
-    VkSurfaceKHR surface;
-
     VkPhysicalDevice physicalDevice = VK_NULL_HANDLE;
     VkDevice device;
 
     VulkanQueue* graphicsQueue;
     VulkanQueue* presentQueue;
-
-    /*VkSwapchainKHR swapChain;
-    std::vector<VkImage> swapChainImages;
-    VkFormat swapChainImageFormat;
-    VkExtent2D swapChainExtent;
-    std::vector<VkImageView> swapChainImageViews;*/
-    VulkanFramebuffer* framebuffer;
-
-    /*VkRenderPass renderPass;
-    VkDescriptorSetLayout descriptorSetLayout;
-    VkPipelineLayout pipelineLayout;
-    VkPipeline graphicsPipeline;
-
-    VkCommandPool commandPool;
-
-    VkImage textureImage;
-    VkDeviceMemory textureImageMemory;
-    VkImageView textureImageView;
-    VkSampler textureSampler;
-    VulkanSampler* sampler;
-
-    VkBuffer vertexBuffer;
-    VkDeviceMemory vertexBufferMemory;
-    VkBuffer indexBuffer;
-    VkDeviceMemory indexBufferMemory;*/
-    VertexArray<Vertex>* vertexArray;
-    IndexArray* indexArray;
-
-    VulkanSampler* sampler;
-
-    //std::vector<VkBuffer> uniformBuffers;
-    //std::vector<VkDeviceMemory> uniformBuffersMemory;
-    VulkanUniformBuffer* uniformBuffer;
-
-    //VkDescriptorPool descriptorPool;
-    //std::vector<VkDescriptorSet> descriptorSets;
-    VulkanDescriptorPool* vulkanDescriptorPool;
-    VulkanDescriptorSet* descriptorSet;
-
-    //std::vector<VkCommandBuffer> commandBuffers;
-    VulkanCommandBuffer* commandBuffer;
 
     std::vector<VkSemaphore> imageAvailableSemaphores;
     std::vector<VkSemaphore> renderFinishedSemaphores;
@@ -208,27 +164,21 @@ private:
             mainImage->addComponent(new VulkanImageView());
         images.update();
 
-        //shaderObjects.addComponent(uniformBuffer);
         EntityNode* mainUniformBuffer = new EntityNode(&shaderObjects);
-            uniformBuffer = new MainUniformBuffer();
-            mainUniformBuffer->addComponent(uniformBuffer);
+            mainUniformBuffer->addComponent(new MainUniformBuffer());
         EntityNode* samplerNode = new EntityNode(&shaderObjects);
-            sampler = new VulkanSampler();
-            samplerNode->addComponent(sampler);
-
+            samplerNode->addComponent(new VulkanSampler());
 
         EntityNode* mainDescriptorSet = new EntityNode(&descriptorSetGroup);
             mainDescriptorSet->addComponent(new VulkanDescriptorSetLayout());
-            vulkanDescriptorPool = new VulkanSwapChainDescriptorPool();
-            mainDescriptorSet->addComponent(vulkanDescriptorPool);
-            descriptorSet = new VulkanDescriptorSet();
-            mainDescriptorSet->addComponent(descriptorSet);
-            mainDescriptorSet->addComponent(new VulkanDescriptor(uniformBuffer, VK_SHADER_STAGE_VERTEX_BIT));
-            mainDescriptorSet->addComponent(new VulkanDescriptor(new VulkanImageViewDecorator(sampler, mainImage->getComponent<VulkanImageView>()), VK_SHADER_STAGE_FRAGMENT_BIT));
+            mainDescriptorSet->addComponent(new VulkanSwapChainDescriptorPool());
+            mainDescriptorSet->addComponent(new VulkanDescriptorSet());
+            mainDescriptorSet->addComponent(new VulkanDescriptor(mainUniformBuffer->getComponent<VulkanUniformBuffer>(), VK_SHADER_STAGE_VERTEX_BIT));
+            mainDescriptorSet->addComponent(new VulkanDescriptor(new VulkanImageViewDecorator(samplerNode->getComponent<VulkanSampler>(), mainImage->getComponent<VulkanImageView>()), VK_SHADER_STAGE_FRAGMENT_BIT));
 
-        vertexArray = new VertexArray<Vertex>();
+        VertexArray<Vertex>* vertexArray = new VertexArray<Vertex>();
         vertexArray->value = vertices;
-        indexArray = new IndexArray();
+        IndexArray* indexArray = new IndexArray();
         indexArray->value = indices;
         graphicsObjects.addComponent(vertexArray);
         graphicsObjects.addComponent(indexArray);
@@ -288,9 +238,6 @@ private:
         sharedRenderer->render(VULKAN_RENDER_UPDATE_SHARED);
         sharedRenderer->render(VULKAN_RENDER_OBJECT);
 
-        std::vector<VulkanDeviceRenderer*> renderers = windowNodes->getComponentsRecursive<VulkanDeviceRenderer>();
-        //renderers[0]->render(VULKAN_RENDER_UPDATE_SHARED);
-        //renderers[0]->render(VULKAN_RENDER_OBJECT);
         VulkanDeviceRenderer* renderer1 = renderNode0->getComponentRecursive<VulkanDeviceRenderer>();
         renderer1->render(VULKAN_RENDER_UPDATE_SHARED);
         renderer1->render(VULKAN_RENDER_UPDATE_DISPLAY);
@@ -300,6 +247,8 @@ private:
         VulkanDeviceRenderer* renderer3 = renderNode3->getComponentRecursive<VulkanDeviceRenderer>();
         renderer3->render(VULKAN_RENDER_UPDATE_SHARED);
         renderer3->render(VULKAN_RENDER_UPDATE_DISPLAY);
+
+        std::vector<VulkanDeviceRenderer*> renderers = windowNodes->getComponentsRecursive<VulkanDeviceRenderer>();
         for (int f = 0; f < renderers.size(); f++) {  
             renderers[f]->render(VULKAN_RENDER_UPDATE);
             renderers[f]->render(VULKAN_RENDER_OBJECT);
@@ -316,18 +265,18 @@ private:
 
     EntityNode* createSwapChain(Entity* parentNode, Entity* surfaceNode, std::string name) {
         EntityNode* renderNode = new EntityNode(parentNode);
-                renderNode->addComponent(new VulkanBasicSwapChain(name, surfaceNode));
-                EntityNode* updateNode = new EntityNode(renderNode);
-                    updateNode->addComponent(new AllowRenderModes(VULKAN_RENDER_UPDATE_DISPLAY | VULKAN_RENDER_UPDATE | VULKAN_RENDER_OBJECT | VULKAN_RENDER_CLEANUP_DISPLAY | VULKAN_RENDER_CLEANUP));
-                    updateNode->addComponent(new RenderNode(&shaderObjects));
-                    updateNode->addComponent(new RenderNode(&descriptorSetGroup));
-                    updateNode->addComponent(new RenderNode(&pipelineNode));
-                EntityNode* commandNode = new EntityNode(renderNode);
-                    commandNode->addComponent(new VulkanCommandPool(graphicsQueue));
-                    commandNode->addComponent(new VulkanCommandBuffer());
-                    EntityNode* commands = new EntityNode(commandNode);
-                        commands->addComponent(new AllowRenderModes(VULKAN_RENDER_COMMAND));
-                        commands->addComponent(new RenderNode(&scene));
+            renderNode->addComponent(new VulkanBasicSwapChain(name, surfaceNode));
+            EntityNode* updateNode = new EntityNode(renderNode);
+                updateNode->addComponent(new AllowRenderModes(VULKAN_RENDER_UPDATE_DISPLAY | VULKAN_RENDER_UPDATE | VULKAN_RENDER_OBJECT | VULKAN_RENDER_CLEANUP_DISPLAY | VULKAN_RENDER_CLEANUP));
+                updateNode->addComponent(new RenderNode(&shaderObjects));
+                updateNode->addComponent(new RenderNode(&descriptorSetGroup));
+                updateNode->addComponent(new RenderNode(&pipelineNode));
+            EntityNode* commandNode = new EntityNode(renderNode);
+                commandNode->addComponent(new VulkanCommandPool(graphicsQueue));
+                commandNode->addComponent(new VulkanCommandBuffer());
+                EntityNode* commands = new EntityNode(commandNode);
+                    commands->addComponent(new AllowRenderModes(VULKAN_RENDER_COMMAND));
+                    commands->addComponent(new RenderNode(&scene));
         return renderNode;
     }
 
