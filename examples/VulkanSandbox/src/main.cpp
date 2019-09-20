@@ -29,8 +29,8 @@
 
 using namespace sandbox;
 
-const int WIDTH = 400;
-const int HEIGHT = 300;
+const int WIDTH = 500;
+const int HEIGHT = 400;
 
 const int MAX_FRAMES_IN_FLIGHT = 2;
 
@@ -186,12 +186,12 @@ private:
         glfwSetFramebufferSizeCallback(window, framebufferResizeCallback);
         glfwSetWindowPos (window, 0, 0);
 
-        window2 = glfwCreateWindow(WIDTH, HEIGHT-100, "Vulkan", nullptr, nullptr);
+        window2 = glfwCreateWindow(WIDTH, HEIGHT, "Vulkan", nullptr, nullptr);
         glfwSetWindowUserPointer(window2, this);
         glfwSetFramebufferSizeCallback(window2, framebufferResizeCallback);
         glfwSetWindowPos (window2, WIDTH+5, 0);
 
-        window3 = glfwCreateWindow(WIDTH, HEIGHT-100, "Vulkan", nullptr, nullptr);
+        window3 = glfwCreateWindow(WIDTH, HEIGHT, "Vulkan", nullptr, nullptr);
         glfwSetWindowUserPointer(window3, this);
         glfwSetFramebufferSizeCallback(window3, framebufferResizeCallback);
         glfwSetWindowPos (window3, 2*(WIDTH+5), 0);
@@ -211,10 +211,6 @@ private:
             mainImage->addComponent(new Image("examples/VulkanExample/textures/texture.jpg"));
             mainImage->addComponent(new VulkanImage());
             mainImage->addComponent(new VulkanImageView());
-        Entity* anotherImage = new EntityNode(&images);
-            anotherImage->addComponent(new Image("/home/dan/Downloads/back.jpg"));
-            anotherImage->addComponent(new VulkanImage());
-            anotherImage->addComponent(new VulkanImageView());
         images.update();
 
         //shaderObjects.addComponent(uniformBuffer);

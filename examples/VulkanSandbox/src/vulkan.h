@@ -1269,12 +1269,6 @@ void VulkanRenderPass::startRender(const GraphicsContext& context, VulkanDeviceS
         renderPassInfo.renderArea.extent = state.getExtent();
 
         VkClearValue clearColor = {0.0f, 0.0f, 0.0f, 1.0f};
-        if (VulkanSwapChainState::get(context).getSwapChain()->getName() == "window 2") {
-        	clearColor = {1.0f, 0.0f, 0.0f, 1.0f};
-		}
-		if (VulkanSwapChainState::get(context).getSwapChain()->getName() == "window 3") {
-        	clearColor = {0.0f, 0.0f, 1.0f, 1.0f};
-		}
         renderPassInfo.clearValueCount = 1;
         renderPassInfo.pClearValues = &clearColor;
 
@@ -2296,12 +2290,7 @@ public:
 	        std::cout << f << " ";
 	        if (imageInfo) {
 	        	std::cout << VulkanSwapChainState::get(context).getSwapChain()->getName() << " image view bound" << std::endl;
-	        	if (VulkanSwapChainState::get(context).getSwapChain()->getName() == "window 2") {
-	        		imageInfo->imageView = imageView->getEntity().getParent()->getComponentsRecursive<VulkanImageView>()[1]->getImageView(context);
-	        	}
-	        	else {
-	        		imageInfo->imageView = imageView->getImageView(context);
-	        	}
+	        	imageInfo->imageView = imageView->getImageView(context);
 	        }
         }
 	}
