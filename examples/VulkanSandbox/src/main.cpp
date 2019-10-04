@@ -32,49 +32,10 @@ using namespace sandbox;
 const int WIDTH = 500;
 const int HEIGHT = 400;
 
-const int MAX_FRAMES_IN_FLIGHT = 2;
-
-/*struct SwapChainSupportDetails {
-    VkSurfaceCapabilitiesKHR capabilities;
-    std::vector<VkSurfaceFormatKHR> formats;
-    std::vector<VkPresentModeKHR> presentModes;
-};*/
-
-
 struct Vertex {
     glm::vec2 pos;
     glm::vec3 color;
     glm::vec2 texCoord;
-
-    static VkVertexInputBindingDescription getBindingDescription() {
-        VkVertexInputBindingDescription bindingDescription = {};
-        bindingDescription.binding = 0;
-        bindingDescription.stride = sizeof(Vertex);
-        bindingDescription.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
-
-        return bindingDescription;
-    }
-
-    static std::array<VkVertexInputAttributeDescription, 3> getAttributeDescriptions() {
-        std::array<VkVertexInputAttributeDescription, 3> attributeDescriptions = {};
-
-        attributeDescriptions[0].binding = 0;
-        attributeDescriptions[0].location = 0;
-        attributeDescriptions[0].format = VK_FORMAT_R32G32_SFLOAT;
-        attributeDescriptions[0].offset = offsetof(Vertex, pos);
-
-        attributeDescriptions[1].binding = 0;
-        attributeDescriptions[1].location = 1;
-        attributeDescriptions[1].format = VK_FORMAT_R32G32B32_SFLOAT;
-        attributeDescriptions[1].offset = offsetof(Vertex, color);
-
-        attributeDescriptions[2].binding = 0;
-        attributeDescriptions[2].location = 2;
-        attributeDescriptions[2].format = VK_FORMAT_R32G32_SFLOAT;
-        attributeDescriptions[2].offset = offsetof(Vertex, texCoord);
-
-        return attributeDescriptions;
-    }
 };
 
 
@@ -103,18 +64,11 @@ private:
     GLFWwindow* window2;
     GLFWwindow* window3;
 
-    VkPhysicalDevice physicalDevice = VK_NULL_HANDLE;
     VkDevice device;
+    VkDevice device2;
 
     VulkanQueue* graphicsQueue;
     VulkanQueue* presentQueue;
-
-    std::vector<VkSemaphore> imageAvailableSemaphores;
-    std::vector<VkSemaphore> renderFinishedSemaphores;
-    std::vector<VkFence> inFlightFences;
-    size_t currentFrame = 0;
-
-    bool framebufferResized = false;
 
     EntityNode vulkanNode;
     EntityNode pipelineNode;
@@ -123,12 +77,9 @@ private:
     EntityNode descriptorSetGroup;
     EntityNode scene;
     EntityNode images;
-    Entity* mainImage;
     Entity* renderNode0;
     Entity* renderNode2;
     Entity* renderNode3;
-    Entity* deviceNode;
-    EntityNode* objectNode;
 
     void initWindow() { 
         glfwInit();
@@ -158,7 +109,7 @@ private:
 
     void initVulkan() {
 
-        mainImage = new EntityNode(&images);
+        Entity* mainImage = new EntityNode(&images);
             mainImage->addComponent(new Image("examples/VulkanExample/textures/texture.jpg"));
             mainImage->addComponent(new VulkanImage());
             mainImage->addComponent(new VulkanImageView());
@@ -207,15 +158,16 @@ private:
             surface2Node->addComponent(new GlfwSurface(window2, &vulkanNode));
         EntityNode* surface3Node = new EntityNode(&vulkanNode);
             surface3Node->addComponent(new GlfwSurface(window3, &vulkanNode));
-        deviceNode = new EntityNode(&vulkanNode);
+        Entity* deviceNode = new EntityNode(&vulkanNode);
             deviceNode->addComponent(new SharedContext());
             deviceNode->addComponent(new VulkanDevice(&vulkanNode));
             EntityNode* queues = new EntityNode(deviceNode);
-                graphicsQueue = new VulkanGraphicsQueue();
-                queues->addComponent(graphicsQueue);
+                queues->addComponent(new VulkanGraphicsQueue());
                 queues->addComponent(new VulkanPresentQueue(surfaceNode));
                 queues->addComponent(new VulkanPresentQueue(surface2Node));
                 queues->addComponent(new VulkanPresentQueue(surface3Node));
+                graphicsQueue = queues->getComponent<VulkanGraphicsQueue>();
+                presentQueue = queues->getComponent<VulkanPresentQueue>();
             EntityNode* updateSharedNode = new EntityNode(deviceNode);
                 updateSharedNode->addComponent(new AllowRenderModes(VULKAN_RENDER_UPDATE_SHARED | VULKAN_RENDER_OBJECT | VULKAN_RENDER_CLEANUP_SHARED));
                 updateSharedNode->addComponent(new VulkanDeviceRenderer());
@@ -254,18 +206,12 @@ private:
             renderers[f]->render(VULKAN_RENDER_OBJECT);
             renderers[f]->render(VULKAN_RENDER_COMMAND);
         }
-
-        device = deviceNode->getComponent<VulkanDevice>()->getDevice();
-        physicalDevice = deviceNode->getComponent<VulkanDevice>()->getPhysicalDevice();
-        graphicsQueue = queues->getComponent<VulkanGraphicsQueue>();
-        presentQueue = queues->getComponent<VulkanPresentQueue>();
-
-        createSyncObjects();
     }
 
     EntityNode* createSwapChain(Entity* parentNode, Entity* surfaceNode, std::string name) {
         EntityNode* renderNode = new EntityNode(parentNode);
             renderNode->addComponent(new VulkanBasicSwapChain(name, surfaceNode));
+            renderNode->addComponent(new VulkanFrameRenderer(graphicsQueue, presentQueue));
             EntityNode* updateNode = new EntityNode(renderNode);
                 updateNode->addComponent(new AllowRenderModes(VULKAN_RENDER_UPDATE_DISPLAY | VULKAN_RENDER_UPDATE | VULKAN_RENDER_OBJECT | VULKAN_RENDER_CLEANUP_DISPLAY | VULKAN_RENDER_CLEANUP));
                 updateNode->addComponent(new RenderNode(&shaderObjects));
@@ -285,11 +231,17 @@ private:
             static int frame = 0;
             glfwPollEvents();
 
-            drawFrame(renderNode0);
-            drawFrame(renderNode2);
-            drawFrame(renderNode3);
+            // independent windows
+            renderNode0->getComponent<VulkanFrameRenderer>()->drawFrame();
+            renderNode2->getComponent<VulkanFrameRenderer>()->drawFrame();
+            renderNode3->getComponent<VulkanFrameRenderer>()->drawFrame();
 
-            currentFrame = (currentFrame + 1) % MAX_FRAMES_IN_FLIGHT;
+            // syncronized windows
+            //renderNode0->getComponent<VulkanFrameRenderer>()->drawFrame(true, renderNode0);
+            //renderNode0->getComponent<VulkanFrameRenderer>()->drawFrame(true, renderNode2);
+            //renderNode0->getComponent<VulkanFrameRenderer>()->drawFrame(true, renderNode3);
+            //renderNode0->getComponent<VulkanFrameRenderer>()->incrementFrame();
+
             frame++;
         }
 
@@ -304,120 +256,6 @@ private:
 
         glfwTerminate();
     }
-
-    void recreateSwapChain(VulkanSwapChain* swapChain) {
-        int width = 0, height = 0;
-        while (width == 0 || height == 0) {
-            glfwGetFramebufferSize(window, &width, &height);
-            glfwWaitEvents();
-        }
-
-        vkDeviceWaitIdle(device);
-
-        swapChain->getEntity().incrementVersion();
-        swapChain->getEntity().update();
-
-        std::cout << swapChain << std::endl;
-        std::vector<VulkanDeviceRenderer*> renderers = swapChain->getEntity().getComponentsRecursive<VulkanDeviceRenderer>();
-        std::cout << "num renderers: " << renderers.size() << std::endl;
-        renderers[0]->render(VULKAN_RENDER_UPDATE_SHARED);
-        renderers[0]->render(VULKAN_RENDER_UPDATE_DISPLAY);
-        for (int f = 0; f < renderers.size(); f++) {  
-            renderers[f]->render(VULKAN_RENDER_UPDATE);
-            renderers[f]->render(VULKAN_RENDER_OBJECT);
-            renderers[f]->render(VULKAN_RENDER_COMMAND);
-
-        }
-
-    }
-
-    void createSyncObjects() {
-        imageAvailableSemaphores.resize(MAX_FRAMES_IN_FLIGHT);
-        renderFinishedSemaphores.resize(MAX_FRAMES_IN_FLIGHT);
-        inFlightFences.resize(MAX_FRAMES_IN_FLIGHT);
-
-        VkSemaphoreCreateInfo semaphoreInfo = {};
-        semaphoreInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
-
-        VkFenceCreateInfo fenceInfo = {};
-        fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
-        fenceInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
-
-        for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
-            if (vkCreateSemaphore(device, &semaphoreInfo, nullptr, &imageAvailableSemaphores[i]) != VK_SUCCESS ||
-                vkCreateSemaphore(device, &semaphoreInfo, nullptr, &renderFinishedSemaphores[i]) != VK_SUCCESS ||
-                vkCreateFence(device, &fenceInfo, nullptr, &inFlightFences[i]) != VK_SUCCESS) {
-                throw std::runtime_error("failed to create synchronization objects for a frame!");
-            }
-        }
-    }
-
-    void drawFrame(Entity* renderNode) {
-        vkWaitForFences(device, 1, &inFlightFences[currentFrame], VK_TRUE, UINT64_MAX);
-
-        VkSwapchainKHR swapChain = renderNode->getComponent<VulkanSwapChain>()->getSwapChain();
-
-        uint32_t imageIndex;
-        VkResult result = vkAcquireNextImageKHR(device, swapChain, UINT64_MAX, imageAvailableSemaphores[currentFrame], VK_NULL_HANDLE, &imageIndex);
-
-        if (result == VK_ERROR_OUT_OF_DATE_KHR) {
-            std::cout << "Out of date" << std::endl;
-            recreateSwapChain(renderNode->getComponent<VulkanSwapChain>());
-            return;
-        } else if (result != VK_SUCCESS && result != VK_SUBOPTIMAL_KHR) {
-            throw std::runtime_error("failed to acquire swap chain image!");
-        }
-
-        VulkanDeviceRenderer* vulkanRenderer = renderNode->getComponents<VulkanDeviceRenderer>()[imageIndex];
-        vulkanRenderer->render(VULKAN_RENDER_OBJECT);
-
-        VkSubmitInfo submitInfo = {};
-        submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-
-        VkSemaphore waitSemaphores[] = {imageAvailableSemaphores[currentFrame]};
-        VkPipelineStageFlags waitStages[] = {VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};
-        submitInfo.waitSemaphoreCount = 1;
-        submitInfo.pWaitSemaphores = waitSemaphores;
-        submitInfo.pWaitDstStageMask = waitStages;
-
-        submitInfo.commandBufferCount = 1;
-        VkCommandBuffer cmdBuffer = renderNode->getComponentRecursive<VulkanCommandBuffer>()->getCommandBuffer(vulkanRenderer->getContext());
-        submitInfo.pCommandBuffers = &cmdBuffer;
-
-        VkSemaphore signalSemaphores[] = {renderFinishedSemaphores[currentFrame]};
-        submitInfo.signalSemaphoreCount = 1;
-        submitInfo.pSignalSemaphores = signalSemaphores;
-
-        vkResetFences(device, 1, &inFlightFences[currentFrame]);
-
-        if (vkQueueSubmit(graphicsQueue->getQueue(), 1, &submitInfo, inFlightFences[currentFrame]) != VK_SUCCESS) {
-            throw std::runtime_error("failed to submit draw command buffer!");
-        }
-
-        VkPresentInfoKHR presentInfo = {};
-        presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
-
-        presentInfo.waitSemaphoreCount = 1;
-        presentInfo.pWaitSemaphores = signalSemaphores;
-
-        VkSwapchainKHR swapChains[] = {swapChain};
-        presentInfo.swapchainCount = 1;
-        presentInfo.pSwapchains = swapChains;
-
-        presentInfo.pImageIndices = &imageIndex;
-
-        result = vkQueuePresentKHR(presentQueue->getQueue(), &presentInfo);
-
-        if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR || framebufferResized) {
-            std::cout << "Out of date / suboptimal / resized" << std::endl;
-            framebufferResized = false;
-            recreateSwapChain(renderNode->getComponent<VulkanSwapChain>());
-        } else if (result != VK_SUCCESS) {
-            throw std::runtime_error("failed to present swap chain image!");
-        }
-
-    }
-
 };
 
 int main() {
