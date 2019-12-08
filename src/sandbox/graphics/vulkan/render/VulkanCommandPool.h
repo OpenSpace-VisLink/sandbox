@@ -3,6 +3,7 @@
 
 #include "sandbox/Component.h"
 #include "sandbox/graphics/vulkan/VulkanDeviceRenderer.h"
+#include "sandbox/graphics/vulkan/VulkanQueue.h"
 
 namespace sandbox {
 

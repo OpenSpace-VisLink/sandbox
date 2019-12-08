@@ -33,6 +33,9 @@ set (SOURCEFILES
   io/File.cpp
   io/FileMonitor.cpp
   graphics/vulkan/VulkanDevice.cpp
+  graphics/vulkan/render/VulkanRenderPass.cpp
+  graphics/vulkan/render/VulkanCommandPool.cpp
+  graphics/vulkan/VulkanDeviceRenderer.cpp
 )
 
 set (HEADERFILES

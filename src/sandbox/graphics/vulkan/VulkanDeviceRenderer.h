@@ -3,6 +3,8 @@
 
 #include "sandbox/Component.h"
 #include "sandbox/graphics/vulkan/VulkanDevice.h"
+#include "sandbox/graphics/RenderNode.h"
+#include "sandbox/graphics/GraphicsRenderer.h"
 
 namespace sandbox {
 
@@ -51,6 +53,22 @@ public:
 private:
 	VulkanDevice* device;
 	VulkanDeviceState* state;
+};
+
+
+class AllowRenderModes : public VulkanRenderObject {
+public:
+	AllowRenderModes(VulkanRenderMode renderMode) : renderMode(renderMode) { addType<AllowRenderModes>(); }
+	AllowRenderModes(int renderMode) : renderMode(static_cast<VulkanRenderMode>(renderMode)) { addType<AllowRenderModes>(); }
+	virtual ~AllowRenderModes() {}
+
+protected:
+	void startRender(const GraphicsContext& context, VulkanDeviceState& state);
+
+	void finishRender(const GraphicsContext& context, VulkanDeviceState& state);
+
+private:
+	VulkanRenderMode renderMode;
 };
 
 
