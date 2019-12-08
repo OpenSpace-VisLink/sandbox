@@ -32,6 +32,7 @@ set (SOURCEFILES
   input/interaction/VirtualCursor.cpp
   io/File.cpp
   io/FileMonitor.cpp
+  graphics/vulkan/VulkanDevice.cpp
 )
 
 set (HEADERFILES

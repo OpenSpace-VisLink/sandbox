@@ -77,6 +77,18 @@ public:
 	}
 };
 
+class SharedContext : public Component {
+public:
+	SharedContext() { addType<SharedContext>(); }
+	virtual ~SharedContext() {}
+
+	Context& getContext() { return context; }
+
+private:
+	Context context;
+};
+
+
 }
 
 #endif
