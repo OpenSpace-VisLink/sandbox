@@ -36,13 +36,38 @@ struct UniformBufferObject {
 };
 
 class MainUniformBuffer : public VulkanUniformBufferValue<UniformBufferObject> {
-
 protected:
     void updateBuffer(const GraphicsContext& context, VulkanDeviceState& state, VulkanBuffer* buffer) {
         static auto startTime = std::chrono::high_resolution_clock::now();
 
         auto currentTime = std::chrono::high_resolution_clock::now();
         float time = std::chrono::duration<float, std::chrono::seconds::period>(currentTime - startTime).count();
+        //UniformBufferObject ubo = {};
+        UniformBufferObject ubo = {};
+        ubo.model = glm::rotate(glm::mat4(1.0f), time * glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+        if (VulkanSwapChainState::get(context).getSwapChain()->getName() == "window 2") {
+            ubo.model = glm::rotate(glm::mat4(1.0f), time * glm::radians(-90.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+        }
+        if (VulkanSwapChainState::get(context).getSwapChain()->getName() == "window 3") {
+            ubo.model = glm::rotate(glm::mat4(1.0f), time * glm::radians(90.0f), glm::vec3(1.0f, 0.0f, 0.0f));
+        }
+        ubo.view = glm::lookAt(glm::vec3(2.0f, 2.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+        ubo.proj = glm::perspective(glm::radians(45.0f), (float) state.getExtent().width / (float) state.getExtent().height, 0.1f, 10.0f);
+        //std::cout << VulkanSwapChainState::get(context).getSwapChain()->getName() << " " << state.getExtent().width << " " << (float) state.getExtent().height << std::endl;
+        ubo.proj[1][1] *= -1;
+        //VulkanUniformBufferValue<UniformBufferObject>::updateBuffer(context, state, buffer);
+
+        buffer->update(&ubo, sizeof(ubo));
+    }
+};
+
+class SecondUniformBuffer : public VulkanUniformBufferValue<UniformBufferObject> {
+protected:
+    void updateBuffer(const GraphicsContext& context, VulkanDeviceState& state, VulkanBuffer* buffer) {
+        static auto startTime = std::chrono::high_resolution_clock::now();
+
+        auto currentTime = std::chrono::high_resolution_clock::now();
+        float time = 0.0;//std::chrono::duration<float, std::chrono::seconds::period>(currentTime - startTime).count();
         //UniformBufferObject ubo = {};
         UniformBufferObject ubo = {};
         ubo.model = glm::rotate(glm::mat4(1.0f), time * glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f));
@@ -144,13 +169,19 @@ private:
     void initVulkan() {
 
         Entity* mainImage = new EntityNode(&images);
-            mainImage->addComponent(new Image("examples/VulkanExample/textures/texture.jpg"));
+            mainImage->addComponent(new Image("examples/VulkanSandbox/textures/texture.jpg"));
             mainImage->addComponent(new VulkanImage());
             mainImage->addComponent(new VulkanImageView());
+        Entity* secondImage = new EntityNode(&images);
+            secondImage->addComponent(new Image("examples/VulkanSandbox/textures/test.png"));
+            secondImage->addComponent(new VulkanImage());
+            secondImage->addComponent(new VulkanImageView());
         images.update();
 
         EntityNode* mainUniformBuffer = new EntityNode(&shaderObjects);
             mainUniformBuffer->addComponent(new MainUniformBuffer());
+        EntityNode* secondUniformBuffer = new EntityNode(&shaderObjects);
+            secondUniformBuffer->addComponent(new SecondUniformBuffer());
         EntityNode* samplerNode = new EntityNode(&shaderObjects);
             samplerNode->addComponent(new VulkanSampler());
 
@@ -160,6 +191,15 @@ private:
             mainDescriptorSet->addComponent(new VulkanDescriptorSet());
             mainDescriptorSet->addComponent(new VulkanDescriptor(mainUniformBuffer->getComponent<VulkanUniformBuffer>(), VK_SHADER_STAGE_VERTEX_BIT));
             mainDescriptorSet->addComponent(new VulkanDescriptor(new VulkanImageViewDecorator(samplerNode->getComponent<VulkanSampler>(), mainImage->getComponent<VulkanImageView>()), VK_SHADER_STAGE_FRAGMENT_BIT));
+
+
+        EntityNode* secondDescriptorSet = new EntityNode(&descriptorSetGroup);
+            secondDescriptorSet->addComponent(new VulkanDescriptorSetLayout());
+            secondDescriptorSet->addComponent(new VulkanSwapChainDescriptorPool());
+            secondDescriptorSet->addComponent(new VulkanDescriptorSet());
+            secondDescriptorSet->addComponent(new VulkanDescriptor(secondUniformBuffer->getComponent<VulkanUniformBuffer>(), VK_SHADER_STAGE_VERTEX_BIT));
+            secondDescriptorSet->addComponent(new VulkanDescriptor(new VulkanImageViewDecorator(samplerNode->getComponent<VulkanSampler>(), secondImage->getComponent<VulkanImageView>()), VK_SHADER_STAGE_FRAGMENT_BIT));
+
 
         VertexArray<Vertex>* vertexArray = new VertexArray<Vertex>();
         vertexArray->value = vertices;
@@ -182,6 +222,8 @@ private:
         scene.addComponent(new RenderNode(&pipelineNode, RENDER_ACTION_START));
         EntityNode* drawObject = new EntityNode(&scene);
             drawObject->addComponent(new VulkanCmdBindDescriptorSet(mainDescriptorSet->getComponent<VulkanDescriptorSet>(), pipelineNode.getComponent<VulkanGraphicsPipeline>()));
+            drawObject->addComponent(new RenderNode(&graphicsObjects));
+            drawObject->addComponent(new VulkanCmdBindDescriptorSet(secondDescriptorSet->getComponent<VulkanDescriptorSet>(), pipelineNode.getComponent<VulkanGraphicsPipeline>()));
             drawObject->addComponent(new RenderNode(&graphicsObjects));
             drawObject->addComponent(new RenderNode(&pipelineNode, RENDER_ACTION_END));
 
