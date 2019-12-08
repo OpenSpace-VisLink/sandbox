@@ -136,6 +136,7 @@ private:
     EntityNode descriptorSetGroup;
     EntityNode scene;
     EntityNode images;
+    EntityNode* updateSharedNode;
     Entity* renderNode0;
     Entity* renderNode2;
     Entity* renderNode3;
@@ -244,7 +245,7 @@ private:
                 queues->addComponent(new VulkanPresentQueue(surface3Node));
                 graphicsQueue = queues->getComponent<VulkanGraphicsQueue>();
                 presentQueue = queues->getComponent<VulkanPresentQueue>();
-            EntityNode* updateSharedNode = new EntityNode(deviceNode);
+            updateSharedNode = new EntityNode(deviceNode);
                 updateSharedNode->addComponent(new AllowRenderModes(VULKAN_RENDER_UPDATE_SHARED | VULKAN_RENDER_OBJECT | VULKAN_RENDER_CLEANUP_SHARED));
                 updateSharedNode->addComponent(new VulkanDeviceRenderer());
                 updateSharedNode->addComponent(new VulkanCommandPool(graphicsQueue));
@@ -311,6 +312,16 @@ private:
             renderNode0->getComponent<VulkanFrameRenderer>()->drawFrame();
             renderNode2->getComponent<VulkanFrameRenderer>()->drawFrame();
             renderNode3->getComponent<VulkanFrameRenderer>()->drawFrame();
+
+            if (frame == 10000) {
+                std::cout << "test" << std::endl;
+                VertexArray<Vertex>* va = static_cast< VertexArray<Vertex>* >(graphicsObjects.getComponent< VulkanDeviceBuffer >());
+                va->value[0].pos.x = 0.0;
+                graphicsObjects.incrementVersion();
+                VulkanDeviceRenderer* sharedRenderer = updateSharedNode->getComponentRecursive<VulkanDeviceRenderer>();
+                //sharedRenderer->render(VULKAN_RENDER_UPDATE_SHARED);
+                sharedRenderer->render(VULKAN_RENDER_OBJECT);
+            }
 
             // syncronized windows
             //renderNode0->getComponent<VulkanFrameRenderer>()->drawFrame(true, renderNode0);
