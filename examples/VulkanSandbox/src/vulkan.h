@@ -255,7 +255,7 @@ private:
 
 class VulkanGraphicsPipeline : public VulkanRenderObject {
 public:
-	VulkanGraphicsPipeline(VulkanDescriptorSetLayout* descriptorSetLayout) : descriptorSetLayout(descriptorSetLayout) { addType<VulkanGraphicsPipeline>(); }
+	VulkanGraphicsPipeline(const std::vector<VulkanDescriptorSetLayout*>& descriptorSetLayouts) : descriptorSetLayouts(descriptorSetLayouts) { addType<VulkanGraphicsPipeline>(); }
 	virtual ~VulkanGraphicsPipeline() {}
 
 	VkPipeline getGraphicsPipeline(const GraphicsContext& context) const { return contextHandler.getDisplayState(context)->graphicsPipeline; }
@@ -355,9 +355,12 @@ protected:
 
 	        VkPipelineLayoutCreateInfo pipelineLayoutInfo = {};
 	        pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-	        pipelineLayoutInfo.setLayoutCount = 1;
-	        VkDescriptorSetLayout descLayout = descriptorSetLayout->getDescriptorSetLayout(context);
-	        pipelineLayoutInfo.pSetLayouts = &descLayout;
+	        pipelineLayoutInfo.setLayoutCount = descriptorSetLayouts.size();
+	        std::vector<VkDescriptorSetLayout> descLayouts;
+	        for (int f = 0; f < descriptorSetLayouts.size(); f++) {
+	        	descLayouts.push_back(descriptorSetLayouts[f]->getDescriptorSetLayout(context));
+	        }
+	        pipelineLayoutInfo.pSetLayouts = &descLayouts[0];
 
 	        if (vkCreatePipelineLayout(state.getDevice()->getDevice(), &pipelineLayoutInfo, nullptr, &pipelineState->pipelineLayout) != VK_SUCCESS) {
 	            throw std::runtime_error("failed to create pipeline layout!");
@@ -405,13 +408,13 @@ private:
 	};
 
 	DisplayContextHandler<ContextState,GraphicsPipelineState,ContextState> contextHandler;
-	VulkanDescriptorSetLayout* descriptorSetLayout;
+	std::vector<VulkanDescriptorSetLayout*> descriptorSetLayouts;
 };
 
 
 class VulkanCmdBindDescriptorSet : public VulkanRenderObject {
 public:
-	VulkanCmdBindDescriptorSet(VulkanDescriptorSet* descriptorSet, VulkanGraphicsPipeline* graphicsPipeline) : descriptorSet(descriptorSet), graphicsPipeline(graphicsPipeline) { addType<VulkanCmdBindDescriptorSet>(); }
+	VulkanCmdBindDescriptorSet(VulkanDescriptorSet* descriptorSet, VulkanGraphicsPipeline* graphicsPipeline, int setBinding) : descriptorSet(descriptorSet), graphicsPipeline(graphicsPipeline), setBinding(setBinding) { addType<VulkanCmdBindDescriptorSet>(); }
 	virtual ~VulkanCmdBindDescriptorSet() {}
 
 protected:
@@ -419,13 +422,14 @@ protected:
 		if ((state.getRenderMode().get() & VULKAN_RENDER_COMMAND) == VULKAN_RENDER_COMMAND) {
 			VkDescriptorSet descSet = descriptorSet->getDescriptorSet(context);
             std::cout << VulkanSwapChainState::get(context).getSwapChain()->getName() << " " << descSet << std::endl;
-            vkCmdBindDescriptorSets(state.getCommandBuffer().get()->getCommandBuffer(context), VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline->getPipelineLayout(context), 0, 1, &descSet, 0, nullptr);
+            vkCmdBindDescriptorSets(state.getCommandBuffer().get()->getCommandBuffer(context), VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline->getPipelineLayout(context), setBinding, 1, &descSet, 0, nullptr);
 		}
 	}
 
 private:
 	VulkanDescriptorSet* descriptorSet;
 	VulkanGraphicsPipeline* graphicsPipeline;
+	int setBinding;
 };
 
 
