@@ -35,6 +35,7 @@ set (SOURCEFILES
   graphics/vulkan/VulkanDevice.cpp
   graphics/vulkan/render/VulkanRenderPass.cpp
   graphics/vulkan/render/VulkanCommandPool.cpp
+  graphics/vulkan/render/VulkanCommandBuffer.cpp
   graphics/vulkan/VulkanDeviceRenderer.cpp
 )
 
