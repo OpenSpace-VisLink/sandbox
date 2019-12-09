@@ -76,14 +76,7 @@ protected:
 		}
 	}
 
-
-private:
-	struct ImageState : public ContextState {
-		VkImage image;
-    	VkDeviceMemory imageMemory;
-	};
-
-	void createImage(const VulkanDevice* device, uint32_t width, uint32_t height, VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage, VkMemoryPropertyFlags properties, VkImage& image, VkDeviceMemory& imageMemory) {
+    static void createImage(const VulkanDevice* device, uint32_t width, uint32_t height, VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage, VkMemoryPropertyFlags properties, VkImage& image, VkDeviceMemory& imageMemory) {
         VkImageCreateInfo imageInfo = {};
         imageInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
         imageInfo.imageType = VK_IMAGE_TYPE_2D;
@@ -117,6 +110,13 @@ private:
 
         vkBindImageMemory(device->getDevice(), image, imageMemory, 0);
     }
+
+
+private:
+	struct ImageState : public ContextState {
+		VkImage image;
+    	VkDeviceMemory imageMemory;
+	};
 
     void transitionImageLayout(VkImage image, VkFormat format, VkImageLayout oldLayout, VkImageLayout newLayout, VulkanCommandPool* commandPool, const GraphicsContext& context) {
         VkCommandBuffer commandBuffer = commandPool->beginSingleTimeCommands(context);

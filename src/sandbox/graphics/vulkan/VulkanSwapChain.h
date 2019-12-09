@@ -13,7 +13,8 @@ public:
 	virtual ~VulkanSwapChain() {}
 
 	virtual VkFormat getImageFormat() const = 0;
-	virtual const std::vector<VkImageView>& getImageViews() const = 0;
+    virtual const std::vector<VkImageView>& getImageViews() const = 0;
+    virtual VkImageView getDepthImageView() const = 0;
 	virtual VkExtent2D getExtent() const = 0;
     virtual VkSwapchainKHR getSwapChain() const = 0;
     virtual const std::string& getName() const = 0;
@@ -38,6 +39,7 @@ public:
 	void setSwapChain(VulkanSwapChain* swapChain) { this->swapChain = swapChain; }
 
 	static VulkanSwapChainState& get(const GraphicsContext& context) { return context.getRenderState()->getItem<VulkanSwapChainState>(); }
+
 
 private:
 	int imageIndex;
@@ -66,6 +68,11 @@ public:
 		}
 		renderers[0]->render(VULKAN_RENDER_CLEANUP_DISPLAY);
 		
+
+        vkDestroyImageView(getDevice().getDevice(), depthImageView, nullptr);
+        vkDestroyImage(getDevice().getDevice(), depthImage, nullptr);
+        vkFreeMemory(getDevice().getDevice(), depthImageMemory, nullptr);
+
 		for (auto imageView : swapChainImageViews) {
             vkDestroyImageView(getDevice().getDevice(), imageView, nullptr);
 			std::cout << "Destroy image view." << std::endl;
@@ -159,6 +166,7 @@ public:
         swapChainImageFormat = surfaceFormat.format;
         swapChainExtent = extent;
         createImageViews();
+        createDepthResources();
 
 
         if (!initialized) {
@@ -225,6 +233,19 @@ public:
         }
     }
 
+
+    void createDepthResources() {
+        VkFormat depthFormat = getDevice().findDepthFormat();
+
+        createImage(&getDevice(), swapChainExtent.width, swapChainExtent.height, depthFormat, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, depthImage, depthImageMemory);
+        depthImageView = createImageView(depthImage, depthFormat, VK_IMAGE_ASPECT_DEPTH_BIT);
+    }
+
+    bool hasStencilComponent(VkFormat format) {
+        return format == VK_FORMAT_D32_SFLOAT_S8_UINT || format == VK_FORMAT_D24_UNORM_S8_UINT;
+    }
+
+
     VulkanPhysicalDeviceCriteria* createPhysicalCriteria() const { 
     	VulkanSurface* surface = surfaceEntity->getComponent<VulkanSurface>();
 		if (surface) {
@@ -238,18 +259,18 @@ public:
         swapChainImageViews.resize(swapChainImages.size());
 
         for (size_t i = 0; i < swapChainImages.size(); i++) {
-            swapChainImageViews[i] = createImageView(swapChainImages[i], swapChainImageFormat);
+            swapChainImageViews[i] = createImageView(swapChainImages[i], swapChainImageFormat, VK_IMAGE_ASPECT_COLOR_BIT);
         }
     }
 
 
-    VkImageView createImageView(VkImage image, VkFormat format) {
+    VkImageView createImageView(VkImage image, VkFormat format, VkImageAspectFlags aspectFlags) {
         VkImageViewCreateInfo viewInfo = {};
         viewInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
         viewInfo.image = image;
         viewInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
         viewInfo.format = format;
-        viewInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+        viewInfo.subresourceRange.aspectMask = aspectFlags;
         viewInfo.subresourceRange.baseMipLevel = 0;
         viewInfo.subresourceRange.levelCount = 1;
         viewInfo.subresourceRange.baseArrayLayer = 0;
@@ -263,9 +284,47 @@ public:
         return imageView;
     }
 
+    void createImage(const VulkanDevice* device, uint32_t width, uint32_t height, VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage, VkMemoryPropertyFlags properties, VkImage& image, VkDeviceMemory& imageMemory) {
+        VkImageCreateInfo imageInfo = {};
+        imageInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
+        imageInfo.imageType = VK_IMAGE_TYPE_2D;
+        imageInfo.extent.width = width;
+        imageInfo.extent.height = height;
+        imageInfo.extent.depth = 1;
+        imageInfo.mipLevels = 1;
+        imageInfo.arrayLayers = 1;
+        imageInfo.format = format;
+        imageInfo.tiling = tiling;
+        imageInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+        imageInfo.usage = usage;
+        imageInfo.samples = VK_SAMPLE_COUNT_1_BIT;
+        imageInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+
+        if (vkCreateImage(device->getDevice(), &imageInfo, nullptr, &image) != VK_SUCCESS) {
+            throw std::runtime_error("failed to create image!");
+        }
+
+        VkMemoryRequirements memRequirements;
+        vkGetImageMemoryRequirements(device->getDevice(), image, &memRequirements);
+
+        VkMemoryAllocateInfo allocInfo = {};
+        allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+        allocInfo.allocationSize = memRequirements.size;
+        allocInfo.memoryTypeIndex = device->findMemoryType(memRequirements.memoryTypeBits, properties);
+
+        if (vkAllocateMemory(device->getDevice(), &allocInfo, nullptr, &imageMemory) != VK_SUCCESS) {
+            throw std::runtime_error("failed to allocate image memory!");
+        }
+
+        vkBindImageMemory(device->getDevice(), image, imageMemory, 0);
+    }
+
+
+
     VkFormat getImageFormat() const { return swapChainImageFormat; }
     VkSwapchainKHR getSwapChain() const { return swapChain; }
     const std::vector<VkImageView>& getImageViews() const { return swapChainImageViews; }
+    VkImageView getDepthImageView() const { return depthImageView; }
     VkExtent2D getExtent() const { return swapChainExtent; }
     //Context* getSharedContext() { return &sharedContext; };
     const std::string& getName() const { return name; }
@@ -281,6 +340,10 @@ public:
     std::vector<VkImageView> swapChainImageViews;
     Context swapChainContext;
     std::string name;
+
+    VkImage depthImage;
+    VkDeviceMemory depthImageMemory;
+    VkImageView depthImageView;
 };
 
 }

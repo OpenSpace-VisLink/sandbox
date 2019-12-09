@@ -16,7 +16,7 @@ public:
 			VulkanSwapChainState& swapChainState = VulkanSwapChainState::get(context);
 			VulkanSwapChain* swapChain = swapChainState.getSwapChain();
 
-	        VkImageView attachments[] = {
+	        /*VkImageView attachments[] = {
 	            //swapChain->getImageViews()[0]
 	            //state.getImageView()->getImageView(context)
 	            swapChain->getImageViews()[VulkanSwapChainState::get(context).getImageIndex()]
@@ -29,7 +29,21 @@ public:
 	        framebufferInfo.pAttachments = attachments;
 	        framebufferInfo.width = state.getExtent().width;
 	        framebufferInfo.height = state.getExtent().height;
-	        framebufferInfo.layers = 1;
+	        framebufferInfo.layers = 1;*/
+
+	        std::array<VkImageView, 2> attachments = {
+			    swapChain->getImageViews()[VulkanSwapChainState::get(context).getImageIndex()],
+			    swapChain->getDepthImageView()
+			};
+
+			VkFramebufferCreateInfo framebufferInfo = {};
+			framebufferInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
+	        framebufferInfo.renderPass = state.getRenderPass().get()->getRenderPass(context);
+			framebufferInfo.attachmentCount = static_cast<uint32_t>(attachments.size());
+			framebufferInfo.pAttachments = attachments.data();
+			framebufferInfo.width = state.getExtent().width;
+	        framebufferInfo.height = state.getExtent().height;
+			framebufferInfo.layers = 1;
 
 	        if (vkCreateFramebuffer(state.getDevice()->getDevice(), &framebufferInfo, nullptr, &contextHandler.getState(context)->framebuffer) != VK_SUCCESS) {
 	            throw std::runtime_error("failed to create framebuffer!");
