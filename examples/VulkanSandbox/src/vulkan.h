@@ -62,7 +62,7 @@ private:
 
 class VulkanCmdBindDynamicDescriptorSet : public VulkanRenderObject {
 public:
-	VulkanCmdBindDynamicDescriptorSet(VulkanDescriptorSet* descriptorSet, VulkanUniformBuffer* uniformBuffer, int setBinding, int index) : descriptorSet(descriptorSet), uniformBuffer(uniformBuffer), setBinding(setBinding), index(index) { addType<VulkanCmdBindDescriptorSet>(); }
+	VulkanCmdBindDynamicDescriptorSet(VulkanDescriptorSet* descriptorSet, VulkanUniformBuffer* uniformBuffer, int setBinding, int index) : descriptorSet(descriptorSet), uniformBuffer(uniformBuffer), setBinding(setBinding), index(index) { addType<VulkanCmdBindDynamicDescriptorSet>(); }
 	virtual ~VulkanCmdBindDynamicDescriptorSet() {}
 
 protected:

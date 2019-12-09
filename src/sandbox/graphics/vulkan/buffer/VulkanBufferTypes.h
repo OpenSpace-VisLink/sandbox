@@ -74,7 +74,7 @@ public:
 	void setPoolSize(VkDescriptorPoolSize& poolSize) {
 		poolSize.type = dynamic ? VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC : VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
 	}
-	
+
 	virtual size_t getRange() const {getBufferSize();}
 
 protected:
@@ -153,9 +153,10 @@ public:
 	void updateBuffer(const GraphicsContext& context, VulkanDeviceState& state, VulkanBuffer* buffer) {
 		buffer->update(getData(), getBufferSize());
 	}
+	
+	T* getItem(int index) { return (T*)((uint64_t)this->value + (index * dynamicAlignment)); }
 
 protected:
-	T* getItem(int index) { return (T*)((uint64_t)this->value + (index * dynamicAlignment)); }
 	
 	VkDeviceSize getBufferSize() const { return numInstances*dynamicAlignment; }
 	size_t getRange() const { return dynamicAlignment; }

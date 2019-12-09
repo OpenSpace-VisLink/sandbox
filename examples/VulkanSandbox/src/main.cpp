@@ -6,6 +6,7 @@
 #include "vulkan.h"
 
 #define GLM_FORCE_RADIANS
+#define GLM_FORCE_DEPTH_ZERO_TO_ONE
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 
@@ -26,6 +27,8 @@
 #include <set>
 
 #include <sandbox/image/Image.h>
+
+#include <sandbox/base/Transform.h>
 
 using namespace sandbox;
 
@@ -56,84 +59,61 @@ protected:
         if (VulkanSwapChainState::get(context).getSwapChain()->getName() == "window 3") {
             ubo.model = glm::rotate(glm::mat4(1.0f), time * glm::radians(90.0f), glm::vec3(1.0f, 0.0f, 0.0f));
         }
-        ubo.view = glm::lookAt(glm::vec3(2.0f, 2.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+        //ubo.view = glm::lookAt(glm::vec3(2.0f, 2.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+        ubo.view = glm::lookAt(glm::vec3(0.0f, 0.0f, 1.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
         ubo.proj = glm::perspective(glm::radians(45.0f), (float) state.getExtent().width / (float) state.getExtent().height, 0.1f, 10.0f);
+        ubo.model = glm::mat4(1.0f);
+        //ubo.model = glm::rotate(glm::mat4(1.0f), glm::radians(90.0f), glm::vec3(1.0f, 0.0f, 0.0f));
         //std::cout << VulkanSwapChainState::get(context).getSwapChain()->getName() << " " << state.getExtent().width << " " << (float) state.getExtent().height << std::endl;
-        ubo.proj[1][1] *= -1;
+        ubo.proj[2][2] *= 1;
         //VulkanUniformBufferValue<UniformBufferObject>::updateBuffer(context, state, buffer);
 
         buffer->update(&ubo, sizeof(ubo));
     }
 };
 
-class SecondUniformBuffer : public VulkanUniformBufferValue<UniformBufferObject> {
-protected:
-    void updateBuffer(const GraphicsContext& context, VulkanDeviceState& state, VulkanBuffer* buffer) {
-        static auto startTime = std::chrono::high_resolution_clock::now();
-
-        auto currentTime = std::chrono::high_resolution_clock::now();
-        float time = 0.0;//std::chrono::duration<float, std::chrono::seconds::period>(currentTime - startTime).count();
-        //UniformBufferObject ubo = {};
-        UniformBufferObject ubo = {};
-        ubo.model = glm::rotate(glm::mat4(1.0f), time * glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f));
-        if (VulkanSwapChainState::get(context).getSwapChain()->getName() == "window 2") {
-            ubo.model = glm::rotate(glm::mat4(1.0f), time * glm::radians(-90.0f), glm::vec3(0.0f, 0.0f, 1.0f));
-        }
-        if (VulkanSwapChainState::get(context).getSwapChain()->getName() == "window 3") {
-            ubo.model = glm::rotate(glm::mat4(1.0f), time * glm::radians(90.0f), glm::vec3(1.0f, 0.0f, 0.0f));
-        }
-        ubo.view = glm::lookAt(glm::vec3(2.0f, 2.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
-        ubo.proj = glm::perspective(glm::radians(45.0f), (float) state.getExtent().width / (float) state.getExtent().height, 0.1f, 10.0f);
-        //std::cout << VulkanSwapChainState::get(context).getSwapChain()->getName() << " " << state.getExtent().width << " " << (float) state.getExtent().height << std::endl;
-        ubo.proj[1][1] *= -1;
-        //VulkanUniformBufferValue<UniformBufferObject>::updateBuffer(context, state, buffer);
-
-        buffer->update(&ubo, sizeof(ubo));
-    }
-};
 
 class TransformUniformBuffer : public VulkanAlignedUniformArrayBuffer< TransformUniformBufferObject > {
 public:
-    TransformUniformBuffer() : VulkanAlignedUniformArrayBuffer< TransformUniformBufferObject >(256,true) {
-        //value.push_back(TransformUniformBufferObject());
-        //value.push_back(TransformUniformBufferObject());
+    TransformUniformBuffer() : VulkanAlignedUniformArrayBuffer< TransformUniformBufferObject >(256,true) {}
+};
+
+class UpdateTransform : public RenderObject {
+public:
+    UpdateTransform(TransformUniformBuffer* transformBuffer, int index) : transformBuffer(transformBuffer), index(index) {}
+    virtual void startRender(const GraphicsContext& context) {
+        TransformState& state = TransformState::get(context);
+        if (state.calculateTransform) {
+            std::cout << "here1" << std::endl;
+            //transformBuffer->getItem(index)->transform;
+            //state.getTransform().get();
+            //std::cout << "here" << &(transformBuffer->getItem(2)->transform) << std::endl;
+            transformBuffer->getItem(index)->transform = state.getTransform().get();
+        }
     }
 
-protected:
-    void updateBuffer(const GraphicsContext& context, VulkanDeviceState& state, VulkanBuffer* buffer) {
-
-
-        static auto startTime = std::chrono::high_resolution_clock::now();
-
-        auto currentTime = std::chrono::high_resolution_clock::now();
-        float time = std::chrono::duration<float, std::chrono::seconds::period>(currentTime - startTime).count();
-        //UniformBufferObject ubo = {};
-        //TransformUniformBufferObject ubo = {};
-        //ubo.transform = glm::rotate(glm::mat4(1.0f), time *0.1f * glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f));
-        getItem(0)->transform = glm::scale(glm::mat4(1.0f), glm::vec3(2.0f*std::sin(time)));
-        //getItem(1)->transform = glm::scale(glm::mat4(1.0f), glm::vec3(1.0f));
-        getItem(1)->transform = glm::translate(glm::mat4(1.0f), glm::vec3(1.0f,0.0,0.0));
-        getItem(2)->transform = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f,1.0,0.0));
-        //std::cout << value[1].transform[0][0] << "," << std::endl;
-
-        //std::cout << getBufferSize() << std::endl;
-        buffer->update(getData(), getBufferSize());
-        //update = false;
-    }
+private:
+    TransformUniformBuffer* transformBuffer;
+    int index;
 };
 
 class UniformBufferIterator {
 public:
-    UniformBufferIterator(VulkanUniformBuffer* uniformBuffer, VulkanDescriptorSet* descriptorSet) : currentIndex(0), uniformBuffer(uniformBuffer), descriptorSet(descriptorSet) {}
+    UniformBufferIterator(VulkanUniformBuffer* uniformBuffer, VulkanDescriptorSet* descriptorSet, int setBinding) : currentIndex(0), uniformBuffer(uniformBuffer), descriptorSet(descriptorSet), setBinding(setBinding) {}
 
-    Component* applyTransform() {
-        return new VulkanCmdBindDynamicDescriptorSet(descriptorSet, uniformBuffer, 1, currentIndex); 
+    void apply(EntityNode* entity) {
+        std::cout << "index" << currentIndex << std::endl;
+        entity->addComponent(new VulkanCmdBindDynamicDescriptorSet(descriptorSet, uniformBuffer, setBinding, currentIndex)); 
+        entity->addComponent(new UpdateTransform(static_cast<TransformUniformBuffer*>(uniformBuffer), currentIndex)); 
+        //entity->addComponent(new VulkanCmdBindDynamicDescriptorSet(descriptorSet, uniformBuffer, setBinding, currentIndex)); 
         currentIndex++;
+        //return component;
     }
 
 private:
     VulkanUniformBuffer* uniformBuffer;
     VulkanDescriptorSet* descriptorSet;
+    int setBinding;
     int currentIndex;
 };
 
@@ -156,7 +136,7 @@ const std::vector<Vertex> vertices = {
 };
 
 const std::vector<uint16_t> indices = {
-    0, 1, 2, 2, 3, 0
+    0, 2, 1, 2, 0, 3
 };
 
 const std::vector<Vertex> tri_vertices = {
@@ -165,7 +145,7 @@ const std::vector<Vertex> tri_vertices = {
     {{0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}, {0.0f, 1.0f}}
 };
 const std::vector<uint16_t> tri_indices = {
-    0, 1, 2
+    0, 2, 1
 };
 
 
@@ -197,6 +177,7 @@ private:
     EntityNode scene;
     EntityNode images;
     EntityNode* updateSharedNode;
+    EntityNode* sceneGraph;
     Entity* renderNode0;
     Entity* renderNode2;
     Entity* renderNode3;
@@ -241,8 +222,6 @@ private:
 
         EntityNode* mainUniformBuffer = new EntityNode(&shaderObjects);
             mainUniformBuffer->addComponent(new MainUniformBuffer());
-        EntityNode* secondUniformBuffer = new EntityNode(&shaderObjects);
-            secondUniformBuffer->addComponent(new SecondUniformBuffer());
         EntityNode* samplerNode = new EntityNode(&shaderObjects);
             samplerNode->addComponent(new VulkanSampler());
         EntityNode* transformUniformBuffer = new EntityNode(&shaderObjects);
@@ -260,7 +239,7 @@ private:
             secondDescriptorSet->addComponent(new VulkanDescriptorSetLayout());
             secondDescriptorSet->addComponent(new VulkanSwapChainDescriptorPool());
             secondDescriptorSet->addComponent(new VulkanDescriptorSet());
-            secondDescriptorSet->addComponent(new VulkanDescriptor(secondUniformBuffer->getComponent<VulkanUniformBuffer>(), VK_SHADER_STAGE_VERTEX_BIT));
+            secondDescriptorSet->addComponent(new VulkanDescriptor(mainUniformBuffer->getComponent<VulkanUniformBuffer>(), VK_SHADER_STAGE_VERTEX_BIT));
             secondDescriptorSet->addComponent(new VulkanDescriptor(new VulkanImageViewDecorator(samplerNode->getComponent<VulkanSampler>(), secondImage->getComponent<VulkanImageView>()), VK_SHADER_STAGE_FRAGMENT_BIT));
 
 
@@ -302,24 +281,31 @@ private:
         pipelineNode.addComponent(new VulkanGraphicsPipeline(layouts));
         pipelineNode.addComponent(vertexInput);
 
-        EntityNode* sceneGraph = new EntityNode(&graphicsObjects);
-            //sceneGraph->addComponent(new VulkanCmdBindDescriptorSet(mainDescriptorSet->getComponent<VulkanDescriptorSet>(), pipelineNode.getComponent<VulkanGraphicsPipeline>()));
+        UniformBufferIterator bufferTransform(transformUniformBuffer->getComponent<VulkanUniformBuffer>(), transformDescriptorSet->getComponent<VulkanDescriptorSet>(), 1);
+
+        sceneGraph = new EntityNode(&graphicsObjects);
+            //sceneGraph->addComponent(new Transform(glm::translate(glm::mat4(1.0f), glm::vec3(0.0f,0.0,1.0))));
+            //sceneGraph->addComponent(new Transform(glm::translate(glm::mat4(1.0f), glm::vec3(1.0f,0.0,0.0))));
+            sceneGraph->addComponent(new Transform(glm::rotate(glm::scale(glm::mat4(1.0f), glm::vec3(0.25f)), glm::radians(45.0f), glm::vec3(1.0f, 0.0f, 0.0f))));
+            sceneGraph->addComponent(new Transform());
+
+            
+            bufferTransform.apply(sceneGraph);
             sceneGraph->addComponent(new RenderNode(quad));
-            //sceneGraph->addComponent(new VulkanCmdBindDescriptorSet(secondDescriptorSet->getComponent<VulkanDescriptorSet>(), pipelineNode.getComponent<VulkanGraphicsPipeline>()));
-            sceneGraph->addComponent(new VulkanCmdBindDynamicDescriptorSet(transformDescriptorSet->getComponent<VulkanDescriptorSet>(), transformUniformBuffer->getComponent<VulkanUniformBuffer>(), 1, 1));
-            sceneGraph->addComponent(new RenderNode(triangle));
-            sceneGraph->addComponent(new VulkanCmdBindDescriptorSet(secondDescriptorSet->getComponent<VulkanDescriptorSet>(), 0));
-            sceneGraph->addComponent(new VulkanCmdBindDynamicDescriptorSet(transformDescriptorSet->getComponent<VulkanDescriptorSet>(), transformUniformBuffer->getComponent<VulkanUniformBuffer>(), 1, 2));
-            sceneGraph->addComponent(new RenderNode(triangle));
+            EntityNode* subTree = new EntityNode(sceneGraph);
+                subTree->addComponent(new Transform());
+                subTree->addComponent(new Transform(glm::translate(glm::mat4(1.0f), glm::vec3(1.0f,0.0,0.0))));
+                bufferTransform.apply(subTree);
+                subTree->addComponent(new RenderNode(triangle));
+                EntityNode* subTree2 = new EntityNode(subTree);
+                    subTree2->addComponent(new Transform(glm::translate(glm::mat4(1.0f), glm::vec3(-1.0f,0.0,-1.0))));
+                    subTree2->addComponent(new VulkanCmdBindDescriptorSet(secondDescriptorSet->getComponent<VulkanDescriptorSet>(), 0));
+                    bufferTransform.apply(subTree2);
+                    subTree2->addComponent(new RenderNode(triangle));
 
         scene.addComponent(new RenderNode(&pipelineNode, RENDER_ACTION_START));
         EntityNode* drawObject = new EntityNode(&scene);
-            /*drawObject->addComponent(new VulkanCmdBindDescriptorSet(mainDescriptorSet->getComponent<VulkanDescriptorSet>(), pipelineNode.getComponent<VulkanGraphicsPipeline>()));
-            drawObject->addComponent(new RenderNode(quad));
-            drawObject->addComponent(new VulkanCmdBindDescriptorSet(secondDescriptorSet->getComponent<VulkanDescriptorSet>(), pipelineNode.getComponent<VulkanGraphicsPipeline>()));
-            drawObject->addComponent(new RenderNode(triangle));*/
             drawObject->addComponent(new VulkanCmdBindDescriptorSet(mainDescriptorSet->getComponent<VulkanDescriptorSet>(), 0));
-            drawObject->addComponent(new VulkanCmdBindDynamicDescriptorSet(transformDescriptorSet->getComponent<VulkanDescriptorSet>(), transformUniformBuffer->getComponent<VulkanUniformBuffer>(), 1, 0));
             drawObject->addComponent(new RenderNode(sceneGraph));
             drawObject->addComponent(new RenderNode(&pipelineNode, RENDER_ACTION_END));
 
@@ -427,6 +413,22 @@ private:
                 //sharedRenderer->render(VULKAN_RENDER_UPDATE_SHARED);
                 sharedRenderer->render(VULKAN_RENDER_OBJECT);
             }
+
+            if (frame>=0) {   
+                static auto startTime = std::chrono::high_resolution_clock::now();
+                auto currentTime = std::chrono::high_resolution_clock::now();
+                float time = std::chrono::duration<float, std::chrono::seconds::period>(currentTime - startTime).count();
+
+                //sceneGraph->getComponents<Transform>()[1]->setTransform(glm::rotate(glm::mat4(1.0f), time * glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f)));
+                //sceneGraph->getChildren()[0]->getComponent<Transform>()->setTransform(glm::scale(glm::mat4(1.0f), glm::vec3(2.0f*std::sin(time))));
+
+                static GraphicsContext updateContext;
+                TransformState::get(updateContext).calculateTransform = true;
+                static RenderNode sceneGraphUpdate(sceneGraph);
+                sceneGraphUpdate.render(updateContext);
+            }
+
+
 
             // syncronized windows
             //renderNode0->getComponent<VulkanFrameRenderer>()->drawFrame(true, renderNode0);
