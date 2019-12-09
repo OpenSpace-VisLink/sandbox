@@ -46,6 +46,7 @@ public:
 
 	virtual const VkDevice& getDevice() const { return device; }
 	virtual const VkPhysicalDevice& getPhysicalDevice() const { return physicalDevice; }
+	virtual const VkPhysicalDeviceProperties& getProperties() const { return properties; }
 	virtual const VulkanInstance& getInstance() const { return *vulkanInstance; }
 
 	uint32_t findMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties) const {
@@ -88,6 +89,7 @@ private:
 	VkDevice device;
 	VkPhysicalDevice physicalDevice;
 	VkInstance instance;
+	VkPhysicalDeviceProperties properties;
 
 	const std::vector<const char*> deviceExtensions = {
 	    VK_KHR_SWAPCHAIN_EXTENSION_NAME

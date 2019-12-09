@@ -8,14 +8,14 @@ namespace sandbox {
 
 class VulkanUniformBuffer : public VulkanShaderObject {
 public:
-	VulkanUniformBuffer() { addType<VulkanUniformBuffer>(); }
+	VulkanUniformBuffer(bool dynamic = false) : dynamic(dynamic) { addType<VulkanUniformBuffer>(); }
 	virtual ~VulkanUniformBuffer() {}
 
 	void startRender(const GraphicsContext& context, VulkanDeviceState& state) {
 		UniformBufferState* uboState = contextHandler.getState(context);
 		if (state.getRenderMode().get() == VULKAN_RENDER_UPDATE) {
 			int bufferSize = getBufferSize();
-			std::cout << "Create Buffer" << std::endl;
+			std::cout << "Create Buffer " << bufferSize << std::endl;
 			uboState->buffer = new VulkanBuffer(state.getDevice(), bufferSize, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
 		}
 		
@@ -33,7 +33,7 @@ public:
 
 	void setBinding(VkDescriptorSetLayoutBinding& binding) {
 		binding.descriptorCount = 1;
-	    binding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+	    binding.descriptorType = dynamic ? VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC : VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
 	    binding.pImmutableSamplers = nullptr;
 	}
 
@@ -43,7 +43,8 @@ public:
 		std::cout << "Write Buffer" << std::endl;
         bufferInfo.buffer = getBuffer(context);
         bufferInfo.offset = 0;
-        bufferInfo.range = getBufferSize();
+        bufferInfo.range = getRange();
+		std::cout << "Write Buffer Size" << getRange() << std::endl;
         descriptorObjects.push_back(new TypedDescriptorObject<VkDescriptorBufferInfo>(&bufferInfo));
 
         /*VkDescriptorImageInfo imageInfo = {};
@@ -57,7 +58,7 @@ public:
         //descriptorWrites[0].dstSet = descriptorSets[i];
         //descriptorWrites[0].dstBinding = 0;
         //descriptorWrites[0].dstArrayElement = 0;
-        descriptorWrite.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+        descriptorWrite.descriptorType = dynamic ? VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC : VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
         descriptorWrite.descriptorCount = 1;
         descriptorWrite.pBufferInfo = &bufferInfo;
 
@@ -71,11 +72,12 @@ public:
 	}
 
 	void setPoolSize(VkDescriptorPoolSize& poolSize) {
-		poolSize.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+		poolSize.type = dynamic ? VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC : VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
 	}
 
 protected:
 	virtual size_t getBufferSize() const = 0;
+	virtual size_t getRange() const {getBufferSize();}
 	virtual void updateBuffer(const GraphicsContext& context, VulkanDeviceState& state, VulkanBuffer* buffer) = 0;
 
 
@@ -85,12 +87,13 @@ private:
 	};
 
 	GraphicsContextHandler<ContextState,UniformBufferState> contextHandler;
+	bool dynamic;
 };
 
 template<typename T>
 class VulkanUniformBufferValue : public VulkanUniformBuffer {
 public:
-	VulkanUniformBufferValue() { addType< VulkanUniformBufferValue<T> >(); }
+	VulkanUniformBufferValue(bool dynamic = false) : VulkanUniformBuffer(dynamic) { addType< VulkanUniformBufferValue<T> >(); }
 	virtual ~VulkanUniformBufferValue() {}
 
 	T value;
@@ -99,12 +102,92 @@ protected:
 	size_t getBufferSize() const { return sizeof(T); }
 
 	void updateBuffer(const GraphicsContext& context, VulkanDeviceState& state, VulkanBuffer* buffer) {
-		buffer->update(&value, sizeof(T));
+		buffer->update(&value, getBufferSize());
 	}
 };
 
+template<typename T>
+class VulkanUniformArrayBuffer : public VulkanUniformBufferValue< std::vector<T> > {
+public:
+	VulkanUniformArrayBuffer(bool dynamic=  false) : VulkanUniformBufferValue< std::vector<T> >(dynamic) {}
+	virtual ~VulkanUniformArrayBuffer() {}
+	void updateBuffer(const GraphicsContext& context, VulkanDeviceState& state, VulkanBuffer* buffer) {
+		buffer->update(getData(), getBufferSize());
+	}
 
+protected:
+	VkDeviceSize getBufferSize() const { return this->value.size()*sizeof(T); }
+	void* getData() { return this->value.data(); }
+};
 
+template<typename T>
+class VulkanAlignedUniformArrayBuffer : public VulkanUniformBufferValue<T*> {
+public:
+	VulkanAlignedUniformArrayBuffer(int numInstances, bool dynamic = false) : VulkanUniformBufferValue<T*>(dynamic), numInstances(numInstances) {
+        this->value = NULL;
+	}
+
+	void startRender(const GraphicsContext& context, VulkanDeviceState& state) {
+		if (!this->value && state.getRenderMode().get() == VULKAN_RENDER_UPDATE) {
+			size_t minAlignment = state.getDevice()->getProperties().limits.minUniformBufferOffsetAlignment;
+			std::cout << "minAlignment " << minAlignment << std::endl;
+	        dynamicAlignment = sizeof(T);
+	        if (minAlignment > 0) {
+	            dynamicAlignment = (dynamicAlignment + minAlignment - 1) & ~(minAlignment - 1);
+	        }
+	        std::cout << "dynamicAlignment " << dynamicAlignment << std::endl;
+			this->value = static_cast<T*>(alignedAlloc(numInstances*dynamicAlignment, dynamicAlignment));
+		}
+
+		VulkanUniformBufferValue<T*>::startRender(context, state);
+
+	}
+
+	virtual ~VulkanAlignedUniformArrayBuffer() {
+		if (this->value) {
+			alignedFree(this->value);
+		}
+	}
+
+	void updateBuffer(const GraphicsContext& context, VulkanDeviceState& state, VulkanBuffer* buffer) {
+		buffer->update(getData(), getBufferSize());
+	}
+
+protected:
+	T* getItem(int index) { return (T*)((uint64_t)this->value + (index * dynamicAlignment)); }
+	
+	VkDeviceSize getBufferSize() const { return numInstances*dynamicAlignment; }
+	size_t getRange() const { return dynamicAlignment; }
+	void* getData() { return this->value; }
+
+private:
+	// Wrapper functions for aligned memory allocation
+	// There is currently no standard for this in C++ that works across all platforms and vendors, so we abstract this
+	void* alignedAlloc(size_t size, size_t alignment)
+	{
+		void *data = nullptr;
+	#if defined(_MSC_VER) || defined(__MINGW32__)
+		data = _aligned_malloc(size, alignment);
+	#else 
+		int res = posix_memalign(&data, alignment, size);
+		if (res != 0)
+			data = nullptr;
+	#endif
+		return data;
+	}
+
+	void alignedFree(void* data)
+	{
+	#if	defined(_MSC_VER) || defined(__MINGW32__)
+		_aligned_free(data);
+	#else 
+		free(data);
+	#endif
+	}
+
+	int numInstances;
+	size_t dynamicAlignment;
+};
 
 
 class VulkanDeviceBuffer : public VulkanRenderObject {

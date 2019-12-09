@@ -27,6 +27,8 @@ void VulkanDevice::update() {
 
 
 		if (physicalDevice != VK_NULL_HANDLE) {
+			vkGetPhysicalDeviceProperties(physicalDevice, &properties);
+
 			std::vector<VulkanDeviceComponent*> deviceComponents = getEntity().getComponentsRecursive<VulkanDeviceComponent>();
 			for (VulkanDeviceComponent* component : deviceComponents) {
 				component->setDevice(this);

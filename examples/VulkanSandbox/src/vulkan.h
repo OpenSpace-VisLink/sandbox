@@ -414,7 +414,7 @@ private:
 
 class VulkanCmdBindDescriptorSet : public VulkanRenderObject {
 public:
-	VulkanCmdBindDescriptorSet(VulkanDescriptorSet* descriptorSet, VulkanGraphicsPipeline* graphicsPipeline, int setBinding) : descriptorSet(descriptorSet), graphicsPipeline(graphicsPipeline), setBinding(setBinding) { addType<VulkanCmdBindDescriptorSet>(); }
+	VulkanCmdBindDescriptorSet(VulkanDescriptorSet* descriptorSet, VulkanGraphicsPipeline* graphicsPipeline, int setBinding, int dynamicOffsets = 0, uint32_t offset = 0) : descriptorSet(descriptorSet), graphicsPipeline(graphicsPipeline), setBinding(setBinding), dynamicOffsets(dynamicOffsets), offset(offset) { addType<VulkanCmdBindDescriptorSet>(); }
 	virtual ~VulkanCmdBindDescriptorSet() {}
 
 protected:
@@ -422,7 +422,7 @@ protected:
 		if ((state.getRenderMode().get() & VULKAN_RENDER_COMMAND) == VULKAN_RENDER_COMMAND) {
 			VkDescriptorSet descSet = descriptorSet->getDescriptorSet(context);
             std::cout << VulkanSwapChainState::get(context).getSwapChain()->getName() << " " << descSet << std::endl;
-            vkCmdBindDescriptorSets(state.getCommandBuffer().get()->getCommandBuffer(context), VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline->getPipelineLayout(context), setBinding, 1, &descSet, 0, nullptr);
+            vkCmdBindDescriptorSets(state.getCommandBuffer().get()->getCommandBuffer(context), VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline->getPipelineLayout(context), setBinding, 1, &descSet, dynamicOffsets, &offset);
 		}
 	}
 
@@ -430,10 +430,9 @@ private:
 	VulkanDescriptorSet* descriptorSet;
 	VulkanGraphicsPipeline* graphicsPipeline;
 	int setBinding;
+	int dynamicOffsets;
+	uint32_t offset;
 };
-
-
-
 
 
 }
