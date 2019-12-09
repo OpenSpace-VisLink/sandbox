@@ -7,6 +7,7 @@
 #include "sandbox/graphics/vulkan/render/VulkanRenderPass.h"
 #include "sandbox/graphics/vulkan/render/VulkanCommandPool.h"
 #include "sandbox/graphics/vulkan/render/VulkanCommandBuffer.h"
+#include "sandbox/graphics/vulkan/render/VulkanGraphicsPipeline.h"
 
 namespace sandbox {
 
@@ -22,6 +23,7 @@ public:
 		commandPool.set(NULL);
 		imageFormat.set(VK_FORMAT_UNDEFINED);
 		commandBuffer.set(NULL);
+		graphicsPipeline.set(NULL);
 	}
 
 	virtual ~VulkanDeviceState() {}
@@ -39,6 +41,7 @@ public:
 	StateContainerItemStack<VkFormat>& getImageFormat() { return imageFormat; }
 	StateContainerItemStack<VulkanRenderPass*>& getRenderPass() { return renderPass; }
 	StateContainerItemStack<VulkanCommandBuffer*>& getCommandBuffer() { return commandBuffer; }
+	StateContainerItemStack<VulkanGraphicsPipeline*>& getGraphicsPipeline() { return graphicsPipeline; }
 
 	static VulkanDeviceState& get(const GraphicsContext& context) { return context.getRenderState()->getItem<VulkanDeviceState>(); }
 
@@ -51,6 +54,7 @@ private:
 	StateContainerItemStack<VulkanRenderMode> renderMode;
 	StateContainerItemStack<VkFormat> imageFormat;
 	StateContainerItemStack<VulkanCommandBuffer*> commandBuffer;
+	StateContainerItemStack<VulkanGraphicsPipeline*> graphicsPipeline;
 
 };
 

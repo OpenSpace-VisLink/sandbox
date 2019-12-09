@@ -94,7 +94,7 @@ protected:
 
 class TransformUniformBuffer : public VulkanAlignedUniformArrayBuffer< TransformUniformBufferObject > {
 public:
-    TransformUniformBuffer() : VulkanAlignedUniformArrayBuffer< TransformUniformBufferObject >(125,true) {
+    TransformUniformBuffer() : VulkanAlignedUniformArrayBuffer< TransformUniformBufferObject >(256,true) {
         //value.push_back(TransformUniformBufferObject());
         //value.push_back(TransformUniformBufferObject());
     }
@@ -234,7 +234,7 @@ private:
             transformUniformBuffer->addComponent(new TransformUniformBuffer());
 
         EntityNode* mainDescriptorSet = new EntityNode(&descriptorSetGroup);
-            mainDescriptorSet->addComponent(new VulkanDescriptorSetLayout());
+            mainDescriptorSet->addComponent(new VulkanDescriptorSetLayout()); 
             mainDescriptorSet->addComponent(new VulkanSwapChainDescriptorPool());
             mainDescriptorSet->addComponent(new VulkanDescriptorSet());
             mainDescriptorSet->addComponent(new VulkanDescriptor(mainUniformBuffer->getComponent<VulkanUniformBuffer>(), VK_SHADER_STAGE_VERTEX_BIT));
@@ -364,7 +364,7 @@ private:
             renderers[f]->render(VULKAN_RENDER_COMMAND);
         }
 
-        //initAlignedSizes((uint32_t)m_context->m_physicalInfo.properties.limits.minUniformBufferOffsetAlignment);
+        std::cout << deviceNode->getComponent<VulkanDevice>()->getProperties().limits.maxUniformBufferRange << std::endl;
         /*size_t minUboAlignment = deviceNode->getComponent<VulkanDevice>()->getProperties().limits.minUniformBufferOffsetAlignment;
         std::cout << "minUboAlignment " << minUboAlignment << std::endl;
         size_t dynamicAlignment = sizeof(TransformUniformBufferObject);
