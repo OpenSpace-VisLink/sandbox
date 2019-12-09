@@ -74,10 +74,11 @@ public:
 	void setPoolSize(VkDescriptorPoolSize& poolSize) {
 		poolSize.type = dynamic ? VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC : VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
 	}
+	
+	virtual size_t getRange() const {getBufferSize();}
 
 protected:
 	virtual size_t getBufferSize() const = 0;
-	virtual size_t getRange() const {getBufferSize();}
 	virtual void updateBuffer(const GraphicsContext& context, VulkanDeviceState& state, VulkanBuffer* buffer) = 0;
 
 

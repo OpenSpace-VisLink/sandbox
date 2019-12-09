@@ -122,6 +122,21 @@ protected:
     }
 };
 
+class UniformBufferIterator {
+public:
+    UniformBufferIterator(VulkanUniformBuffer* uniformBuffer, VulkanDescriptorSet* descriptorSet) : currentIndex(0), uniformBuffer(uniformBuffer), descriptorSet(descriptorSet) {}
+
+    Component* applyTransform() {
+        return new VulkanCmdBindDynamicDescriptorSet(descriptorSet, uniformBuffer, 1, currentIndex); 
+        currentIndex++;
+    }
+
+private:
+    VulkanUniformBuffer* uniformBuffer;
+    VulkanDescriptorSet* descriptorSet;
+    int currentIndex;
+};
+
 
 const int WIDTH = 500;
 const int HEIGHT = 400;
@@ -291,10 +306,10 @@ private:
             //sceneGraph->addComponent(new VulkanCmdBindDescriptorSet(mainDescriptorSet->getComponent<VulkanDescriptorSet>(), pipelineNode.getComponent<VulkanGraphicsPipeline>()));
             sceneGraph->addComponent(new RenderNode(quad));
             //sceneGraph->addComponent(new VulkanCmdBindDescriptorSet(secondDescriptorSet->getComponent<VulkanDescriptorSet>(), pipelineNode.getComponent<VulkanGraphicsPipeline>()));
-            sceneGraph->addComponent(new VulkanCmdBindDescriptorSet(transformDescriptorSet->getComponent<VulkanDescriptorSet>(), pipelineNode.getComponent<VulkanGraphicsPipeline>(), 1, 1, 1*256));
+            sceneGraph->addComponent(new VulkanCmdBindDynamicDescriptorSet(transformDescriptorSet->getComponent<VulkanDescriptorSet>(), transformUniformBuffer->getComponent<VulkanUniformBuffer>(), 1, 1));
             sceneGraph->addComponent(new RenderNode(triangle));
-            sceneGraph->addComponent(new VulkanCmdBindDescriptorSet(secondDescriptorSet->getComponent<VulkanDescriptorSet>(), pipelineNode.getComponent<VulkanGraphicsPipeline>(), 0));
-            sceneGraph->addComponent(new VulkanCmdBindDescriptorSet(transformDescriptorSet->getComponent<VulkanDescriptorSet>(), pipelineNode.getComponent<VulkanGraphicsPipeline>(), 1, 1, 2*256));
+            sceneGraph->addComponent(new VulkanCmdBindDescriptorSet(secondDescriptorSet->getComponent<VulkanDescriptorSet>(), 0));
+            sceneGraph->addComponent(new VulkanCmdBindDynamicDescriptorSet(transformDescriptorSet->getComponent<VulkanDescriptorSet>(), transformUniformBuffer->getComponent<VulkanUniformBuffer>(), 1, 2));
             sceneGraph->addComponent(new RenderNode(triangle));
 
         scene.addComponent(new RenderNode(&pipelineNode, RENDER_ACTION_START));
@@ -303,8 +318,8 @@ private:
             drawObject->addComponent(new RenderNode(quad));
             drawObject->addComponent(new VulkanCmdBindDescriptorSet(secondDescriptorSet->getComponent<VulkanDescriptorSet>(), pipelineNode.getComponent<VulkanGraphicsPipeline>()));
             drawObject->addComponent(new RenderNode(triangle));*/
-            drawObject->addComponent(new VulkanCmdBindDescriptorSet(mainDescriptorSet->getComponent<VulkanDescriptorSet>(), pipelineNode.getComponent<VulkanGraphicsPipeline>(), 0));
-            drawObject->addComponent(new VulkanCmdBindDescriptorSet(transformDescriptorSet->getComponent<VulkanDescriptorSet>(), pipelineNode.getComponent<VulkanGraphicsPipeline>(), 1, 1, 0*256));
+            drawObject->addComponent(new VulkanCmdBindDescriptorSet(mainDescriptorSet->getComponent<VulkanDescriptorSet>(), 0));
+            drawObject->addComponent(new VulkanCmdBindDynamicDescriptorSet(transformDescriptorSet->getComponent<VulkanDescriptorSet>(), transformUniformBuffer->getComponent<VulkanUniformBuffer>(), 1, 0));
             drawObject->addComponent(new RenderNode(sceneGraph));
             drawObject->addComponent(new RenderNode(&pipelineNode, RENDER_ACTION_END));
 

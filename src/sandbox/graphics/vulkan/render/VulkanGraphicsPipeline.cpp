@@ -5,6 +5,10 @@
 namespace sandbox {
 
 void VulkanGraphicsPipeline::startRender(const GraphicsContext& context, VulkanDeviceState& state) {
+    if ((state.getRenderMode().get() & VULKAN_RENDER_COMMAND) == VULKAN_RENDER_COMMAND) {
+        state.getGraphicsPipeline().push(this);
+    }
+
 	if (state.getRenderMode().get() == VULKAN_RENDER_UPDATE_DISPLAY) {
 		GraphicsPipelineState* pipelineState = contextHandler.getDisplayState(context);
 		VkDevice device = state.getDevice()->getDevice();
@@ -141,6 +145,11 @@ void VulkanGraphicsPipeline::finishRender(const GraphicsContext& context, Vulkan
         vkDestroyPipelineLayout(state.getDevice()->getDevice(), pipelineState->pipelineLayout, nullptr);
 		std::cout << "Destroy pipeline." << std::endl;
 	}
+
+    if ((state.getRenderMode().get() & VULKAN_RENDER_COMMAND) == VULKAN_RENDER_COMMAND) {
+        state.getGraphicsPipeline().pop();
+    }
 }
 
 }
+
