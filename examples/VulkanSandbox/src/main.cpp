@@ -33,6 +33,7 @@
 #include <sandbox/input/touch/MouseTouchEmulator.h>
 #include <sandbox/input/touch/TUIOTouchInput.h>
 #include <sandbox/input/interaction/TouchTranslate.h>
+#include <sandbox/input/interaction/TouchScale.h>
 
 using namespace sandbox;
 
@@ -173,7 +174,9 @@ private:
     VulkanQueue* presentQueue;
 
     EntityNode vulkanNode;
+    EntityNode renderPassNode;
     EntityNode pipelineNode;
+    EntityNode pipelineNode2;
     EntityNode shaderObjects;
     EntityNode graphicsObjects;
     EntityNode descriptorSetGroup;
@@ -266,27 +269,39 @@ private:
 
         pipelineNode.addComponent(new VulkanShaderModule("examples/VulkanSandbox/src/shaders/vert.spv", VK_SHADER_STAGE_VERTEX_BIT));
         pipelineNode.addComponent(new VulkanShaderModule("examples/VulkanSandbox/src/shaders/frag.spv", VK_SHADER_STAGE_FRAGMENT_BIT));
-        VulkanVertexInput* vertexInput = new VulkanVertexInput(sizeof(Vertex));
-        vertexInput->addAttribute(VK_FORMAT_R32G32_SFLOAT, offsetof(Vertex, pos));
-        vertexInput->addAttribute(VK_FORMAT_R32G32B32_SFLOAT, offsetof(Vertex, color));
-        vertexInput->addAttribute(VK_FORMAT_R32G32_SFLOAT, offsetof(Vertex, texCoord));
-        pipelineNode.addComponent(new VulkanBasicRenderPass());
-        pipelineNode.addComponent(new VulkanSwapChainFramebuffer());
         std::vector<VulkanDescriptorSetLayout*> layouts;
         layouts.push_back(mainDescriptorSet->getComponent<VulkanDescriptorSetLayout>());
         layouts.push_back(transformDescriptorSet->getComponent<VulkanDescriptorSetLayout>());
         pipelineNode.addComponent(new VulkanGraphicsPipeline(layouts));
+        VulkanVertexInput* vertexInput = new VulkanVertexInput(sizeof(Vertex));
+        vertexInput->addAttribute(VK_FORMAT_R32G32_SFLOAT, offsetof(Vertex, pos));
+        vertexInput->addAttribute(VK_FORMAT_R32G32B32_SFLOAT, offsetof(Vertex, color));
+        vertexInput->addAttribute(VK_FORMAT_R32G32_SFLOAT, offsetof(Vertex, texCoord));
         pipelineNode.addComponent(vertexInput);
+
+        renderPassNode.addComponent(new VulkanBasicRenderPass());
+        renderPassNode.addComponent(new VulkanSwapChainFramebuffer());
+
+
+        pipelineNode2.addComponent(new VulkanShaderModule("examples/VulkanSandbox/src/shaders/vert.spv", VK_SHADER_STAGE_VERTEX_BIT));
+        pipelineNode2.addComponent(new VulkanShaderModule("examples/VulkanSandbox/src/shaders/frag2.spv", VK_SHADER_STAGE_FRAGMENT_BIT));
+        std::vector<VulkanDescriptorSetLayout*> layouts2;
+        layouts2.push_back(mainDescriptorSet->getComponent<VulkanDescriptorSetLayout>());
+        layouts2.push_back(transformDescriptorSet->getComponent<VulkanDescriptorSetLayout>());
+        pipelineNode2.addComponent(new VulkanGraphicsPipeline(layouts));
+        VulkanVertexInput* vertexInput2 = new VulkanVertexInput(sizeof(Vertex));
+        vertexInput2->addAttribute(VK_FORMAT_R32G32_SFLOAT, offsetof(Vertex, pos));
+        vertexInput2->addAttribute(VK_FORMAT_R32G32B32_SFLOAT, offsetof(Vertex, color));
+        vertexInput2->addAttribute(VK_FORMAT_R32G32_SFLOAT, offsetof(Vertex, texCoord));
+        pipelineNode2.addComponent(vertexInput);
+
+
 
         UniformBufferIterator bufferTransform(transformUniformBuffer->getComponent<VulkanUniformBuffer>(), transformDescriptorSet->getComponent<VulkanDescriptorSet>(), 1);
 
         sceneGraph = new EntityNode(&graphicsObjects); 
-            //sceneGraph->addComponent(new Transform(glm::translate(glm::mat4(1.0f), glm::vec3(0.0f,0.0,1.0))));
-            //sceneGraph->addComponent(new Transform(glm::translate(glm::mat4(1.0f), glm::vec3(1.0f,0.0,0.0))));
             sceneGraph->addComponent(new Transform(glm::rotate(glm::scale(glm::mat4(1.0f), glm::vec3(0.25f)), glm::radians(45.0f), glm::vec3(1.0f, 0.0f, 0.0f))));
             sceneGraph->addComponent(new Transform());
-
-            
             bufferTransform.apply(sceneGraph);
             sceneGraph->addComponent(new RenderNode(quad));
             EntityNode* subTree = new EntityNode(sceneGraph);
@@ -302,11 +317,31 @@ private:
 
         scene.addComponent(new MouseInteraction(&input));
         scene.addComponent(new TouchTranslate(&input));
-        scene.addComponent(new RenderNode(&pipelineNode, RENDER_ACTION_START));
+        scene.addComponent(new TouchScale(&input));
         EntityNode* drawObject = new EntityNode(&scene);
+            drawObject->addComponent(new RenderNode(&renderPassNode, RENDER_ACTION_START));
+            drawObject->addComponent(new RenderNode(&pipelineNode, RENDER_ACTION_START));
             drawObject->addComponent(new VulkanCmdBindDescriptorSet(mainDescriptorSet->getComponent<VulkanDescriptorSet>(), 0));
             drawObject->addComponent(new RenderNode(sceneGraph));
             drawObject->addComponent(new RenderNode(&pipelineNode, RENDER_ACTION_END));
+            drawObject->addComponent(new RenderNode(&pipelineNode2, RENDER_ACTION_START));
+            drawObject->addComponent(new VulkanCmdBindDescriptorSet(mainDescriptorSet->getComponent<VulkanDescriptorSet>(), 0));
+            drawObject->addComponent(new VulkanCmdBindDescriptorSet(secondDescriptorSet->getComponent<VulkanDescriptorSet>(), 0));
+            drawObject->addComponent(new Transform(glm::scale(glm::mat4(1.0f), glm::vec3(0.25f))));
+            bufferTransform.apply(drawObject);
+            drawObject->addComponent(new RenderNode(triangle)); 
+            drawObject->addComponent(new RenderNode(&pipelineNode2, RENDER_ACTION_END));
+            drawObject->addComponent(new RenderNode(&renderPassNode, RENDER_ACTION_END));
+        /*EntityNode* drawObject2 = new EntityNode(&scene);
+            drawObject2->addComponent(new Transform(glm::translate(glm::mat4(1.0f), glm::vec3(0.7f,0.0,0.0))));
+            drawObject2->addComponent(new RenderNode(&pipelineNode2, RENDER_ACTION_START));
+            drawObject2->addComponent(new VulkanCmdBindDescriptorSet(mainDescriptorSet->getComponent<VulkanDescriptorSet>(), 0));
+            drawObject2->addComponent(new RenderNode(sceneGraph));
+            drawObject2->addComponent(new RenderNode(&pipelineNode2, RENDER_ACTION_END));
+        /*EntityNode* drawObject2 = new EntityNode(&scene);
+            drawObject2->addComponent(new VulkanCmdBindDescriptorSet(mainDescriptorSet->getComponent<VulkanDescriptorSet>(), 0));
+            drawObject2->addComponent(new RenderNode(sceneGraph));
+            drawObject2->addComponent(new RenderNode(&pipelineNode2, RENDER_ACTION_END));*/
 
         vulkanNode.addComponent(new VulkanInstance());
         EntityNode* surfaceNode = new EntityNode(&vulkanNode);
@@ -335,7 +370,11 @@ private:
                     renderSpecific->addComponent(new AllowRenderModes(VULKAN_RENDER_SHARED_ONLY));
                     renderSpecific->addComponent(new RenderNode(&shaderObjects));//, UPDATE_ONLY));
                     renderSpecific->addComponent(new RenderNode(&descriptorSetGroup));
+                    renderSpecific->addComponent(new RenderNode(&renderPassNode, RENDER_ACTION_START));
                     renderSpecific->addComponent(new RenderNode(&pipelineNode));//, UPDATE_ONLY));
+                    renderSpecific->addComponent(new RenderNode(&pipelineNode2));//, UPDATE_ONLY));
+                    renderSpecific->addComponent(new RenderNode(&renderPassNode, RENDER_ACTION_END));
+                    //renderSpecific->addComponent(new RenderNode(&pipelineNode2));//, UPDATE_ONLY));
             EntityNode* windowNodes = new EntityNode(deviceNode);
                 renderNode0 = createSwapChain(windowNodes, surfaceNode, "window 1");
                 renderNode2 = createSwapChain(windowNodes, surface2Node, "window 2");
@@ -390,7 +429,10 @@ private:
                 updateNode->addComponent(new AllowRenderModes(VULKAN_RENDER_UPDATE_DISPLAY | VULKAN_RENDER_UPDATE | VULKAN_RENDER_OBJECT | VULKAN_RENDER_CLEANUP_DISPLAY | VULKAN_RENDER_CLEANUP));
                 updateNode->addComponent(new RenderNode(&shaderObjects));
                 updateNode->addComponent(new RenderNode(&descriptorSetGroup));
-                updateNode->addComponent(new RenderNode(&pipelineNode));
+                updateNode->addComponent(new RenderNode(&renderPassNode, RENDER_ACTION_START));
+                updateNode->addComponent(new RenderNode(&pipelineNode));//, UPDATE_ONLY));
+                updateNode->addComponent(new RenderNode(&pipelineNode2));//, UPDATE_ONLY));
+                updateNode->addComponent(new RenderNode(&renderPassNode, RENDER_ACTION_END));
             EntityNode* commandNode = new EntityNode(renderNode);
                 commandNode->addComponent(new VulkanCommandPool(graphicsQueue));
                 commandNode->addComponent(new VulkanCommandBuffer());

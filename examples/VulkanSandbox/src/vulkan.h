@@ -1,3 +1,4 @@
+
 #ifndef SANDBOX_VULCAN_H_
 #define SANDBOX_VULCAN_H_
 
@@ -50,6 +51,7 @@ protected:
 		if ((state.getRenderMode().get() & VULKAN_RENDER_COMMAND) == VULKAN_RENDER_COMMAND) {
 			VkDescriptorSet descSet = descriptorSet->getDescriptorSet(context);
             std::cout << VulkanSwapChainState::get(context).getSwapChain()->getName() << " " << descSet << std::endl;
+            std::cout << "Pipeline: " << state.getGraphicsPipeline().get()->getGraphicsPipeline(context) << std::endl;
             vkCmdBindDescriptorSets(state.getCommandBuffer().get()->getCommandBuffer(context), VK_PIPELINE_BIND_POINT_GRAPHICS, state.getGraphicsPipeline().get()->getPipelineLayout(context), setBinding, 1, &descSet, 0, nullptr);
 		}
 	}

@@ -144,7 +144,7 @@ void VulkanGraphicsPipeline::startRender(const GraphicsContext& context, VulkanD
 	if ((state.getRenderMode().get() & VULKAN_RENDER_COMMAND) == VULKAN_RENDER_COMMAND) {
 		GraphicsPipelineState* pipelineState = contextHandler.getDisplayState(context);
 		vkCmdBindPipeline(state.getCommandBuffer().get()->getCommandBuffer(context), VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineState->graphicsPipeline);
-		std::cout << "bind pipeline" << std::endl;
+		std::cout << "bind pipeline " << pipelineState->graphicsPipeline << std::endl;
 	}
 }
 void VulkanGraphicsPipeline::finishRender(const GraphicsContext& context, VulkanDeviceState& state) {

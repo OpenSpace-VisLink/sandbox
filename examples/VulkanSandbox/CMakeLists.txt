@@ -50,7 +50,10 @@ include_directories(
 )
 
 
-#/home/dan/lib/1.1.114.0/x86_64/bin/glslc examples/VulkanExample/src/shaders/shader.frag -o examples/VulkanExample/src/shaders/frag.spv
+#/home/dan/lib/1.1.114.0/x86_64/bin/glslc examples/VulkanSandbox/src/shaders/shader.vert -o examples/VulkanSandbox/src/shaders/vert.spv
+#/home/dan/lib/1.1.114.0/x86_64/bin/glslc examples/VulkanSandbox/src/shaders/shader.frag -o examples/VulkanSandbox/src/shaders/frag.spv
+#/home/dan/lib/1.1.114.0/x86_64/bin/glslc examples/VulkanSandbox/src/shaders/shader2.vert -o examples/VulkanSandbox/src/shaders/vert2.spv
+#/home/dan/lib/1.1.114.0/x86_64/bin/glslc examples/VulkanSandbox/src/shaders/shader2.frag -o examples/VulkanSandbox/src/shaders/frag2.spv
 
 # --------------------- Executable -----------------------
 

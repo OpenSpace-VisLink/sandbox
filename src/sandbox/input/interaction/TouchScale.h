@@ -1,5 +1,5 @@
-#ifndef SANDBOX_INPUT_INTERACTION_TOUCH_TRANSLATE_H_
-#define SANDBOX_INPUT_INTERACTION_TOUCH_TRANSLATE_H_
+#ifndef SANDBOX_INPUT_INTERACTION_TOUCH_SCALE_H_
+#define SANDBOX_INPUT_INTERACTION_TOUCH_SCALE_H_
 
 #include "glm/glm.hpp"
 #include <glm/gtc/matrix_access.hpp>
@@ -11,10 +11,10 @@
 
 namespace sandbox {
 
-class TouchTranslate : public Component {
+class TouchScale : public Component {
 public:
-	TouchTranslate(Entity* input) : input(input), touch(NULL), transform(NULL) { addType<TouchTranslate>(); }
-	virtual ~TouchTranslate() {}
+	TouchScale(Entity* input) : input(input), touch(NULL), transform(NULL) { addType<TouchTranslate>(); }
+	virtual ~TouchScale() {}
 
 	void update() {
 		if (!touch) {
@@ -27,10 +27,10 @@ public:
 
 		if (touch) {
 			//std::cout << touch->getTouchState(0) << " " << touch->getPosition(0).x << " " << touch->getPosition(0).y << std::endl;
-			if (touch->getTouchState(0) && glm::length(touch->getPosition(0)-touch->getLastPosition(0)) > 0.0f && !touch->getTouchState(1)) {
-				glm::vec2 p1 = touch->getLastPosition(0);
-				glm::vec2 p2 = touch->getPosition(0);
-				glm::mat4 translate = glm::translate(glm::mat4(1.0f), glm::vec3(p2-p1,0.0));
+			if (touch->getTouchState(0) && touch->getTouchState(1) && (checkChanged(0) || checkChanged(1))) {
+				float dist1 = glm::length(touch->getLastPosition(1)-touch->getLastPosition(0));
+				float dist2 = glm::length(touch->getPosition(1)-touch->getPosition(0));
+				glm::mat4 translate = glm::scale(glm::mat4(1.0f), glm::vec3(dist2/dist1));
 				transform->setTransform(translate*transform->getTransform());
 			}
 		}
@@ -41,6 +41,10 @@ public:
 	}
 
 private:
+	bool checkChanged(int index) {
+		return touch->getTouchState(index) && glm::length(touch->getPosition(index)-touch->getLastPosition(index)) > 0.0f;
+	}
+
 	Entity* input;
 	TouchInput* touch;
 	Transform* transform;
