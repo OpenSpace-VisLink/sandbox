@@ -77,6 +77,14 @@ protected:
     }
 };
 
+class ObjectState : public StateContainerItem {
+public:
+    ObjectState() { objectIndex = 0; }
+    virtual ~ObjectState() {}
+    static ObjectState& get(const GraphicsContext& context) { return context.getRenderState()->getItem<ObjectState>(); }
+    int objectIndex;
+
+};
 
 class TransformUniformBuffer : public VulkanAlignedUniformArrayBuffer< TransformUniformBufferObject > {
 public:
@@ -85,20 +93,55 @@ public:
 
 class UpdateTransform : public RenderObject {
 public:
-    UpdateTransform(TransformUniformBuffer* transformBuffer, int index) : transformBuffer(transformBuffer), index(index) {}
+    UpdateTransform(TransformUniformBuffer* transformBuffer) : transformBuffer(transformBuffer) {}
+
     virtual void startRender(const GraphicsContext& context) {
         TransformState& state = TransformState::get(context);
         if (state.calculateTransform) {
-            //transformBuffer->getItem(index)->transform;
-            //state.getTransform().get();
-            //std::cout << "here" << &(transformBuffer->getItem(2)->transform) << std::endl;
-            transformBuffer->getItem(index)->transform = state.getTransform().get();
+            transformBuffer->getItem(ObjectState::get(context).objectIndex)->transform = state.getTransform().get();
         }
+
+        ObjectState::get(context).objectIndex++;
+    }
+
+    virtual void finishRender(const GraphicsContext& context) {
+        //ObjectState::get(context).objectIndex--;
     }
 
 private:
     TransformUniformBuffer* transformBuffer;
-    int index;
+};
+
+class TransformRoot : public RenderObject {
+public:
+    TransformRoot() {}
+    virtual void startRender(const GraphicsContext& context) {
+        ObjectState::get(context).objectIndex = 0;
+    }
+
+private:
+    TransformUniformBuffer* transformBuffer;
+};
+
+class VulkanCmdBindDynamicDescriptorSet2 : public VulkanRenderObject {
+public:
+    VulkanCmdBindDynamicDescriptorSet2(VulkanDescriptorSet* descriptorSet, VulkanUniformBuffer* uniformBuffer, int setBinding) : descriptorSet(descriptorSet), uniformBuffer(uniformBuffer), setBinding(setBinding) { addType<VulkanCmdBindDynamicDescriptorSet>(); }
+    virtual ~VulkanCmdBindDynamicDescriptorSet2() {}
+
+protected:
+    void startRender(const GraphicsContext& context, VulkanDeviceState& state) {
+        if ((state.getRenderMode().get() & VULKAN_RENDER_COMMAND) == VULKAN_RENDER_COMMAND) {
+            uint32_t offset = ObjectState::get(context).objectIndex * uniformBuffer->getRange();
+            VkDescriptorSet descSet = descriptorSet->getDescriptorSet(context);
+            std::cout << VulkanSwapChainState::get(context).getSwapChain()->getName() << " " << descSet << std::endl;
+            vkCmdBindDescriptorSets(state.getCommandBuffer().get()->getCommandBuffer(context), VK_PIPELINE_BIND_POINT_GRAPHICS, state.getGraphicsPipeline().get()->getPipelineLayout(context), setBinding, 1, &descSet, 1, &offset);
+        }
+    }
+
+private:
+    VulkanDescriptorSet* descriptorSet;
+    VulkanUniformBuffer* uniformBuffer;
+    int setBinding;
 };
 
 class UniformBufferIterator {
@@ -107,8 +150,8 @@ public:
 
     void apply(EntityNode* entity) {
         std::cout << "index" << currentIndex << std::endl;
-        entity->addComponent(new VulkanCmdBindDynamicDescriptorSet(descriptorSet, uniformBuffer, setBinding, currentIndex)); 
-        entity->addComponent(new UpdateTransform(static_cast<TransformUniformBuffer*>(uniformBuffer), currentIndex)); 
+        entity->addComponent(new VulkanCmdBindDynamicDescriptorSet2(descriptorSet, uniformBuffer, setBinding)); 
+        entity->addComponent(new UpdateTransform(static_cast<TransformUniformBuffer*>(uniformBuffer))); 
         //entity->addComponent(new VulkanCmdBindDynamicDescriptorSet(descriptorSet, uniformBuffer, setBinding, currentIndex)); 
         currentIndex++;
         //return component;
@@ -318,6 +361,7 @@ private:
         scene.addComponent(new MouseInteraction(&input));
         scene.addComponent(new TouchTranslate(&input));
         scene.addComponent(new TouchScale(&input));
+        scene.addComponent(new TransformRoot());
         EntityNode* drawObject = new EntityNode(&scene);
             drawObject->addComponent(new RenderNode(&renderPassNode, RENDER_ACTION_START));
             drawObject->addComponent(new RenderNode(&pipelineNode, RENDER_ACTION_START));
@@ -326,10 +370,11 @@ private:
             drawObject->addComponent(new RenderNode(&pipelineNode, RENDER_ACTION_END));
             drawObject->addComponent(new RenderNode(&pipelineNode2, RENDER_ACTION_START));
             drawObject->addComponent(new VulkanCmdBindDescriptorSet(mainDescriptorSet->getComponent<VulkanDescriptorSet>(), 0));
-            drawObject->addComponent(new VulkanCmdBindDescriptorSet(secondDescriptorSet->getComponent<VulkanDescriptorSet>(), 0));
-            drawObject->addComponent(new Transform(glm::scale(glm::mat4(1.0f), glm::vec3(0.25f))));
+            /*drawObject->addComponent(new Transform(glm::scale(glm::mat4(1.0f), glm::vec3(0.25f))));
             bufferTransform.apply(drawObject);
-            drawObject->addComponent(new RenderNode(triangle)); 
+            drawObject->addComponent(new RenderNode(triangle)); */
+            drawObject->addComponent(new Transform(glm::translate(glm::mat4(1.0f), glm::vec3(0.25f,0.0,0.1))));
+            drawObject->addComponent(new RenderNode(sceneGraph));
             drawObject->addComponent(new RenderNode(&pipelineNode2, RENDER_ACTION_END));
             drawObject->addComponent(new RenderNode(&renderPassNode, RENDER_ACTION_END));
         /*EntityNode* drawObject2 = new EntityNode(&scene);
