@@ -13,6 +13,11 @@ set (HEADERFILES
 
 # --------------------- Dependencies -----------------------
 
+add_external(tuio 
+	GIT_REPOSITORY https://github.com/dtorban/TUIO11_CPP.git
+	LIB_NAME TUIO
+)
+
 add_definitions(-DGLM_FORCE_INLINE)
 
 include(${external_dir}/NanoGUI/NanoGUI.cmake)

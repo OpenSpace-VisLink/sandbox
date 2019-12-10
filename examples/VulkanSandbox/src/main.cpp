@@ -30,6 +30,9 @@
 #include <sandbox/base/Transform.h>
 #include <sandbox/input/interaction/MouseInteraction.h>
 #include <sandbox/input/glfw/GLFWInput.h>
+#include <sandbox/input/touch/MouseTouchEmulator.h>
+#include <sandbox/input/touch/TUIOTouchInput.h>
+#include <sandbox/input/interaction/TouchTranslate.h>
 
 using namespace sandbox;
 
@@ -190,24 +193,17 @@ private:
 
         window = glfwCreateWindow(WIDTH, HEIGHT, "Vulkan", nullptr, nullptr);
         glfwSetWindowUserPointer(window, this);
-        glfwSetFramebufferSizeCallback(window, framebufferResizeCallback);
         glfwSetWindowPos (window, 0, 0);
 
         window2 = glfwCreateWindow(WIDTH, HEIGHT, "Vulkan", nullptr, nullptr);
         glfwSetWindowUserPointer(window2, this);
-        glfwSetFramebufferSizeCallback(window2, framebufferResizeCallback);
         glfwSetWindowPos (window2, WIDTH+5, 0);
 
         window3 = glfwCreateWindow(WIDTH, HEIGHT, "Vulkan", nullptr, nullptr);
         glfwSetWindowUserPointer(window3, this);
-        glfwSetFramebufferSizeCallback(window3, framebufferResizeCallback);
         glfwSetWindowPos (window3, 2*(WIDTH+5), 0);
     }
 
-
-    static void framebufferResizeCallback(GLFWwindow* window, int width, int height) {
-        auto app = reinterpret_cast<HelloTriangleApplication*>(glfwGetWindowUserPointer(window));
-    }
 
     void initVulkan() {
 
@@ -284,7 +280,7 @@ private:
 
         UniformBufferIterator bufferTransform(transformUniformBuffer->getComponent<VulkanUniformBuffer>(), transformDescriptorSet->getComponent<VulkanDescriptorSet>(), 1);
 
-        sceneGraph = new EntityNode(&graphicsObjects);
+        sceneGraph = new EntityNode(&graphicsObjects); 
             //sceneGraph->addComponent(new Transform(glm::translate(glm::mat4(1.0f), glm::vec3(0.0f,0.0,1.0))));
             //sceneGraph->addComponent(new Transform(glm::translate(glm::mat4(1.0f), glm::vec3(1.0f,0.0,0.0))));
             sceneGraph->addComponent(new Transform(glm::rotate(glm::scale(glm::mat4(1.0f), glm::vec3(0.25f)), glm::radians(45.0f), glm::vec3(1.0f, 0.0f, 0.0f))));
@@ -302,9 +298,10 @@ private:
                     subTree2->addComponent(new Transform(glm::translate(glm::mat4(1.0f), glm::vec3(-1.0f,0.0,-1.0))));
                     subTree2->addComponent(new VulkanCmdBindDescriptorSet(secondDescriptorSet->getComponent<VulkanDescriptorSet>(), 0));
                     bufferTransform.apply(subTree2);
-                    subTree2->addComponent(new RenderNode(triangle));
+                    subTree2->addComponent(new RenderNode(triangle)); 
 
         scene.addComponent(new MouseInteraction(&input));
+        scene.addComponent(new TouchTranslate(&input));
         scene.addComponent(new RenderNode(&pipelineNode, RENDER_ACTION_START));
         EntityNode* drawObject = new EntityNode(&scene);
             drawObject->addComponent(new VulkanCmdBindDescriptorSet(mainDescriptorSet->getComponent<VulkanDescriptorSet>(), 0));
@@ -379,6 +376,7 @@ private:
         input.addComponent(new GLFWInput(window));
         input.addComponent(new GLFWInput(window2)); 
         input.addComponent(new GLFWInput(window3));
+        input.addComponent(new TUIOTouchInput());
         //input.addComponent(new GLFWMouseInput(window));
         input.update();
     }
