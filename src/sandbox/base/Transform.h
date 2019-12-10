@@ -42,7 +42,7 @@ public:
 		TransformState& state = TransformState::get(context);
 		if (state.calculateTransform) {
 			state.getTransform().push(state.getTransform().get()*transform);
-			std::cout << "begin Transform " << std::endl;
+			//std::cout << "begin Transform " << std::endl;
 		}
 	}
 
@@ -50,7 +50,7 @@ public:
 		TransformState& state = TransformState::get(context);
 		if (state.calculateTransform) {
 			TransformState::get(context).getTransform().pop();
-			std::cout << "end Transform " << std::endl;
+			//std::cout << "end Transform " << std::endl;
 		}
 	}
 

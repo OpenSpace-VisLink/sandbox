@@ -27,8 +27,9 @@
 #include <set>
 
 #include <sandbox/image/Image.h>
-
 #include <sandbox/base/Transform.h>
+#include <sandbox/input/interaction/MouseInteraction.h>
+#include <sandbox/input/glfw/GLFWInput.h>
 
 using namespace sandbox;
 
@@ -84,7 +85,6 @@ public:
     virtual void startRender(const GraphicsContext& context) {
         TransformState& state = TransformState::get(context);
         if (state.calculateTransform) {
-            std::cout << "here1" << std::endl;
             //transformBuffer->getItem(index)->transform;
             //state.getTransform().get();
             //std::cout << "here" << &(transformBuffer->getItem(2)->transform) << std::endl;
@@ -175,6 +175,7 @@ private:
     EntityNode graphicsObjects;
     EntityNode descriptorSetGroup;
     EntityNode scene;
+    EntityNode input;
     EntityNode images;
     EntityNode* updateSharedNode;
     EntityNode* sceneGraph;
@@ -303,6 +304,7 @@ private:
                     bufferTransform.apply(subTree2);
                     subTree2->addComponent(new RenderNode(triangle));
 
+        scene.addComponent(new MouseInteraction(&input));
         scene.addComponent(new RenderNode(&pipelineNode, RENDER_ACTION_START));
         EntityNode* drawObject = new EntityNode(&scene);
             drawObject->addComponent(new VulkanCmdBindDescriptorSet(mainDescriptorSet->getComponent<VulkanDescriptorSet>(), 0));
@@ -362,7 +364,7 @@ private:
         for (int f = 0; f < renderers.size(); f++) {  
             renderers[f]->render(VULKAN_RENDER_UPDATE);
             renderers[f]->render(VULKAN_RENDER_OBJECT);
-            renderers[f]->render(VULKAN_RENDER_COMMAND);
+            renderers[f]->render(VULKAN_RENDER_COMMAND); 
         }
 
         std::cout << deviceNode->getComponent<VulkanDevice>()->getProperties().limits.maxUniformBufferRange << std::endl;
@@ -373,6 +375,12 @@ private:
             dynamicAlignment = (dynamicAlignment + minUboAlignment - 1) & ~(minUboAlignment - 1);
         }
         std::cout << "dynamicAlignment " << dynamicAlignment << std::endl;*/
+
+        input.addComponent(new GLFWInput(window));
+        input.addComponent(new GLFWInput(window2)); 
+        input.addComponent(new GLFWInput(window3));
+        //input.addComponent(new GLFWMouseInput(window));
+        input.update();
     }
 
 
@@ -398,6 +406,8 @@ private:
         while (!glfwWindowShouldClose(window)) {
             static int frame = 0;
             glfwPollEvents();
+            input.update();
+            scene.update();
 
             // independent windows
             renderNode0->getComponent<VulkanFrameRenderer>()->drawFrame();
@@ -414,18 +424,18 @@ private:
                 sharedRenderer->render(VULKAN_RENDER_OBJECT);
             }
 
-            if (frame==0) {   
+            if (frame>=0) {   
                 static auto startTime = std::chrono::high_resolution_clock::now();
                 auto currentTime = std::chrono::high_resolution_clock::now();
                 float time = std::chrono::duration<float, std::chrono::seconds::period>(currentTime - startTime).count();
 
-                //sceneGraph->getComponents<Transform>()[1]->setTransform(glm::rotate(glm::mat4(1.0f), time * glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f)));
+                sceneGraph->getComponents<Transform>()[1]->setTransform(glm::rotate(glm::mat4(1.0f), time * glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f)));
                 //sceneGraph->getChildren()[0]->getComponent<Transform>()->setTransform(glm::scale(glm::mat4(1.0f), glm::vec3(2.0f*std::sin(time))));
 
                 static GraphicsContext updateContext;
                 TransformState::get(updateContext).calculateTransform = true;
-                static RenderNode sceneGraphUpdate(sceneGraph);
-                sceneGraphUpdate.render(updateContext);
+                static RenderNode sceneUpdate(&scene);
+                sceneUpdate.render(updateContext);
             }
 
 

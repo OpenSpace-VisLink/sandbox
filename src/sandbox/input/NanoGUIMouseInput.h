@@ -25,8 +25,6 @@ public:
 
 private:
 	T* app;
-
-
 };
 
 
