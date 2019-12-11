@@ -75,7 +75,7 @@ public:
 		poolSize.type = dynamic ? VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC : VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
 	}
 
-	virtual size_t getRange() const {getBufferSize();}
+	virtual size_t getRange() const {return getBufferSize();}
 
 protected:
 	virtual size_t getBufferSize() const = 0;

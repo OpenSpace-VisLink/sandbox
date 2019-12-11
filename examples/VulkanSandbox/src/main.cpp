@@ -31,9 +31,9 @@
 #include <sandbox/input/interaction/MouseInteraction.h>
 #include <sandbox/input/glfw/GLFWInput.h>
 #include <sandbox/input/touch/MouseTouchEmulator.h>
-#include <sandbox/input/touch/TUIOTouchInput.h>
-#include <sandbox/input/interaction/TouchTranslate.h>
-#include <sandbox/input/interaction/TouchScale.h>
+//#include <sandbox/input/touch/TUIOTouchInput.h>
+//#include <sandbox/input/interaction/TouchTranslate.h>
+//#include <sandbox/input/interaction/TouchScale.h>
 
 using namespace sandbox;
 
@@ -401,8 +401,8 @@ private:
                     subTree2->addComponent(new RenderNode(triangle)); 
 
         scene.addComponent(new MouseInteraction(&input));
-        scene.addComponent(new TouchTranslate(&input));
-        scene.addComponent(new TouchScale(&input));
+        //scene.addComponent(new TouchTranslate(&input));
+        //scene.addComponent(new TouchScale(&input));
         EntityNode* drawObject = new EntityNode(&scene);
             drawObject->addComponent(new RenderNode(&renderPassNode, RENDER_ACTION_START));
             drawObject->addComponent(new RenderNode(&pipelineNode, RENDER_ACTION_START));
@@ -501,7 +501,7 @@ private:
         input.addComponent(new GLFWInput(window));
         input.addComponent(new GLFWInput(window2)); 
         input.addComponent(new GLFWInput(window3));
-        input.addComponent(new TUIOTouchInput());
+        //input.addComponent(new TUIOTouchInput());
         //input.addComponent(new GLFWMouseInput(window));
         input.update();
     }

@@ -14,17 +14,17 @@ set (SOURCEFILES
   geometry/MeshLoader.cpp
   geometry/loaders/QuadLoader.cpp
   geometry/loaders/ShapeLoader.cpp
-  graphics/GraphicsContextRenderer.cpp
-  graphics/render/FrameBuffer.cpp
-  graphics/render/MeshRenderer.cpp
-  graphics/render/ShaderProgram.cpp
-  graphics/render/Texture.cpp
-  graphics/render/effects/Blend.cpp
-  graphics/render/effects/CullFace.cpp
-  graphics/render/shaders/BasicShader.cpp
-  graphics/render/shaders/MaterialShader.cpp
-  graphics/render/shaders/ShaderParameterTypes.cpp
-  graphics/view/Camera.cpp
+  #graphics/GraphicsContextRenderer.cpp
+  #graphics/render/FrameBuffer.cpp
+  #graphics/render/MeshRenderer.cpp
+  #graphics/render/ShaderProgram.cpp
+  #graphics/render/Texture.cpp
+  #graphics/render/effects/Blend.cpp
+  #graphics/render/effects/CullFace.cpp
+  #graphics/render/shaders/BasicShader.cpp
+  #graphics/render/shaders/MaterialShader.cpp
+  #graphics/render/shaders/ShaderParameterTypes.cpp
+  #graphics/view/Camera.cpp
   image/Image.cpp
   input/interaction/ArcBall.cpp
   input/interaction/MouseZoom.cpp
@@ -80,13 +80,23 @@ set (HEADERFILES
 
 # --------------------- Dependencies -----------------------
 
+find_package(Vulkan REQUIRED)
+message("vk Found" ${Vulkan_FOUND} ${Vulkan_INCLUDE_DIRS} ${Vulkan_LIBRARIES})
+include_directories(${Vulkan_INCLUDE_DIRS})
+set(DEP_LIBS ${DEP_LIBS} ${Vulkan_LIBRARIES})
+
 add_external(glm 
 	GIT_REPOSITORY https://github.com/g-truc/glm.git
+	HEADER_ONLY
 )
+#_GLFW_VULKAN_STATIC
 add_definitions(-DGLM_FORCE_INLINE)
+include_directories(${CMAKE_FRAMEWORK_DIR}/external/glm/src)
+
+include_directories(${CMAKE_FRAMEWORK_DIR}/external/glfw3/build/install/include)
 
 add_external(stb
-  GIT_REPOSITORY git@github.com:nothings/stb.git
+  GIT_REPOSITORY https://github.com/nothings/stb.git
   HEADER_ONLY
 )
 

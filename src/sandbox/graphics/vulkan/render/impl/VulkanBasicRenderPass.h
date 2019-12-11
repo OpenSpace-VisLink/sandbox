@@ -59,7 +59,10 @@ public:
 	        dependency.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
 	        dependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
 
-	        std::array<VkAttachmentDescription, 2> attachments = {colorAttachment, depthAttachment};
+			std::vector<VkAttachmentDescription> attachments;
+			attachments.resize(2);
+			attachments[0] = colorAttachment;
+			attachments[1] = depthAttachment;
 			VkRenderPassCreateInfo renderPassInfo = {};
 			renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
 			renderPassInfo.attachmentCount = static_cast<uint32_t>(attachments.size());
