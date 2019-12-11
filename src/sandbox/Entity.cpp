@@ -3,11 +3,15 @@
 
 namespace sandbox {
 
-EntityNode::EntityNode(Entity* parent) : parent(parent), version(0), lastUpdateVersion(-1) {
+EntityNode::EntityNode(Entity* parent, const std::string& name) : parent(parent), name(name), version(0), lastUpdateVersion(-1) {
 	parent->addChild(this);
 }
 
-EntityNode::EntityNode() : parent(NULL), version(0), lastUpdateVersion(-1) {
+EntityNode::EntityNode(Entity* parent) : parent(parent), name(""), version(0), lastUpdateVersion(-1) {
+	parent->addChild(this);
+}
+
+EntityNode::EntityNode() : parent(NULL), name(""), version(0), lastUpdateVersion(-1) {
 
 }
 

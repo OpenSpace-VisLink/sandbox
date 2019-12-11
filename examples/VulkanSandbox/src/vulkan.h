@@ -84,6 +84,143 @@ private:
 	int index;
 };
 
+/*class VulkanEnableCommand : public RenderContextStateModifier {
+public:
+	void startRender(Entity* entity, const GraphicsContext& context) const {
+		VulkanDeviceState& state = VulkanDeviceState::get(context);
+		if (enableCmd) {
+			state.getRenderMode().push(static_cast<VulkanRenderMode>(state.getRenderMode().get() & ~VULKAN_RENDER_COMMAND));
+		}
+		else {
+			state.getRenderMode().push(static_cast<VulkanRenderMode>(state.getRenderMode().get() & VULKAN_RENDER_COMMAND));
+		}
+	}
+
+	void finishRender(Entity* entity, const GraphicsContext& context) const {
+		VulkanDeviceState& state = VulkanDeviceState::get(context);
+		state.getRenderMode().pop();
+	}
+
+	static const RenderContextStateModifier& enable() {
+		static RenderContextStateModifier modifier(true);
+		return modifier;
+	}
+
+	static const RenderContextStateModifier& disable() {
+		static RenderContextStateModifier modifier(false);
+		return modifier;
+	}
+
+private:
+	VulkanEnableCommand(bool enableCmd) : enableCmd(enableCmd) {}
+	bool enableCmd;
+};*/
+
+class RenderAt : public RenderContextStateModifier {
+public:
+	RenderAt(Entity* entity) : entity(entity) {}
+
+	virtual bool startRender(Entity* entity, const GraphicsContext& context, RenderContextStateModifier::State*& modifyState) const {
+		if (!modifyState) {
+			modifyState = new RenderContextStateModifier::State();
+			VulkanDeviceState& state = VulkanDeviceState::get(context);
+			state.getRenderMode().push(static_cast<VulkanRenderMode>(state.getRenderMode().get() & ~VULKAN_RENDER_COMMAND));
+			//std::cout << this->entity->getName() << " " << entity->getName() << std::endl;
+			return true;
+		}
+
+		if (modifyState && entity == this->entity) {
+			//std::cout << this->entity->getName() << " " << entity->getName() << std::endl;
+			VulkanDeviceState& state = VulkanDeviceState::get(context);
+			//state.getRenderMode().push(static_cast<VulkanRenderMode>(state.getRenderMode().get() | VULKAN_RENDER_COMMAND));
+			state.getRenderMode().pop();
+			return true;
+		}
+
+		return false;
+		/*if (!modifyState && path.size() > 0 && entity == path[0]) {
+			modifyState = new PathState();
+			VulkanDeviceState& state = VulkanDeviceState::get(context);
+			state.getRenderMode().push(static_cast<VulkanRenderMode>(state.getRenderMode().get() & ~VULKAN_RENDER_COMMAND));
+			return true;
+		
+		if (modifyState && entity == path[state().pathIndex] && state.pathIndex() == path.size() - 1) {
+			state.getRenderMode().push(static_cast<VulkanRenderMode>(state.getRenderMode().get() & ~VULKAN_RENDER_COMMAND));
+			return true;
+		}
+		else if (modifyState && entity == path[state().pathIndex]) {
+			state().pathIndex++;
+			return true;
+		}
+
+		return false;*/
+	}
+
+	virtual void finishRender(Entity* entity, const GraphicsContext& context, RenderContextStateModifier::State*& modifyState) const {
+		if (modifyState && entity != this->entity) {
+			delete modifyState;
+			modifyState == NULL;
+			VulkanDeviceState& state = VulkanDeviceState::get(context);
+			state.getRenderMode().pop();
+		}
+
+		if (modifyState && entity == this->entity) {
+			VulkanDeviceState& state = VulkanDeviceState::get(context);
+			state.getRenderMode().push(static_cast<VulkanRenderMode>(state.getRenderMode().get() & ~VULKAN_RENDER_COMMAND));
+			//state.getRenderMode().pop();
+		}
+	}
+
+private:
+	Entity* entity;
+};
+
+
+class IgnoreNode : public RenderContextStateModifier {
+public:
+	IgnoreNode(Entity* entity) : entity(entity) {}
+
+	virtual bool startRender(Entity* entity, const GraphicsContext& context, RenderContextStateModifier::State*& modifyState) const {
+		//std::cout << this->entity->getName() << std::endl;
+		if (entity == this->entity) {
+			VulkanDeviceState& state = VulkanDeviceState::get(context);
+			state.getRenderMode().push(static_cast<VulkanRenderMode>(state.getRenderMode().get() & ~VULKAN_RENDER_COMMAND));
+			//std::cout << "Disable command" << std::endl;
+			return true;
+		}
+
+		return false;
+		/*if (!modifyState && path.size() > 0 && entity == path[0]) {
+			modifyState = new PathState();
+			VulkanDeviceState& state = VulkanDeviceState::get(context);
+			state.getRenderMode().push(static_cast<VulkanRenderMode>(state.getRenderMode().get() & ~VULKAN_RENDER_COMMAND));
+			return true;
+		
+		if (modifyState && entity == path[state().pathIndex] && state.pathIndex() == path.size() - 1) {
+			state.getRenderMode().push(static_cast<VulkanRenderMode>(state.getRenderMode().get() & ~VULKAN_RENDER_COMMAND));
+			return true;
+		}
+		else if (modifyState && entity == path[state().pathIndex]) {
+			state().pathIndex++;
+			return true;
+		}
+
+		return false;*/
+	}
+
+	virtual void finishRender(Entity* entity, const GraphicsContext& context, RenderContextStateModifier::State*& modifyState) const {
+		if (entity == this->entity) {
+			VulkanDeviceState& state = VulkanDeviceState::get(context);
+			//std::cout << "enable command" << std::endl;
+			state.getRenderMode().pop();
+		}
+	}
+
+private:
+	Entity* entity;
+};
+
+
 
 }
 

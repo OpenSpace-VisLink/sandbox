@@ -77,6 +77,35 @@ protected:
     }
 };
 
+class MainUniformBuffer2 : public VulkanUniformBufferValue<UniformBufferObject> {
+protected:
+    void updateBuffer(const GraphicsContext& context, VulkanDeviceState& state, VulkanBuffer* buffer) {
+        static auto startTime = std::chrono::high_resolution_clock::now();
+
+        auto currentTime = std::chrono::high_resolution_clock::now();
+        float time = std::chrono::duration<float, std::chrono::seconds::period>(currentTime - startTime).count();
+        //UniformBufferObject ubo = {};
+        UniformBufferObject ubo = {};
+        ubo.model = glm::rotate(glm::mat4(1.0f), time * glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+        if (VulkanSwapChainState::get(context).getSwapChain()->getName() == "window 2") {
+            ubo.model = glm::rotate(glm::mat4(1.0f), time * glm::radians(-90.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+        }
+        if (VulkanSwapChainState::get(context).getSwapChain()->getName() == "window 3") {
+            ubo.model = glm::rotate(glm::mat4(1.0f), time * glm::radians(90.0f), glm::vec3(1.0f, 0.0f, 0.0f));
+        }
+        //ubo.view = glm::lookAt(glm::vec3(2.0f, 2.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+        ubo.view = glm::lookAt(glm::vec3(0.0f, 0.0f, 1.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+        ubo.proj = glm::perspective(glm::radians(45.0f), (float) state.getExtent().width / (float) state.getExtent().height, 0.1f, 10.0f);
+        ubo.model = glm::translate(glm::mat4(1.0f), glm::vec3(0.25,0,0.0));
+        //ubo.model = glm::rotate(glm::mat4(1.0f), glm::radians(90.0f), glm::vec3(1.0f, 0.0f, 0.0f));
+        //std::cout << VulkanSwapChainState::get(context).getSwapChain()->getName() << " " << state.getExtent().width << " " << (float) state.getExtent().height << std::endl;
+        ubo.proj[2][2] *= 1;
+        //VulkanUniformBufferValue<UniformBufferObject>::updateBuffer(context, state, buffer);
+
+        buffer->update(&ubo, sizeof(ubo));
+    }
+};
+
 class ObjectState : public StateContainerItem {
 public:
     ObjectState() { objectIndex = 0; }
@@ -265,6 +294,8 @@ private:
 
         EntityNode* mainUniformBuffer = new EntityNode(&shaderObjects);
             mainUniformBuffer->addComponent(new MainUniformBuffer());
+        EntityNode* mainUniformBuffer2 = new EntityNode(&shaderObjects);
+            mainUniformBuffer2->addComponent(new MainUniformBuffer2());
         EntityNode* samplerNode = new EntityNode(&shaderObjects);
             samplerNode->addComponent(new VulkanSampler());
         EntityNode* transformUniformBuffer = new EntityNode(&shaderObjects);
@@ -277,6 +308,15 @@ private:
             mainDescriptorSet->addComponent(new VulkanDescriptor(mainUniformBuffer->getComponent<VulkanUniformBuffer>(), VK_SHADER_STAGE_VERTEX_BIT));
             mainDescriptorSet->addComponent(new VulkanDescriptor(new VulkanImageViewDecorator(samplerNode->getComponent<VulkanSampler>(), mainImage->getComponent<VulkanImageView>()), VK_SHADER_STAGE_FRAGMENT_BIT));
            //mainDescriptorSet->addComponent(new VulkanDescriptor(transformUniformBuffer->getComponent<VulkanUniformBuffer>(), VK_SHADER_STAGE_VERTEX_BIT));
+
+        EntityNode* mainDescriptorSet2 = new EntityNode(&descriptorSetGroup);
+            mainDescriptorSet2->addComponent(new VulkanDescriptorSetLayout()); 
+            mainDescriptorSet2->addComponent(new VulkanSwapChainDescriptorPool());
+            mainDescriptorSet2->addComponent(new VulkanDescriptorSet());
+            mainDescriptorSet2->addComponent(new VulkanDescriptor(mainUniformBuffer2->getComponent<VulkanUniformBuffer>(), VK_SHADER_STAGE_VERTEX_BIT));
+            mainDescriptorSet2->addComponent(new VulkanDescriptor(new VulkanImageViewDecorator(samplerNode->getComponent<VulkanSampler>(), mainImage->getComponent<VulkanImageView>()), VK_SHADER_STAGE_FRAGMENT_BIT));
+           //mainDescriptorSet->addComponent(new VulkanDescriptor(transformUniformBuffer->getComponent<VulkanUniformBuffer>(), VK_SHADER_STAGE_VERTEX_BIT));
+
 
         EntityNode* secondDescriptorSet = new EntityNode(&descriptorSetGroup);
             secondDescriptorSet->addComponent(new VulkanDescriptorSetLayout());
@@ -342,38 +382,39 @@ private:
 
         UniformBufferIterator bufferTransform(transformUniformBuffer->getComponent<VulkanUniformBuffer>(), transformDescriptorSet->getComponent<VulkanDescriptorSet>(), 1);
 
-        sceneGraph = new EntityNode(&graphicsObjects); 
+        sceneGraph = new EntityNode(&graphicsObjects, "sceneGraph"); 
+            sceneGraph->addComponent(new TransformRoot());
             sceneGraph->addComponent(new Transform(glm::rotate(glm::scale(glm::mat4(1.0f), glm::vec3(0.25f)), glm::radians(45.0f), glm::vec3(1.0f, 0.0f, 0.0f))));
             sceneGraph->addComponent(new Transform());
             bufferTransform.apply(sceneGraph);
             sceneGraph->addComponent(new RenderNode(quad));
-            EntityNode* subTree = new EntityNode(sceneGraph);
+            EntityNode* subTree = new EntityNode(sceneGraph, "subTree");
                 subTree->addComponent(new Transform());
                 subTree->addComponent(new Transform(glm::translate(glm::mat4(1.0f), glm::vec3(1.0f,0.0,0.0))));
                 bufferTransform.apply(subTree);
                 subTree->addComponent(new RenderNode(triangle));
-                EntityNode* subTree2 = new EntityNode(subTree);
+                EntityNode* subTree2 = new EntityNode(subTree, "subTree2");
                     subTree2->addComponent(new Transform(glm::translate(glm::mat4(1.0f), glm::vec3(-1.0f,0.0,-1.0))));
-                    subTree2->addComponent(new VulkanCmdBindDescriptorSet(secondDescriptorSet->getComponent<VulkanDescriptorSet>(), 0));
+                    std::cout << subTree2->getName() << std::endl;
+                    //subTree2->addComponent(new VulkanCmdBindDescriptorSet(secondDescriptorSet->getComponent<VulkanDescriptorSet>(), 0));
                     bufferTransform.apply(subTree2);
                     subTree2->addComponent(new RenderNode(triangle)); 
 
         scene.addComponent(new MouseInteraction(&input));
         scene.addComponent(new TouchTranslate(&input));
         scene.addComponent(new TouchScale(&input));
-        scene.addComponent(new TransformRoot());
         EntityNode* drawObject = new EntityNode(&scene);
             drawObject->addComponent(new RenderNode(&renderPassNode, RENDER_ACTION_START));
             drawObject->addComponent(new RenderNode(&pipelineNode, RENDER_ACTION_START));
             drawObject->addComponent(new VulkanCmdBindDescriptorSet(mainDescriptorSet->getComponent<VulkanDescriptorSet>(), 0));
-            drawObject->addComponent(new RenderNode(sceneGraph));
+            drawObject->addComponent(new RenderNode(sceneGraph, RENDER_ACTION_RENDER, new IgnoreNode(subTree2)));
+            drawObject->addComponent(new VulkanCmdBindDescriptorSet(secondDescriptorSet->getComponent<VulkanDescriptorSet>(), 0));
+            drawObject->addComponent(new RenderNode(sceneGraph, RENDER_ACTION_RENDER, new RenderAt(subTree2)));
+            //drawObject->addComponent(new RenderNode(sceneGraph));
             drawObject->addComponent(new RenderNode(&pipelineNode, RENDER_ACTION_END));
             drawObject->addComponent(new RenderNode(&pipelineNode2, RENDER_ACTION_START));
-            drawObject->addComponent(new VulkanCmdBindDescriptorSet(mainDescriptorSet->getComponent<VulkanDescriptorSet>(), 0));
-            /*drawObject->addComponent(new Transform(glm::scale(glm::mat4(1.0f), glm::vec3(0.25f))));
-            bufferTransform.apply(drawObject);
-            drawObject->addComponent(new RenderNode(triangle)); */
-            drawObject->addComponent(new Transform(glm::translate(glm::mat4(1.0f), glm::vec3(0.25f,0.0,0.1))));
+            drawObject->addComponent(new VulkanCmdBindDescriptorSet(mainDescriptorSet2->getComponent<VulkanDescriptorSet>(), 0));
+            //drawObject->addComponent(new Transform(glm::translate(glm::mat4(1.0f), glm::vec3(0.25f,0.0,0.1))));
             drawObject->addComponent(new RenderNode(sceneGraph));
             drawObject->addComponent(new RenderNode(&pipelineNode2, RENDER_ACTION_END));
             drawObject->addComponent(new RenderNode(&renderPassNode, RENDER_ACTION_END));

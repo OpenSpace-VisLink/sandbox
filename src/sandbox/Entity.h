@@ -26,6 +26,7 @@ public:
 	virtual void update() = 0;
 	virtual void incrementVersion() = 0;
 	virtual int getVersion() = 0;
+	virtual const std::string& getName() = 0;
 
 	template<typename T>
 	T* getComponent() const {
@@ -92,6 +93,7 @@ class EntityNode : public Entity {
 public:
 	EntityNode();
 	EntityNode(Entity* parent);
+	EntityNode(Entity* parent, const std::string& name);
 	virtual ~EntityNode();
 
 	void addChild(Entity* entity, bool updateVersion = true);
@@ -108,6 +110,7 @@ public:
 		version++; 
 	}
 	int getVersion() { return version; }
+	const std::string& getName() { return name; }
 
 	template<typename T>
 	T* getComponent() const {
@@ -149,6 +152,7 @@ private:
 	Entity* parent;
 	int version;
 	int lastUpdateVersion;
+	std::string name;
 };
 
 class EntityReference : public Entity {
@@ -166,6 +170,7 @@ public:
 	void update() { return entity->update(); }
 	void incrementVersion() { entity->incrementVersion(); }
 	int getVersion() { return entity->getVersion(); }
+	const std::string& getName() { return entity->getName(); }
 protected:
 	Component* getComponentByType(const std::type_info& type) const { return entity->getComponentByType(type); }
 	const std::vector<Component*>& getComponentsByType(const std::type_info& type) const { return entity->getComponentsByType(type); }

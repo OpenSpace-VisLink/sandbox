@@ -13,6 +13,7 @@ public:
 
 	virtual void startRender(const GraphicsContext& context) {}
 	virtual void finishRender(const GraphicsContext& context) {}
+	virtual bool isNode() { return false; }
 };
 
 }
