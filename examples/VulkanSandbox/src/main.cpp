@@ -70,6 +70,9 @@ protected:
         ubo.view = glm::lookAt(glm::vec3(0.0f, 0.0f, 1.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
         ubo.proj = glm::perspective(glm::radians(45.0f), (float) state.getExtent().width / (float) state.getExtent().height, 0.1f, 100.0f);
         ubo.model = glm::mat4(1.0f);
+        if (VulkanSwapChainState::get(context).getSwapChain()->getName() == "window 2") {
+            ubo.model = glm::translate(ubo.model, glm::vec3(0.25,0,0.0));
+        }
         //ubo.model = glm::rotate(glm::mat4(1.0f), glm::radians(90.0f), glm::vec3(1.0f, 0.0f, 0.0f));
         //std::cout << VulkanSwapChainState::get(context).getSwapChain()->getName() << " " << state.getExtent().width << " " << (float) state.getExtent().height << std::endl;
         ubo.proj[1][1] *= -1;
@@ -99,6 +102,9 @@ protected:
         ubo.view = glm::lookAt(glm::vec3(0.0f, 0.0f, 1.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
         ubo.proj = glm::perspective(glm::radians(45.0f), (float) state.getExtent().width / (float) state.getExtent().height, 0.1f, 100.0f);
         ubo.model = glm::translate(glm::mat4(1.0f), glm::vec3(0.25,0,0.0));
+        if (VulkanSwapChainState::get(context).getSwapChain()->getName() == "window 2") {
+            ubo.model = glm::translate(ubo.model, glm::vec3(0.25,0,0.0));
+        }
         //ubo.model = glm::rotate(glm::mat4(1.0f), glm::radians(90.0f), glm::vec3(1.0f, 0.0f, 0.0f));
         //std::cout << VulkanSwapChainState::get(context).getSwapChain()->getName() << " " << state.getExtent().width << " " << (float) state.getExtent().height << std::endl;
         ubo.proj[1][1] *= -1;
@@ -362,6 +368,7 @@ private:
             Mesh* mesh = new Mesh();
             cylindar->addComponent(mesh);
             cylindar->addComponent(new ShapeLoader(SHAPE_CYLINDAR, 20));
+            //cylindar->addComponent(new ShapeLoader(SHAPE_CIRCLE, 20));
             //cylindar->addComponent(new ShapeLoader(SHAPE_QUAD));
             cylindar->update();
             VertexArray<glm::vec3>* cylindar_vertexArray = new VertexArray<glm::vec3>(0);
