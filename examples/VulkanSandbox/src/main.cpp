@@ -27,6 +27,8 @@
 #include <set>
 
 #include <sandbox/image/Image.h>
+#include <sandbox/geometry/Mesh.h>
+#include <sandbox/geometry/loaders/ShapeLoader.h>
 #include <sandbox/base/Transform.h>
 #include <sandbox/input/interaction/MouseInteraction.h>
 #include <sandbox/input/glfw/GLFWInput.h>
@@ -66,11 +68,11 @@ protected:
         }
         //ubo.view = glm::lookAt(glm::vec3(2.0f, 2.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
         ubo.view = glm::lookAt(glm::vec3(0.0f, 0.0f, 1.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
-        ubo.proj = glm::perspective(glm::radians(45.0f), (float) state.getExtent().width / (float) state.getExtent().height, 0.1f, 10.0f);
+        ubo.proj = glm::perspective(glm::radians(45.0f), (float) state.getExtent().width / (float) state.getExtent().height, 0.1f, 100.0f);
         ubo.model = glm::mat4(1.0f);
         //ubo.model = glm::rotate(glm::mat4(1.0f), glm::radians(90.0f), glm::vec3(1.0f, 0.0f, 0.0f));
         //std::cout << VulkanSwapChainState::get(context).getSwapChain()->getName() << " " << state.getExtent().width << " " << (float) state.getExtent().height << std::endl;
-        ubo.proj[2][2] *= 1;
+        ubo.proj[1][1] *= -1;
         //VulkanUniformBufferValue<UniformBufferObject>::updateBuffer(context, state, buffer);
 
         buffer->update(&ubo, sizeof(ubo));
@@ -95,11 +97,11 @@ protected:
         }
         //ubo.view = glm::lookAt(glm::vec3(2.0f, 2.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
         ubo.view = glm::lookAt(glm::vec3(0.0f, 0.0f, 1.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
-        ubo.proj = glm::perspective(glm::radians(45.0f), (float) state.getExtent().width / (float) state.getExtent().height, 0.1f, 10.0f);
+        ubo.proj = glm::perspective(glm::radians(45.0f), (float) state.getExtent().width / (float) state.getExtent().height, 0.1f, 100.0f);
         ubo.model = glm::translate(glm::mat4(1.0f), glm::vec3(0.25,0,0.0));
         //ubo.model = glm::rotate(glm::mat4(1.0f), glm::radians(90.0f), glm::vec3(1.0f, 0.0f, 0.0f));
         //std::cout << VulkanSwapChainState::get(context).getSwapChain()->getName() << " " << state.getExtent().width << " " << (float) state.getExtent().height << std::endl;
-        ubo.proj[2][2] *= 1;
+        ubo.proj[1][1] *= -1;
         //VulkanUniformBufferValue<UniformBufferObject>::updateBuffer(context, state, buffer);
 
         buffer->update(&ubo, sizeof(ubo));
@@ -212,16 +214,17 @@ const std::vector<Vertex> vertices = {
 };
 
 const std::vector<uint16_t> indices = {
-    0, 2, 1, 2, 0, 3
+    0, 1, 2, 2, 3, 0
 };
 
 const std::vector<Vertex> tri_vertices = {
     {{-0.5f, -0.5f}, {1.0f, 0.0f, 0.0f}, {1.0f, 0.0f}},
     {{0.5f, -0.5f}, {0.0f, 1.0f, 0.0f}, {0.0f, 0.0f}},
-    {{0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}, {0.0f, 1.0f}}
+    {{0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}, {0.0f, 1.0f}},
+    {{-1.0f, 1.0f}, {1.0f, 1.0f, 1.0f}, {1.0f, 1.0f}}
 };
 const std::vector<uint16_t> tri_indices = {
-    0, 2, 1
+    0, 1, 2
 };
 
 
@@ -249,6 +252,7 @@ private:
     EntityNode renderPassNode;
     EntityNode pipelineNode;
     EntityNode pipelineNode2;
+    EntityNode pipelineNode3;
     EntityNode shaderObjects;
     EntityNode graphicsObjects;
     EntityNode descriptorSetGroup;
@@ -337,17 +341,42 @@ private:
         EntityNode* quad = new EntityNode(&graphicsObjects);
             VertexArray<Vertex>* vertexArray = new VertexArray<Vertex>();
             vertexArray->value = vertices;
-            IndexArray* indexArray = new IndexArray();
+            IndexArray16* indexArray = new IndexArray16();
             indexArray->value = indices;
+            quad->addComponent(vertexArray);
+            vertexArray = new VertexArray<Vertex>(1);
+            vertexArray->value = tri_vertices;
             quad->addComponent(vertexArray);
             quad->addComponent(indexArray);
         EntityNode* triangle = new EntityNode(&graphicsObjects);
             VertexArray<Vertex>* tri_vertexArray = new VertexArray<Vertex>();
-            IndexArray* tri_indexArray = new IndexArray();
             tri_vertexArray->value = tri_vertices;
+            IndexArray16* tri_indexArray = new IndexArray16();
             tri_indexArray->value = tri_indices;
             triangle->addComponent(tri_vertexArray);
+            tri_vertexArray = new VertexArray<Vertex>(1);
+            tri_vertexArray->value = tri_vertices;
+            triangle->addComponent(tri_vertexArray);
             triangle->addComponent(tri_indexArray);
+        EntityNode* cylindar = new EntityNode(&graphicsObjects);
+            Mesh* mesh = new Mesh();
+            cylindar->addComponent(mesh);
+            cylindar->addComponent(new ShapeLoader(SHAPE_CYLINDAR, 20));
+            //cylindar->addComponent(new ShapeLoader(SHAPE_QUAD));
+            cylindar->update();
+            VertexArray<glm::vec3>* cylindar_vertexArray = new VertexArray<glm::vec3>(0);
+            cylindar_vertexArray->value = mesh->getNodes();
+            cylindar->addComponent(cylindar_vertexArray);
+            cylindar_vertexArray = new VertexArray<glm::vec3>(1);
+            cylindar_vertexArray->value = mesh->getNormals();
+            cylindar->addComponent(cylindar_vertexArray);
+            VertexArray<glm::vec2>* cylindar_coords = new VertexArray<glm::vec2>(2);
+            cylindar_coords->value = mesh->getCoords();
+            cylindar->addComponent(cylindar_coords);
+            IndexArray* cylindar_indexArray = new IndexArray();
+            cylindar_indexArray->value = mesh->getIndices();
+            cylindar->addComponent(cylindar_indexArray);
+
 
 
         pipelineNode.addComponent(new VulkanShaderModule("examples/VulkanSandbox/src/shaders/vert.spv", VK_SHADER_STAGE_VERTEX_BIT));
@@ -357,6 +386,11 @@ private:
         layouts.push_back(transformDescriptorSet->getComponent<VulkanDescriptorSetLayout>());
         pipelineNode.addComponent(new VulkanGraphicsPipeline(layouts));
         VulkanVertexInput* vertexInput = new VulkanVertexInput(sizeof(Vertex));
+        vertexInput->addAttribute(VK_FORMAT_R32G32_SFLOAT, offsetof(Vertex, pos));
+        vertexInput->addAttribute(VK_FORMAT_R32G32B32_SFLOAT, offsetof(Vertex, color));
+        vertexInput->addAttribute(VK_FORMAT_R32G32_SFLOAT, offsetof(Vertex, texCoord));
+        pipelineNode.addComponent(vertexInput);
+        vertexInput = new VulkanVertexInput(sizeof(Vertex),3);
         vertexInput->addAttribute(VK_FORMAT_R32G32_SFLOAT, offsetof(Vertex, pos));
         vertexInput->addAttribute(VK_FORMAT_R32G32B32_SFLOAT, offsetof(Vertex, color));
         vertexInput->addAttribute(VK_FORMAT_R32G32_SFLOAT, offsetof(Vertex, texCoord));
@@ -376,15 +410,31 @@ private:
         vertexInput2->addAttribute(VK_FORMAT_R32G32_SFLOAT, offsetof(Vertex, pos));
         vertexInput2->addAttribute(VK_FORMAT_R32G32B32_SFLOAT, offsetof(Vertex, color));
         vertexInput2->addAttribute(VK_FORMAT_R32G32_SFLOAT, offsetof(Vertex, texCoord));
-        pipelineNode2.addComponent(vertexInput);
+        pipelineNode2.addComponent(vertexInput2);
 
+
+        pipelineNode3.addComponent(new VulkanShaderModule("examples/VulkanSandbox/src/shaders/vert2.spv", VK_SHADER_STAGE_VERTEX_BIT));
+        pipelineNode3.addComponent(new VulkanShaderModule("examples/VulkanSandbox/src/shaders/frag3.spv", VK_SHADER_STAGE_FRAGMENT_BIT));
+        std::vector<VulkanDescriptorSetLayout*> layouts3;
+        layouts3.push_back(mainDescriptorSet->getComponent<VulkanDescriptorSetLayout>());
+        layouts3.push_back(transformDescriptorSet->getComponent<VulkanDescriptorSetLayout>());
+        pipelineNode3.addComponent(new VulkanGraphicsPipeline(layouts));
+        VulkanVertexInput* vertexInput3 = new VulkanVertexInput(sizeof(glm::vec3), 0);
+        vertexInput3->addAttribute(VK_FORMAT_R32G32B32_SFLOAT, 0);
+        pipelineNode3.addComponent(vertexInput3);
+        vertexInput3 = new VulkanVertexInput(sizeof(glm::vec3), 1);
+        vertexInput3->addAttribute(VK_FORMAT_R32G32B32_SFLOAT, 0);
+        pipelineNode3.addComponent(vertexInput3);
+        vertexInput3 = new VulkanVertexInput(sizeof(glm::vec2), 2);
+        vertexInput3->addAttribute(VK_FORMAT_R32G32_SFLOAT, 0);
+        pipelineNode3.addComponent(vertexInput3);
 
 
         UniformBufferIterator bufferTransform(transformUniformBuffer->getComponent<VulkanUniformBuffer>(), transformDescriptorSet->getComponent<VulkanDescriptorSet>(), 1);
 
         sceneGraph = new EntityNode(&graphicsObjects, "sceneGraph"); 
             sceneGraph->addComponent(new TransformRoot());
-            sceneGraph->addComponent(new Transform(glm::rotate(glm::scale(glm::mat4(1.0f), glm::vec3(0.25f)), glm::radians(45.0f), glm::vec3(1.0f, 0.0f, 0.0f))));
+            sceneGraph->addComponent(new Transform(glm::rotate(glm::scale(glm::mat4(1.0f), glm::vec3(0.25f)), glm::radians(-45.0f), glm::vec3(1.0f, 0.0f, 0.0f))));
             sceneGraph->addComponent(new Transform());
             bufferTransform.apply(sceneGraph);
             sceneGraph->addComponent(new RenderNode(quad));
@@ -395,10 +445,14 @@ private:
                 subTree->addComponent(new RenderNode(triangle));
                 EntityNode* subTree2 = new EntityNode(subTree, "subTree2");
                     subTree2->addComponent(new Transform(glm::translate(glm::mat4(1.0f), glm::vec3(-1.0f,0.0,-1.0))));
-                    std::cout << subTree2->getName() << std::endl;
-                    //subTree2->addComponent(new VulkanCmdBindDescriptorSet(secondDescriptorSet->getComponent<VulkanDescriptorSet>(), 0));
-                    bufferTransform.apply(subTree2);
-                    subTree2->addComponent(new RenderNode(triangle)); 
+                    EntityNode* subTree3 = new EntityNode(subTree2, "subTree3");
+                        //subTree3->addComponent(new VulkanCmdBindDescriptorSet(secondDescriptorSet->getComponent<VulkanDescriptorSet>(), 0));
+                        bufferTransform.apply(subTree3);
+                        subTree3->addComponent(new RenderNode(triangle)); 
+                    EntityNode* cylindarNode = new EntityNode(subTree2, "cylindar");
+                        cylindarNode->addComponent(new Transform(glm::translate(glm::mat4(1.0f), glm::vec3(0.0,1.0f,-0.1))));
+                        bufferTransform.apply(cylindarNode);
+                        cylindarNode->addComponent(new RenderNode(cylindar));
 
         scene.addComponent(new MouseInteraction(&input));
         scene.addComponent(new TouchTranslate(&input));
@@ -409,14 +463,21 @@ private:
             drawObject->addComponent(new VulkanCmdBindDescriptorSet(mainDescriptorSet->getComponent<VulkanDescriptorSet>(), 0));
             drawObject->addComponent(new RenderNode(sceneGraph, RENDER_ACTION_RENDER, new IgnoreNode(subTree2)));
             drawObject->addComponent(new VulkanCmdBindDescriptorSet(secondDescriptorSet->getComponent<VulkanDescriptorSet>(), 0));
-            drawObject->addComponent(new RenderNode(sceneGraph, RENDER_ACTION_RENDER, new RenderAt(subTree2)));
+            drawObject->addComponent(new RenderNode(sceneGraph, RENDER_ACTION_RENDER, new RenderAt(subTree3)));
             //drawObject->addComponent(new RenderNode(sceneGraph));
             drawObject->addComponent(new RenderNode(&pipelineNode, RENDER_ACTION_END));
             drawObject->addComponent(new RenderNode(&pipelineNode2, RENDER_ACTION_START));
             drawObject->addComponent(new VulkanCmdBindDescriptorSet(mainDescriptorSet2->getComponent<VulkanDescriptorSet>(), 0));
             //drawObject->addComponent(new Transform(glm::translate(glm::mat4(1.0f), glm::vec3(0.25f,0.0,0.1))));
-            drawObject->addComponent(new RenderNode(sceneGraph));
+            //drawObject->addComponent(new RenderNode(sceneGraph));
+            drawObject->addComponent(new RenderNode(sceneGraph, RENDER_ACTION_RENDER, new IgnoreNode(cylindarNode)));
             drawObject->addComponent(new RenderNode(&pipelineNode2, RENDER_ACTION_END));
+
+            drawObject->addComponent(new RenderNode(&pipelineNode3, RENDER_ACTION_START));
+            drawObject->addComponent(new VulkanCmdBindDescriptorSet(mainDescriptorSet->getComponent<VulkanDescriptorSet>(), 0));
+            drawObject->addComponent(new RenderNode(sceneGraph, RENDER_ACTION_RENDER, new RenderAt(cylindarNode)));
+            drawObject->addComponent(new RenderNode(&pipelineNode3, RENDER_ACTION_END));
+
             drawObject->addComponent(new RenderNode(&renderPassNode, RENDER_ACTION_END));
         /*EntityNode* drawObject2 = new EntityNode(&scene);
             drawObject2->addComponent(new Transform(glm::translate(glm::mat4(1.0f), glm::vec3(0.7f,0.0,0.0))));
@@ -459,6 +520,7 @@ private:
                     renderSpecific->addComponent(new RenderNode(&renderPassNode, RENDER_ACTION_START));
                     renderSpecific->addComponent(new RenderNode(&pipelineNode));//, UPDATE_ONLY));
                     renderSpecific->addComponent(new RenderNode(&pipelineNode2));//, UPDATE_ONLY));
+                    renderSpecific->addComponent(new RenderNode(&pipelineNode3));//, UPDATE_ONLY));
                     renderSpecific->addComponent(new RenderNode(&renderPassNode, RENDER_ACTION_END));
                     //renderSpecific->addComponent(new RenderNode(&pipelineNode2));//, UPDATE_ONLY));
             EntityNode* windowNodes = new EntityNode(deviceNode);
@@ -518,6 +580,7 @@ private:
                 updateNode->addComponent(new RenderNode(&renderPassNode, RENDER_ACTION_START));
                 updateNode->addComponent(new RenderNode(&pipelineNode));//, UPDATE_ONLY));
                 updateNode->addComponent(new RenderNode(&pipelineNode2));//, UPDATE_ONLY));
+                updateNode->addComponent(new RenderNode(&pipelineNode3));//, UPDATE_ONLY));
                 updateNode->addComponent(new RenderNode(&renderPassNode, RENDER_ACTION_END));
             EntityNode* commandNode = new EntityNode(renderNode);
                 commandNode->addComponent(new VulkanCommandPool(graphicsQueue));

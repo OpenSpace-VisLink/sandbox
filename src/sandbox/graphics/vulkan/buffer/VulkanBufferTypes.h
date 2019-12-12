@@ -282,7 +282,7 @@ protected:
 template<typename T>
 class VertexArray : public VulkanArrayBuffer<T> {
 public:
-	VertexArray() : VulkanArrayBuffer<T>(VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, true) {}
+	VertexArray(int binding = 0) : VulkanArrayBuffer<T>(VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, true), binding(binding) {}
 	virtual ~VertexArray() {}
 
 	void startRender(const GraphicsContext& context, VulkanDeviceState& state) {
@@ -292,9 +292,12 @@ public:
 			std::cout << "bind vertex array" << std::endl;
 			VkBuffer vertexBuffers[] = {VulkanArrayBuffer<T>::getBuffer(context)};
             VkDeviceSize offsets[] = {0};
-            vkCmdBindVertexBuffers(state.getCommandBuffer().get()->getCommandBuffer(context), 0, 1, vertexBuffers, offsets);
+            vkCmdBindVertexBuffers(state.getCommandBuffer().get()->getCommandBuffer(context), binding, 1, vertexBuffers, offsets);
 		}
 	}
+
+private:
+	int binding;
 };
 
 template<typename T>
@@ -305,7 +308,7 @@ public:
 };
 
 //typedef ObjectArray<uint16_t> IndexArray;
-class IndexArray : public ObjectArray<uint16_t> {
+class IndexArray16 : public ObjectArray<uint16_t> {
 protected:
 	void startRender(const GraphicsContext& context, VulkanDeviceState& state) {
 		ObjectArray<uint16_t>::startRender(context, state);
@@ -318,6 +321,19 @@ protected:
 	}
 };
 
+//typedef ObjectArray<uint16_t> IndexArray;
+class IndexArray : public ObjectArray<uint32_t> {
+protected:
+	void startRender(const GraphicsContext& context, VulkanDeviceState& state) {
+		ObjectArray<uint32_t>::startRender(context, state);
+
+		if ((state.getRenderMode().get() & VULKAN_RENDER_COMMAND) == VULKAN_RENDER_COMMAND) {
+			std::cout << "bind index array and draw" << std::endl;
+            vkCmdBindIndexBuffer(state.getCommandBuffer().get()->getCommandBuffer(context), getBuffer(context), 0, VK_INDEX_TYPE_UINT32);
+            vkCmdDrawIndexed(state.getCommandBuffer().get()->getCommandBuffer(context), static_cast<uint32_t>(value.size()), 1, 0, 0, 0);
+		}
+	}
+};
 
 
 

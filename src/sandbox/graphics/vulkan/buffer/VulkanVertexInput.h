@@ -8,12 +8,12 @@ namespace sandbox {
 
 class VulkanVertexInput : public Component {
 public:
-	VulkanVertexInput(size_t stride) : stride(stride) { addType<VulkanVertexInput>(); }
+	VulkanVertexInput(size_t stride, int startLocation = 0) : stride(stride), startLocation(startLocation) { addType<VulkanVertexInput>(); }
 	virtual ~VulkanVertexInput() {}
 
 	virtual VkVertexInputBindingDescription getBindingDescription(int binding) const {
 		VkVertexInputBindingDescription bindingDescription = {};
-	    bindingDescription.binding = 0;
+	    bindingDescription.binding = binding;
 	    bindingDescription.stride = stride;//sizeof(Vertex);
 	    bindingDescription.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
 
@@ -26,7 +26,7 @@ public:
 
 		for (int f = 0; f < attributes.size(); f++) {
 			attributeDescriptions[f].binding = binding;
-	        attributeDescriptions[f].location = f;
+	        attributeDescriptions[f].location = startLocation+f;
 	        attributeDescriptions[f].format = attributes[f].format;
 	        attributeDescriptions[f].offset = attributes[f].offset;
 		}
@@ -45,6 +45,7 @@ private:
 	struct Attribute { VkFormat format; size_t offset; };
 	std::vector<Attribute> attributes;
 	size_t stride;
+	int startLocation;
 };
 
 

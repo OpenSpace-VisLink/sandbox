@@ -50,7 +50,7 @@ public:
 
 private:
     void cursorPositionCallback(GLFWwindow* window, float xpos, float ypos) {
-    	mouseInput->position = glm::vec2(xpos/width, ypos/height);
+    	mouseInput->position = glm::vec2(xpos/width, 1.0-ypos/height);
     }
   	void mouseButtonCallback(GLFWwindow* window, int button, int action, int mods) {
   		bool* buttonPtr = NULL;
