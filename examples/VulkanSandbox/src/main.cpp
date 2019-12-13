@@ -26,6 +26,8 @@
 #include <optional>
 #include <set>
 
+#include "OpenGL.h"
+
 #include <sandbox/image/Image.h>
 #include <sandbox/geometry/Mesh.h>
 #include <sandbox/geometry/loaders/ShapeLoader.h>
@@ -247,6 +249,7 @@ private:
     GLFWwindow* window;
     GLFWwindow* window2;
     GLFWwindow* window3;
+    GLFWwindow* window4;
 
     VkDevice device;
     VkDevice device2;
@@ -267,9 +270,13 @@ private:
     EntityNode images;
     EntityNode* updateSharedNode;
     EntityNode* sceneGraph;
+    EntityNode* mainImage;
     Entity* renderNode0;
     Entity* renderNode2;
     Entity* renderNode3;
+
+    #define glDrawVkImageNV pfnDrawVkImageNV
+    PFNGLDRAWVKIMAGENVPROC pfnDrawVkImageNV;
 
     void initWindow() { 
         glfwInit();
@@ -287,12 +294,33 @@ private:
         window3 = glfwCreateWindow(WIDTH, HEIGHT, "Vulkan", nullptr, nullptr);
         glfwSetWindowUserPointer(window3, this);
         glfwSetWindowPos (window3, 2*(WIDTH+5), 0);
+
+
+        glfwWindowHint(GLFW_CLIENT_API, GLFW_OPENGL_API);
+
+        window4 = glfwCreateWindow(WIDTH, HEIGHT, "OpenGL", nullptr, nullptr);
+        glfwSetWindowUserPointer(window4, this);
+        glfwSetWindowPos (window4, 3*(WIDTH+5), 0);
+        //glGetProcAddress("glGetVkProcAddrNV");
+        //glGetVkProcAddrNV("glDrawVkImageNV");
+        //glDrawVkImageNV((GLuint64)imageState->image, 0, 0,0, 100,100,0,0,0,100,100);
+
+        glfwMakeContextCurrent(window4);
+        if (glfwExtensionSupported("GL_NV_draw_vulkan_image")) {
+            std::cout << "nv supported" << std::endl;
+            pfnDrawVkImageNV = (PFNGLDRAWVKIMAGENVPROC)
+            glfwGetProcAddress("glDrawVkImageNV");
+        }
+        else {
+            std::cout << "not supported" << std::endl;
+        }
+        
     }
 
 
     void initVulkan() {
 
-        Entity* mainImage = new EntityNode(&images);
+        mainImage = new EntityNode(&images);
             mainImage->addComponent(new Image("examples/VulkanSandbox/textures/texture.jpg"));
             mainImage->addComponent(new VulkanImage());
             mainImage->addComponent(new VulkanImageView());
@@ -618,6 +646,14 @@ private:
                 VulkanDeviceRenderer* sharedRenderer = updateSharedNode->getComponentRecursive<VulkanDeviceRenderer>();
                 //sharedRenderer->render(VULKAN_RENDER_UPDATE_SHARED);
                 sharedRenderer->render(VULKAN_RENDER_OBJECT);
+
+                glfwMakeContextCurrent(window4);
+                //VulkanDeviceRenderer* sharedRenderer = updateSharedNode->getComponentRecursive<VulkanDeviceRenderer>();
+                //VkImage image = renderNode0->getComponent<VulkanSwapChain>()->getImage()[0];
+                VkImage image = mainImage->getComponent<VulkanImage>()->getImage(sharedRenderer->getContext());
+                std::cout << image << std::endl;
+                glDrawVkImageNV((GLuint64)image, 0, 0,0, 100,100,0,0,0,1,1);
+                glfwSwapBuffers(window4);
             }
 
             if (frame>=0) {   
@@ -633,6 +669,7 @@ private:
                 static RenderNode sceneUpdate(&scene);
                 sceneUpdate.render(updateContext);
             }
+
 
 
 

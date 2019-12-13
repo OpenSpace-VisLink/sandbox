@@ -13,6 +13,7 @@ public:
 	virtual ~VulkanSwapChain() {}
 
 	virtual VkFormat getImageFormat() const = 0;
+    virtual const std::vector<VkImage>&  getImages() const = 0;
     virtual const std::vector<VkImageView>& getImageViews() const = 0;
     virtual VkImageView getDepthImageView() const = 0;
 	virtual VkExtent2D getExtent() const = 0;
@@ -320,9 +321,9 @@ public:
     }
 
 
-
     VkFormat getImageFormat() const { return swapChainImageFormat; }
     VkSwapchainKHR getSwapChain() const { return swapChain; }
+    const std::vector<VkImage>&  getImages() const { return swapChainImages; }
     const std::vector<VkImageView>& getImageViews() const { return swapChainImageViews; }
     VkImageView getDepthImageView() const { return depthImageView; }
     VkExtent2D getExtent() const { return swapChainExtent; }

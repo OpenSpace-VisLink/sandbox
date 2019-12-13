@@ -1,6 +1,8 @@
 #ifndef SANDBOX_GRAPHICS_VULKAN_IMAGE_VULKAN_IMAGE_H_
 #define SANDBOX_GRAPHICS_VULKAN_IMAGE_VULKAN_IMAGE_H_
 
+//#include "OpenGL.h"
+
 #include "sandbox/Component.h"
 #include "sandbox/graphics/vulkan/VulkanDeviceRenderer.h"
 #include "sandbox/graphics/vulkan/buffer/VulkanBuffer.h"
@@ -64,6 +66,9 @@ protected:
 	        //vkFreeMemory(state.getDevice()->getDevice(), stagingBufferMemory, nullptr);
 	        delete stagingBuffer;
 		}
+
+        //ImageState* imageState = contextHandler.getSharedState(context);
+        //glDrawVkImageNV((GLuint64)imageState->image, 0, 0,0, 100,100,0,0,0,100,100);
 	}
 
 	void finishRender(const GraphicsContext& context, VulkanDeviceState& state) {
