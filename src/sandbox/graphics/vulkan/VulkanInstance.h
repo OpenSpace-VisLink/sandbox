@@ -25,6 +25,7 @@ public:
 
 class VulkanComponent : public Component {
 public:
+    VulkanComponent() { addType<VulkanComponent>(); }
 	virtual ~VulkanComponent() {}
 	virtual VulkanPhysicalDeviceCriteria* createPhysicalCriteria() const { return NULL; }
 };
@@ -141,9 +142,25 @@ public:
         if (enableValidationLayers) {
             extensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
         }
+        //extensions.push_back("VK_KHR_external_memory_capabilities");
+        get_supported_extensions();
 
         return extensions;
     }
+
+std::set<std::string> get_supported_extensions() {
+    uint32_t count;
+    vkEnumerateInstanceExtensionProperties(nullptr, &count, nullptr); //get number of extensions
+    std::vector<VkExtensionProperties> extensions(count);
+    vkEnumerateInstanceExtensionProperties(nullptr, &count, extensions.data()); //populate buffer
+    std::set<std::string> results;
+    for (auto & extension : extensions) {
+        //std::cout << extension.extensionName << std::endl;
+        results.insert(extension.extensionName);
+    }
+    return results;
+}
+  
 
     void DestroyDebugUtilsMessengerEXT(VkInstance instance, VkDebugUtilsMessengerEXT debugMessenger, const VkAllocationCallbacks* pAllocator) {
 	    auto func = (PFN_vkDestroyDebugUtilsMessengerEXT) vkGetInstanceProcAddr(instance, "vkDestroyDebugUtilsMessengerEXT");
@@ -151,6 +168,13 @@ public:
 	        func(instance, debugMessenger, pAllocator);
 	    }
 	}
+
+    VkResult GetMemoryFdKHR(VkDevice device, VkMemoryGetFdInfoKHR* pGetFdInfo, int* handle) const {
+        auto func = (PFN_vkGetMemoryFdKHR) vkGetInstanceProcAddr(instance, "vkGetMemoryFdKHR");
+        if (func != nullptr) {
+            return func(device, pGetFdInfo, handle);
+        }      
+    }
 
 	const VkInstance& getInstance() const { return instance; }
 
@@ -277,7 +301,9 @@ public:
 
         std::set<std::string> requiredExtensions(deviceExtensions.begin(), deviceExtensions.end());
 
+        //std::cout << "!!!!!!!!!!!!!!!device extensions" << std::endl;
         for (const auto& extension : availableExtensions) {
+            //std::cout << extension.extensionName << std::endl;
             requiredExtensions.erase(extension.extensionName);
         }
 

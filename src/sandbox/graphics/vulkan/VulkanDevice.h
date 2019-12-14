@@ -38,6 +38,7 @@ public:
 	void update();
 
 	VulkanPhysicalDeviceCriteria* createPhysicalCriteria() const { 
+       std::cout << "device physical criteria" << std::endl;
 		PhysicalDeviceCriteriaComposite* composite = new PhysicalDeviceCriteriaComposite();
 		composite->add(new DeviceSamplerAnisotropySupport());
 		composite->add(new DeviceExtensionSupport(deviceExtensions));
@@ -105,6 +106,8 @@ public:
         return imageView;
     }
 
+    VulkanInstance& getInstance() { return *vulkanInstance; }
+
 private:
 	bool initialized;
 	Entity* instanceEntity;
@@ -115,7 +118,9 @@ private:
 	VkPhysicalDeviceProperties properties;
 
 	const std::vector<const char*> deviceExtensions = {
-	    VK_KHR_SWAPCHAIN_EXTENSION_NAME
+	    VK_KHR_SWAPCHAIN_EXTENSION_NAME,
+        "VK_KHR_external_memory",
+        "VK_KHR_external_memory_fd"
 	};
 };
 

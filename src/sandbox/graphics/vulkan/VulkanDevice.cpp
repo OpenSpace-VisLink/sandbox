@@ -13,6 +13,9 @@ void VulkanDevice::update() {
 	}
 
 	if (vulkanInstance) {
+
+        std::cout << "Create vulkan device" << std::endl;
+
 		instance = vulkanInstance->getInstance();
 
 		PhysicalDeviceCriteriaComposite composite;

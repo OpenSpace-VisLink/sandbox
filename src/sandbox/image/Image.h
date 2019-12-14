@@ -53,6 +53,7 @@ public:
     int getWidth() const { return width; }
     int getHeight() const { return height; }
     int getComponents() const { return components; }
+    long getSize() const { return width*height*components; }
 
 private:
 	bool imageLoaded;

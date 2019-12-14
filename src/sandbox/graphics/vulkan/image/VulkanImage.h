@@ -1,7 +1,7 @@
 #ifndef SANDBOX_GRAPHICS_VULKAN_IMAGE_VULKAN_IMAGE_H_
 #define SANDBOX_GRAPHICS_VULKAN_IMAGE_VULKAN_IMAGE_H_
 
-//#include "OpenGL.h"
+#include "OpenGL.h"
 
 #include "sandbox/Component.h"
 #include "sandbox/graphics/vulkan/VulkanDeviceRenderer.h"
@@ -14,7 +14,7 @@ namespace sandbox {
 
 class VulkanImage : public VulkanRenderObject {
 public:
-	VulkanImage() : image(NULL) { addType<VulkanImage>(); }
+	VulkanImage(bool external = false) : image(NULL), external(external) { addType<VulkanImage>(); }
 	virtual ~VulkanImage() {}
 
 	void update() {
@@ -24,6 +24,7 @@ public:
 	}
 
 	VkImage getImage(const GraphicsContext& context) const { return contextHandler.getSharedState(context)->image; }
+    int getExternalHandle(const GraphicsContext& context) const { return contextHandler.getSharedState(context)->externalHandle; }
 
 protected:
 	void startRender(const GraphicsContext& context, VulkanDeviceState& state) {
@@ -56,7 +57,7 @@ protected:
 
 	        //stbi_image_free(pixels);
 
-	        createImage(state.getDevice(), texWidth, texHeight, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, imageState->image, imageState->imageMemory);
+	        createImage(state.getDevice(), texWidth, texHeight, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, imageState->image, imageState->imageMemory, external);
 
 	        transitionImageLayout(imageState->image, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, state.getCommandPool().get(), context);
 	            copyBufferToImage(stagingBuffer->getBuffer(), imageState->image, static_cast<uint32_t>(texWidth), static_cast<uint32_t>(texHeight), state.getCommandPool().get(), context);
@@ -65,6 +66,21 @@ protected:
 	        //vkDestroyBuffer(state.getDevice()->getDevice(), stagingBuffer, nullptr);
 	        //vkFreeMemory(state.getDevice()->getDevice(), stagingBufferMemory, nullptr);
 	        delete stagingBuffer;
+
+            if (external) {
+                VkMemoryGetFdInfoKHR memoryGet;
+                memoryGet.sType = VK_STRUCTURE_TYPE_MEMORY_GET_FD_INFO_KHR;
+                memoryGet.pNext = NULL;
+                memoryGet.memory = imageState->imageMemory;
+                memoryGet.handleType = VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_FD_BIT;
+                if (state.getDevice()->getInstance().GetMemoryFdKHR(state.getDevice()->getDevice(), &memoryGet, &imageState->externalHandle) != VK_SUCCESS) {
+                    throw std::runtime_error("failed to vkGetMemoryFdKHR!");
+                }
+                std::cout << "handle memory " << imageState->externalHandle << std::endl;
+
+        //handles.memory = device.getMemoryWin32HandleKHR({ texture.memory, vk::ExternalMemoryHandleTypeFlagBits::eOpaqueWin32 }, dynamicLoader);
+
+            }
 		}
 
         //ImageState* imageState = contextHandler.getSharedState(context);
@@ -81,7 +97,7 @@ protected:
 		}
 	}
 
-    static void createImage(const VulkanDevice* device, uint32_t width, uint32_t height, VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage, VkMemoryPropertyFlags properties, VkImage& image, VkDeviceMemory& imageMemory) {
+    static void createImage(const VulkanDevice* device, uint32_t width, uint32_t height, VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage, VkMemoryPropertyFlags properties, VkImage& image, VkDeviceMemory& imageMemory, bool external = false) {
         VkImageCreateInfo imageInfo = {};
         imageInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
         imageInfo.imageType = VK_IMAGE_TYPE_2D;
@@ -104,8 +120,16 @@ protected:
         VkMemoryRequirements memRequirements;
         vkGetImageMemoryRequirements(device->getDevice(), image, &memRequirements);
 
+        VkExportMemoryAllocateInfo exportMemAlloc;
+        exportMemAlloc.sType = VK_STRUCTURE_TYPE_EXPORT_MEMORY_ALLOCATE_INFO;
+        exportMemAlloc.pNext = NULL;
+        exportMemAlloc.handleTypes = VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_FD_BIT;
+
         VkMemoryAllocateInfo allocInfo = {};
         allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+        if (external) {
+            allocInfo.pNext = &exportMemAlloc;
+        }
         allocInfo.allocationSize = memRequirements.size;
         allocInfo.memoryTypeIndex = device->findMemoryType(memRequirements.memoryTypeBits, properties);
 
@@ -114,6 +138,7 @@ protected:
         }
 
         vkBindImageMemory(device->getDevice(), image, imageMemory, 0);
+
     }
 
 
@@ -121,6 +146,7 @@ private:
 	struct ImageState : public ContextState {
 		VkImage image;
     	VkDeviceMemory imageMemory;
+        int externalHandle;
 	};
 
     void transitionImageLayout(VkImage image, VkFormat format, VkImageLayout oldLayout, VkImageLayout newLayout, VulkanCommandPool* commandPool, const GraphicsContext& context) {
@@ -195,7 +221,8 @@ private:
 
 	GraphicsContextHandler<ImageState,ContextState> contextHandler;
 	sandbox::Image* image;
-
+    bool external;
+    
 };
 
 }

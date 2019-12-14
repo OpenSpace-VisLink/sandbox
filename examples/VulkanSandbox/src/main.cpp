@@ -39,6 +39,9 @@
 #include <sandbox/input/interaction/TouchTranslate.h>
 #include <sandbox/input/interaction/TouchScale.h>
 
+#define VK_VERSION_MAJOR(version) ((uint32_t)(version) >> 22)
+#define VK_VERSION_MINOR(version) (((uint32_t)(version) >> 12) & 0x3ff)
+
 using namespace sandbox;
 
 struct UniformBufferObject {
@@ -268,15 +271,23 @@ private:
     EntityNode scene;
     EntityNode input;
     EntityNode images;
+    EntityNode images2;
     EntityNode* updateSharedNode;
+    EntityNode* updateSharedNode2;
     EntityNode* sceneGraph;
     EntityNode* mainImage;
+    EntityNode* mainImage2;
     Entity* renderNode0;
     Entity* renderNode2;
     Entity* renderNode3;
 
     #define glDrawVkImageNV pfnDrawVkImageNV
     PFNGLDRAWVKIMAGENVPROC pfnDrawVkImageNV;
+    #define glCreateMemoryObjectsEXT pfnCreateMemoryObjectsEXT
+    PFNGLCREATEMEMORYOBJECTSEXTPROC pfnCreateMemoryObjectsEXT;
+    #define glImportMemoryFdEXT pfnImportMemoryFdEXT
+    PFNGLIMPORTMEMORYFDEXTPROC pfnImportMemoryFdEXT;
+
 
     void initWindow() { 
         glfwInit();
@@ -310,10 +321,19 @@ private:
             std::cout << "nv supported" << std::endl;
             pfnDrawVkImageNV = (PFNGLDRAWVKIMAGENVPROC)
             glfwGetProcAddress("glDrawVkImageNV");
+            pfnCreateMemoryObjectsEXT = (PFNGLCREATEMEMORYOBJECTSEXTPROC)
+            glfwGetProcAddress("glCreateMemoryObjectsEXT");
+            pfnImportMemoryFdEXT = (PFNGLIMPORTMEMORYFDEXTPROC)
+            glfwGetProcAddress("glImportMemoryFdEXT");
         }
         else {
             std::cout << "not supported" << std::endl;
         }
+
+        GLuint mem = 0;
+        glCreateMemoryObjectsEXT(1, &mem);
+        //glImportMemoryFdEXT(mem, memorySize, GL_HANDLE_TYPE_OPAQUE_FD_EXT, handles.memory);
+        //glImportMemoryWin32HandleEXT(mem, memorySize, GL_HANDLE_TYPE_OPAQUE_FD_EXT, handles.memory);
         
     }
 
@@ -329,6 +349,12 @@ private:
             secondImage->addComponent(new VulkanImage());
             secondImage->addComponent(new VulkanImageView());
         images.update();
+
+        mainImage2 = new EntityNode(&images2);
+            mainImage2->addComponent(new Image("examples/VulkanSandbox/textures/texture.jpg"));
+            mainImage2->addComponent(new VulkanImage(true));
+            mainImage2->addComponent(new VulkanImageView());
+        images2.update();
 
         EntityNode* mainUniformBuffer = new EntityNode(&shaderObjects);
             mainUniformBuffer->addComponent(new MainUniformBuffer());
@@ -532,6 +558,8 @@ private:
             surface2Node->addComponent(new GlfwSurface(window2, &vulkanNode));
         EntityNode* surface3Node = new EntityNode(&vulkanNode);
             surface3Node->addComponent(new GlfwSurface(window3, &vulkanNode));
+        EntityNode* surface4Node = new EntityNode(&vulkanNode);
+            surface4Node->addComponent(new GlfwSurface(window4, &vulkanNode));
         Entity* deviceNode = new EntityNode(&vulkanNode);
             deviceNode->addComponent(new SharedContext());
             deviceNode->addComponent(new VulkanDevice(&vulkanNode));
@@ -563,7 +591,24 @@ private:
                 renderNode2 = createSwapChain(windowNodes, surface2Node, "window 2");
                 renderNode3 = createSwapChain(windowNodes, surface3Node, "window 5");
 
+        Entity* deviceNode2 = new EntityNode(&vulkanNode);
+            deviceNode2->addComponent(new SharedContext());
+            deviceNode2->addComponent(new VulkanDevice(&vulkanNode));
+            EntityNode* queues2 = new EntityNode(deviceNode2);
+                queues2->addComponent(new VulkanGraphicsQueue());
+                queues2->addComponent(new VulkanPresentQueue(surface4Node));
+                VulkanGraphicsQueue* graphicsQueue2 = queues2->getComponent<VulkanGraphicsQueue>();
+            updateSharedNode2 = new EntityNode(deviceNode2);
+                updateSharedNode2->addComponent(new AllowRenderModes(VULKAN_RENDER_UPDATE_SHARED | VULKAN_RENDER_OBJECT | VULKAN_RENDER_CLEANUP_SHARED));
+                updateSharedNode2->addComponent(new VulkanDeviceRenderer());
+                updateSharedNode2->addComponent(new VulkanCommandPool(graphicsQueue2));
+                updateSharedNode2->addComponent(new RenderNode(&images2));
+
         vulkanNode.update();
+
+        VulkanDeviceRenderer* sharedRenderer2 = updateSharedNode2->getComponentRecursive<VulkanDeviceRenderer>();
+        sharedRenderer2->render(VULKAN_RENDER_UPDATE_SHARED);
+        sharedRenderer2->render(VULKAN_RENDER_OBJECT);
 
         VulkanDeviceRenderer* sharedRenderer = updateSharedNode->getComponentRecursive<VulkanDeviceRenderer>();
         sharedRenderer->render(VULKAN_RENDER_UPDATE_SHARED);
@@ -587,6 +632,7 @@ private:
         }
 
         std::cout << deviceNode->getComponent<VulkanDevice>()->getProperties().limits.maxUniformBufferRange << std::endl;
+        std::cout << VK_VERSION_MAJOR(deviceNode->getComponent<VulkanDevice>()->getProperties().apiVersion) << " " << VK_VERSION_MINOR(deviceNode->getComponent<VulkanDevice>()->getProperties().apiVersion) << std::endl;
         /*size_t minUboAlignment = deviceNode->getComponent<VulkanDevice>()->getProperties().limits.minUniformBufferOffsetAlignment;
         std::cout << "minUboAlignment " << minUboAlignment << std::endl;
         size_t dynamicAlignment = sizeof(TransformUniformBufferObject);
@@ -650,9 +696,20 @@ private:
                 glfwMakeContextCurrent(window4);
                 //VulkanDeviceRenderer* sharedRenderer = updateSharedNode->getComponentRecursive<VulkanDeviceRenderer>();
                 //VkImage image = renderNode0->getComponent<VulkanSwapChain>()->getImage()[0];
-                VkImage image = mainImage->getComponent<VulkanImage>()->getImage(sharedRenderer->getContext());
+                VulkanDeviceRenderer* sharedRenderer2 = updateSharedNode2->getComponentRecursive<VulkanDeviceRenderer>();
+                VkImage image = mainImage2->getComponent<VulkanImage>()->getImage(sharedRenderer2->getContext());
                 std::cout << image << std::endl;
-                glDrawVkImageNV((GLuint64)image, 0, 0,0, 100,100,0,0,0,1,1);
+
+                int externalHandle =  mainImage2->getComponent<VulkanImage>()->getExternalHandle(sharedRenderer2->getContext());
+                std::cout << externalHandle << std::endl;
+
+                GLuint mem = 0;
+                glCreateMemoryObjectsEXT(1, &mem);
+                glImportMemoryFdEXT(mem, mainImage2->getComponent<Image>()->getSize(), GL_HANDLE_TYPE_OPAQUE_FD_EXT, externalHandle);
+                //glImportMemoryWin32HandleEXT(mem, memorySize, GL_HANDLE_TYPE_OPAQUE_FD_EXT, handles.memory);
+                std::cout << "test" << std::endl;
+
+                glDrawVkImageNV((GLuint64)externalHandle, 0, 0,0, 100,100,0,0,0,1,1);
                 glfwSwapBuffers(window4);
             }
 
