@@ -347,6 +347,52 @@ private:
             std::cout << "not supported" << std::endl;
         }
 
+
+
+        //GLuint mem = 0;
+        //glCreateMemoryObjectsEXT(1, &mem);
+        //glImportMemoryFdEXT(mem, memorySize, GL_HANDLE_TYPE_OPAQUE_FD_EXT, handles.memory);
+        //glImportMemoryWin32HandleEXT(mem, memorySize, GL_HANDLE_TYPE_OPAQUE_FD_EXT, handles.memory);
+        
+    }
+
+    GLuint vbo, vao, vshader, fshader, shaderProgram, texture;
+
+        /// Compiles shader
+    GLuint compileShader(const std::string& shaderText, GLuint shaderType) {
+        const char* source = shaderText.c_str();
+        int length = (int)shaderText.size();
+        GLuint shader = glCreateShader(shaderType);
+        glShaderSource(shader, 1, &source, &length);
+        glCompileShader(shader);
+        GLint status;
+        glGetShaderiv(shader, GL_COMPILE_STATUS, &status);
+        if(status == GL_FALSE) {
+            GLint length;
+            glGetShaderiv(shader, GL_INFO_LOG_LENGTH, &length);
+            std::vector<char> log(length);
+            glGetShaderInfoLog(shader, length, &length, &log[0]);
+            std::cerr << &log[0];
+        }
+
+        return shader;
+    }
+
+    /// links shader program
+    void linkShaderProgram(GLuint shaderProgram) {
+        glLinkProgram(shaderProgram);
+        GLint status;
+        glGetProgramiv(shaderProgram, GL_LINK_STATUS, &status);
+        if(status == GL_FALSE) {
+            GLint length;
+            glGetProgramiv(shaderProgram, GL_INFO_LOG_LENGTH, &length);
+            std::vector<char> log(length);
+            glGetProgramInfoLog(shaderProgram, length, &length, &log[0]);
+            std::cerr << "Error compiling program: " << &log[0] << std::endl;
+        }
+    }
+
+    void initGL(Entity* useImage) {
         // Init GL
                 glEnable(GL_DEPTH_TEST);
                 glClearDepth(1.0f);
@@ -354,61 +400,20 @@ private:
                 glClearColor(0, 0, 0, 1);
 
                 // Create VBO
-                GLfloat vertices[]  = { 1.0f, 1.0f, 1.0f,  -1.0f, 1.0f, 1.0f,  -1.0f,-1.0f, 1.0f,      // v0-v1-v2 (front)
-                        -1.0f,-1.0f, 1.0f,   1.0f,-1.0f, 1.0f,   1.0f, 1.0f, 1.0f,      // v2-v3-v0
-
-                        1.0f, 1.0f, 1.0f,   1.0f,-1.0f, 1.0f,   1.0f,-1.0f,-1.0f,      // v0-v3-v4 (right)
-                        1.0f,-1.0f,-1.0f,   1.0f, 1.0f,-1.0f,   1.0f, 1.0f, 1.0f,      // v4-v5-v0
-
-                        1.0f, 1.0f, 1.0f,   1.0f, 1.0f,-1.0f,  -1.0f, 1.0f,-1.0f,      // v0-v5-v6 (top)
-                        -1.0f, 1.0f,-1.0f,  -1.0f, 1.0f, 1.0f,   1.0f, 1.0f, 1.0f,      // v6-v1-v0
-
-                        -1.0f, 1.0f, 1.0f,  -1.0f, 1.0f,-1.0f,  -1.0f,-1.0f,-1.0f,      // v1-v6-v7 (left)
-                        -1.0f,-1.0f,-1.0f,  -1.0f,-1.0f, 1.0f,  -1.0f, 1.0f, 1.0f,      // v7-v2-v1.0
-
-                        -1.0f,-1.0f,-1.0f,   1.0f,-1.0f,-1.0f,   1.0f,-1.0f, 1.0f,      // v7-v4-v3 (bottom)
-                        1.0f,-1.0f, 1.0f,  -1.0f,-1.0f, 1.0f,  -1.0f,-1.0f,-1.0f,      // v3-v2-v7
-
-                        1.0f,-1.0f,-1.0f,  -1.0f,-1.0f,-1.0f,  -1.0f, 1.0f,-1.0f,      // v4-v7-v6 (back)
-                        -1.0f, 1.0f,-1.0f,   1.0f, 1.0f,-1.0f,   1.0f,-1.0f,-1.0f };    // v6-v5-v4
+                GLfloat vertices[]  = { 
+                    -0.5f, -0.5f, 0.0f, 
+                    0.5f, -0.5f, 0.0f,
+                    0.5f, 0.5f, 0.0f,
+                    0.5f, 0.5f, 0.0f,
+                    -0.5f, 0.5f, 0.0f, 
+                    -0.5f, -0.5f, 0.0f};
 
                 // normal array
-                GLfloat normals[]   = { 0, 0, 1,   0, 0, 1,   0, 0, 1,      // v0-v1-v2 (front)
-                        0, 0, 1,   0, 0, 1,   0, 0, 1,      // v2-v3-v0
+                GLfloat normals[]   = { 0, 0, 1,   0, 0, 1,   0, 0, 1,    0, 0, 1,   0, 0, 1,  0, 0, 1    };    // v6-v5-v4
 
-                        1, 0, 0,   1, 0, 0,   1, 0, 0,      // v0-v3-v4 (right)
-                        1, 0, 0,   1, 0, 0,   1, 0, 0,      // v4-v5-v0
-
-                        0, 1, 0,   0, 1, 0,   0, 1, 0,      // v0-v5-v6 (top)
-                        0, 1, 0,   0, 1, 0,   0, 1, 0,      // v6-v1-v0
-
-                        -1, 0, 0,  -1, 0, 0,  -1, 0, 0,      // v1-v6-v7 (left)
-                        -1, 0, 0,  -1, 0, 0,  -1, 0, 0,      // v7-v2-v1
-
-                        0,-1, 0,   0,-1, 0,   0,-1, 0,      // v7-v4-v3 (bottom)
-                        0,-1, 0,   0,-1, 0,   0,-1, 0,      // v3-v2-v7
-
-                        0, 0,-1,   0, 0,-1,   0, 0,-1,      // v4-v7-v6 (back)
-                        0, 0,-1,   0, 0,-1,   0, 0,-1 };    // v6-v5-v4
 
                 // color array
-                GLfloat colors[]    = { 1, 1, 1,   1, 1, 0,   1, 0, 0,      // v0-v1-v2 (front)
-                        1, 0, 0,   1, 0, 1,   1, 1, 1,      // v2-v3-v0
-
-                        1, 1, 1,   1, 0, 1,   0, 0, 1,      // v0-v3-v4 (right)
-                        0, 0, 1,   0, 1, 1,   1, 1, 1,      // v4-v5-v0
-
-                        1, 1, 1,   0, 1, 1,   0, 1, 0,      // v0-v5-v6 (top)
-                        0, 1, 0,   1, 1, 0,   1, 1, 1,      // v6-v1-v0
-
-                        1, 1, 0,   0, 1, 0,   0, 0, 0,      // v1-v6-v7 (left)
-                        0, 0, 0,   1, 0, 0,   1, 1, 0,      // v7-v2-v1
-
-                        0, 0, 0,   0, 0, 1,   1, 0, 1,      // v7-v4-v3 (bottom)
-                        1, 0, 1,   1, 0, 0,   0, 0, 0,      // v3-v2-v7
-
-                        0, 0, 1,   0, 0, 0,   0, 1, 0,      // v4-v7-v6 (back)
-                        0, 1, 0,   0, 1, 1,   0, 0, 1 };    // v6-v5-v4
+                GLfloat colors[]    = { 1, 0, 0,   0, 0, 0,   0, 1, 0,   0, 1, 0,   1, 1, 0 ,  1, 0, 0};    // v6-v5-v4
 
                 // Allocate space and send Vertex Data
                 glGenBuffers(1, &vbo);
@@ -453,9 +458,11 @@ private:
                         "#version 330 \n"
                         "in vec3 col;"
                         "out vec4 colorOut;"
+                        "uniform sampler2D tex; "
                         ""
                         "void main() { "
-                        "   colorOut = vec4(col, 1.0); "
+                        "   vec4 texColor = texture(tex, col.xy);"
+                        "   colorOut = texColor; "
                         "}";
                 fshader = compileShader(fragmentShader, GL_FRAGMENT_SHADER);
 
@@ -464,49 +471,25 @@ private:
                 glAttachShader(shaderProgram, vshader);
                 glAttachShader(shaderProgram, fshader);
                 linkShaderProgram(shaderProgram);
-            
 
-        //GLuint mem = 0;
-        //glCreateMemoryObjectsEXT(1, &mem);
-        //glImportMemoryFdEXT(mem, memorySize, GL_HANDLE_TYPE_OPAQUE_FD_EXT, handles.memory);
-        //glImportMemoryWin32HandleEXT(mem, memorySize, GL_HANDLE_TYPE_OPAQUE_FD_EXT, handles.memory);
-        
-    }
 
-    GLuint vbo, vao, vshader, fshader, shaderProgram;
+                GLuint format = GL_RGBA;
+                GLuint internalFormat = GL_RGBA;
+                GLuint type = GL_UNSIGNED_BYTE;
 
-        /// Compiles shader
-    GLuint compileShader(const std::string& shaderText, GLuint shaderType) {
-        const char* source = shaderText.c_str();
-        int length = (int)shaderText.size();
-        GLuint shader = glCreateShader(shaderType);
-        glShaderSource(shader, 1, &source, &length);
-        glCompileShader(shader);
-        GLint status;
-        glGetShaderiv(shader, GL_COMPILE_STATUS, &status);
-        if(status == GL_FALSE) {
-            GLint length;
-            glGetShaderiv(shader, GL_INFO_LOG_LENGTH, &length);
-            std::vector<char> log(length);
-            glGetShaderInfoLog(shader, length, &length, &log[0]);
-            std::cerr << &log[0];
-        }
+                glGenTextures(1, &texture);
+                glBindTexture(GL_TEXTURE_2D, texture);
+                Image* image = useImage->getComponent<Image>();
+                glTexImage2D(GL_TEXTURE_2D, 0, internalFormat, image->getWidth(), image->getHeight(), 0, format, type, image->getData());
 
-        return shader;
-    }
-
-    /// links shader program
-    void linkShaderProgram(GLuint shaderProgram) {
-        glLinkProgram(shaderProgram);
-        GLint status;
-        glGetProgramiv(shaderProgram, GL_LINK_STATUS, &status);
-        if(status == GL_FALSE) {
-            GLint length;
-            glGetProgramiv(shaderProgram, GL_INFO_LOG_LENGTH, &length);
-            std::vector<char> log(length);
-            glGetProgramInfoLog(shaderProgram, length, &length, &log[0]);
-            std::cerr << "Error compiling program: " << &log[0] << std::endl;
-        }
+                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_BASE_LEVEL, 0);
+                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, 0);
+                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
+                glPixelStorei(GL_UNPACK_ALIGNMENT, 4);
     }
 
 
@@ -522,8 +505,11 @@ private:
             secondImage->addComponent(new VulkanImageView());
         images.update();
 
+        initGL(mainImage);
+
         mainImage2 = new EntityNode(&images2);
-            mainImage2->addComponent(new Image("examples/VulkanSandbox/textures/texture.jpg"));
+            //mainImage2->addComponent(new Image("examples/VulkanSandbox/textures/texture2.png"));
+            mainImage2->addComponent(new Image("examples/VulkanSandbox/textures/test.png"));
             mainImage2->addComponent(new VulkanImage(true));
             mainImage2->addComponent(new VulkanImageView());
         images2.update();
@@ -888,7 +874,7 @@ private:
                 glTextureStorageMem2DEXT(color, 1, GL_RGBA8, mainImage2->getComponent<Image>()->getWidth(), mainImage2->getComponent<Image>()->getHeight(), mem, 0 );
                 std::cout << "test " << color << std::endl;
                 glBindTexture(GL_TEXTURE_2D, color);
-                glPixelStorei(GL_PACK_ALIGNMENT, 1);
+                /*glPixelStorei(GL_PACK_ALIGNMENT, 1);
                 unsigned char *raw_img = (unsigned char*) malloc(sizeof(unsigned char) * mainImage2->getComponent<Image>()->getWidth() * mainImage2->getComponent<Image>()->getHeight() * 4);
                 glFlush();
                 glFinish();
@@ -896,12 +882,12 @@ private:
                 glFlush();
                 glFinish();
                 saveImage("/home/dan/test-image.png",raw_img, mainImage2->getComponent<Image>()->getWidth(), mainImage2->getComponent<Image>()->getHeight(), mainImage2->getComponent<Image>()->getComponents());
-
+*/
                 //glDrawVkImageNV((GLuint64)image, 0, 0.f,0.f, GLfloat(mainImage2->getComponent<Image>()->getWidth()), GLfloat(mainImage2->getComponent<Image>()->getHeight()),0.f,0.f,0.f,1.f,1.f);
                             // clear screen
             glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
 
-            glm::mat4 view = glm::lookAt(glm::vec3(0.0f, 0.0f, 5.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+            glm::mat4 view = glm::lookAt(glm::vec3(0.0f, 0.0f, 3.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
             glm::mat4 proj = glm::perspective(glm::radians(45.0f), (float)WIDTH / (float)HEIGHT, 0.1f, 100.0f);
             glm::mat4 model = glm::mat4(1.0f);
 
@@ -916,7 +902,12 @@ private:
 
             // Draw cube
             glBindVertexArray(vao);
-            glDrawArrays(GL_TRIANGLES, 0, 36);
+            glActiveTexture(GL_TEXTURE0+0);
+            glBindTexture(GL_TEXTURE_2D, texture);
+            glBindTexture(GL_TEXTURE_2D, color);
+            loc = glGetUniformLocation(shaderProgram, "tex");
+            glUniform1i(loc, 0);
+            glDrawArrays(GL_TRIANGLES, 0, 6);
             glBindVertexArray(0);
 
             // reset program
