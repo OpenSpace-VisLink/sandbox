@@ -57,17 +57,11 @@ protected:
 
 	        //stbi_image_free(pixels);
 
-	        createImage(state.getDevice(), texWidth, texHeight, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, imageState->image, imageState->imageMemory, external);
-
-	        transitionImageLayout(imageState->image, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, state.getCommandPool().get(), context);
-	            copyBufferToImage(stagingBuffer->getBuffer(), imageState->image, static_cast<uint32_t>(texWidth), static_cast<uint32_t>(texHeight), state.getCommandPool().get(), context);
-	        transitionImageLayout(imageState->image, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, state.getCommandPool().get(), context);
-
-	        //vkDestroyBuffer(state.getDevice()->getDevice(), stagingBuffer, nullptr);
-	        //vkFreeMemory(state.getDevice()->getDevice(), stagingBufferMemory, nullptr);
-	        delete stagingBuffer;
+	        createImage(state.getDevice(), texWidth, texHeight, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, imageState->image, imageState->imageMemory, external);
 
             if (external) {
+                createImage(state.getDevice(), texWidth, texHeight, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, imageState->image, imageState->imageMemory, external);
+
                 VkMemoryGetFdInfoKHR memoryGet;
                 memoryGet.sType = VK_STRUCTURE_TYPE_MEMORY_GET_FD_INFO_KHR;
                 memoryGet.pNext = NULL;
@@ -78,9 +72,24 @@ protected:
                 }
                 std::cout << "handle memory " << imageState->externalHandle << std::endl;
 
-        //handles.memory = device.getMemoryWin32HandleKHR({ texture.memory, vk::ExternalMemoryHandleTypeFlagBits::eOpaqueWin32 }, dynamicLoader);
+                transitionImageLayout(imageState->image, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, state.getCommandPool().get(), context);
+                copyBufferToImage(stagingBuffer->getBuffer(), imageState->image, static_cast<uint32_t>(texWidth), static_cast<uint32_t>(texHeight), state.getCommandPool().get(), context);
+                transitionImageLayout(imageState->image, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, state.getCommandPool().get(), context);
 
             }
+            else {
+                createImage(state.getDevice(), texWidth, texHeight, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, imageState->image, imageState->imageMemory, external);
+
+                transitionImageLayout(imageState->image, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, state.getCommandPool().get(), context);
+                copyBufferToImage(stagingBuffer->getBuffer(), imageState->image, static_cast<uint32_t>(texWidth), static_cast<uint32_t>(texHeight), state.getCommandPool().get(), context);
+                transitionImageLayout(imageState->image, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, state.getCommandPool().get(), context);
+            }
+
+	        //vkDestroyBuffer(state.getDevice()->getDevice(), stagingBuffer, nullptr);
+	        //vkFreeMemory(state.getDevice()->getDevice(), stagingBufferMemory, nullptr);
+	        delete stagingBuffer;
+
+
 		}
 
         //ImageState* imageState = contextHandler.getSharedState(context);
@@ -148,6 +157,16 @@ private:
     	VkDeviceMemory imageMemory;
         int externalHandle;
 	};
+    
+    /*external
+
+            // Setup the command buffers used to transition the image between GL and VK
+            transitionCmdBuf = context.createCommandBuffer();
+            transitionCmdBuf.begin(vk::CommandBufferBeginInfo{});
+            context.setImageLayout(transitionCmdBuf, texture.image, vk::ImageAspectFlagBits::eColor, vk::ImageLayout::eUndefined,
+                                   vk::ImageLayout::eColorAttachmentOptimal);
+            transitionCmdBuf.end();
+            */
 
     void transitionImageLayout(VkImage image, VkFormat format, VkImageLayout oldLayout, VkImageLayout newLayout, VulkanCommandPool* commandPool, const GraphicsContext& context) {
         VkCommandBuffer commandBuffer = commandPool->beginSingleTimeCommands(context);
@@ -180,7 +199,13 @@ private:
 
             sourceStage = VK_PIPELINE_STAGE_TRANSFER_BIT;
             destinationStage = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
-        } else {
+        } else if (oldLayout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL && newLayout == VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL) {
+            barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+            barrier.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+
+            sourceStage = VK_PIPELINE_STAGE_TRANSFER_BIT;
+            destinationStage = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+        }  else {
             throw std::invalid_argument("unsupported layout transition!");
         }
 
@@ -222,7 +247,7 @@ private:
 	GraphicsContextHandler<ImageState,ContextState> contextHandler;
 	sandbox::Image* image;
     bool external;
-    
+
 };
 
 }
