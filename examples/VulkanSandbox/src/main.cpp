@@ -288,6 +288,7 @@ private:
     Entity* renderNode0;
     Entity* renderNode2;
     Entity* renderNode3;
+    Entity* renderNode4;
 
     #define glDrawVkImageNV pfnDrawVkImageNV
     PFNGLDRAWVKIMAGENVPROC pfnDrawVkImageNV;
@@ -313,7 +314,7 @@ private:
         glfwSetWindowUserPointer(window2, this);
         glfwSetWindowPos (window2, WIDTH+5, 0);
 
-        window3 = glfwCreateWindow(WIDTH, HEIGHT, "Vulkan", nullptr, nullptr);
+        window3 = glfwCreateWindow(515, 515, "Vulkan", nullptr, nullptr);
         glfwSetWindowUserPointer(window3, this);
         glfwSetWindowPos (window3, 2*(WIDTH+5), 0);
 
@@ -745,9 +746,9 @@ private:
                     renderSpecific->addComponent(new RenderNode(&renderPassNode, RENDER_ACTION_END));
                     //renderSpecific->addComponent(new RenderNode(&pipelineNode2));//, UPDATE_ONLY));
             EntityNode* windowNodes = new EntityNode(deviceNode);
-                renderNode0 = createSwapChain(windowNodes, surfaceNode, "window 1");
-                renderNode2 = createSwapChain(windowNodes, surface2Node, "window 2");
-                renderNode3 = createSwapChain(windowNodes, surface3Node, "window 5");
+                renderNode0 = createSwapChain(windowNodes, surfaceNode, queues, "window 1");
+                renderNode2 = createSwapChain(windowNodes, surface2Node, queues, "window 2");
+                renderNode3 = createSwapChain(windowNodes, surface3Node, queues, "window 5");
 
         deviceNode2 = new EntityNode(&vulkanNode);
             deviceNode2->addComponent(new SharedContext());
@@ -761,12 +762,36 @@ private:
                 updateSharedNode2->addComponent(new VulkanDeviceRenderer());
                 updateSharedNode2->addComponent(new VulkanCommandPool(graphicsQueue2));
                 updateSharedNode2->addComponent(new RenderNode(&images2));
+                updateSharedNode2->addComponent(new RenderNode(&images));
+                updateSharedNode2->addComponent(new RenderNode(&graphicsObjects));
+                renderSpecific = new EntityNode(updateSharedNode2);
+                    renderSpecific->addComponent(new AllowRenderModes(VULKAN_RENDER_SHARED_ONLY));
+                    renderSpecific->addComponent(new RenderNode(&shaderObjects));//, UPDATE_ONLY));
+                    renderSpecific->addComponent(new RenderNode(&descriptorSetGroup));
+                    renderSpecific->addComponent(new RenderNode(&renderPassNode, RENDER_ACTION_START));
+                    renderSpecific->addComponent(new RenderNode(&pipelineNode));//, UPDATE_ONLY));
+                    renderSpecific->addComponent(new RenderNode(&pipelineNode2));//, UPDATE_ONLY));
+                    renderSpecific->addComponent(new RenderNode(&pipelineNode3));//, UPDATE_ONLY));
+                    renderSpecific->addComponent(new RenderNode(&renderPassNode, RENDER_ACTION_END));
+            EntityNode* windowNodes2 = new EntityNode(deviceNode2);
+                renderNode4 = createSwapChain(windowNodes2, NULL, queues2, "window 4");
 
         vulkanNode.update();
 
         VulkanDeviceRenderer* sharedRenderer2 = updateSharedNode2->getComponentRecursive<VulkanDeviceRenderer>();
         sharedRenderer2->render(VULKAN_RENDER_UPDATE_SHARED);
         sharedRenderer2->render(VULKAN_RENDER_OBJECT);
+
+        VulkanDeviceRenderer* renderer4 = renderNode4->getComponentRecursive<VulkanDeviceRenderer>();
+        renderer4->render(VULKAN_RENDER_UPDATE_SHARED);
+        renderer4->render(VULKAN_RENDER_UPDATE_DISPLAY);
+
+        std::vector<VulkanDeviceRenderer*> renderers2 = windowNodes2->getComponentsRecursive<VulkanDeviceRenderer>();
+        for (int f = 0; f < renderers2.size(); f++) {  
+            renderers2[f]->render(VULKAN_RENDER_UPDATE);
+            renderers2[f]->render(VULKAN_RENDER_OBJECT);
+            renderers2[f]->render(VULKAN_RENDER_COMMAND); 
+        }
 
         VulkanDeviceRenderer* sharedRenderer = updateSharedNode->getComponentRecursive<VulkanDeviceRenderer>();
         sharedRenderer->render(VULKAN_RENDER_UPDATE_SHARED);
@@ -808,10 +833,19 @@ private:
     }
 
 
-    EntityNode* createSwapChain(Entity* parentNode, Entity* surfaceNode, std::string name) {
+    EntityNode* createSwapChain(Entity* parentNode, Entity* surfaceNode, Entity* queues, std::string name) {
+        VulkanGraphicsQueue* gQueue = queues->getComponent<VulkanGraphicsQueue>();
+        VulkanPresentQueue* pQueue = queues->getComponent<VulkanPresentQueue>();
         EntityNode* renderNode = new EntityNode(parentNode);
-            renderNode->addComponent(new VulkanBasicSwapChain(name, surfaceNode));
-            renderNode->addComponent(new VulkanFrameRenderer(graphicsQueue, presentQueue));
+            if (surfaceNode) {
+                renderNode->addComponent(new VulkanBasicSwapChain(name, surfaceNode));
+            }
+            else {
+                //VkFormat imageFormat, int width, int height, int imageCount
+                renderNode->addComponent(new VulkanOffscreenRenderer(name, VK_FORMAT_R8G8B8A8_UNORM, 512, 512, 3));
+                pQueue = NULL;
+            }
+            renderNode->addComponent(new VulkanFrameRenderer(gQueue, pQueue));
             EntityNode* updateNode = new EntityNode(renderNode);
                 updateNode->addComponent(new AllowRenderModes(VULKAN_RENDER_UPDATE_DISPLAY | VULKAN_RENDER_UPDATE | VULKAN_RENDER_OBJECT | VULKAN_RENDER_CLEANUP_DISPLAY | VULKAN_RENDER_CLEANUP));
                 updateNode->addComponent(new RenderNode(&shaderObjects));
@@ -822,13 +856,20 @@ private:
                 updateNode->addComponent(new RenderNode(&pipelineNode3));//, UPDATE_ONLY));
                 updateNode->addComponent(new RenderNode(&renderPassNode, RENDER_ACTION_END));
             EntityNode* commandNode = new EntityNode(renderNode);
-                commandNode->addComponent(new VulkanCommandPool(graphicsQueue));
+                commandNode->addComponent(new VulkanCommandPool(gQueue));
+                if (!pQueue) {
+                    //commandNode->addComponent(new VulkanImageTransition());
+                }
                 commandNode->addComponent(new VulkanCommandBuffer());
                 EntityNode* commands = new EntityNode(commandNode);
                     commands->addComponent(new AllowRenderModes(VULKAN_RENDER_COMMAND));
                     commands->addComponent(new RenderNode(&scene));
         return renderNode;
     }
+
+
+    GLuint mem[3];
+    GLuint color[3];
 
     void mainLoop() {
         while (!glfwWindowShouldClose(window)) {
@@ -841,9 +882,14 @@ private:
             renderNode0->getComponent<VulkanFrameRenderer>()->drawFrame();
             renderNode2->getComponent<VulkanFrameRenderer>()->drawFrame();
             renderNode3->getComponent<VulkanFrameRenderer>()->drawFrame();
+            renderNode4->getComponent<VulkanFrameRenderer>()->drawFrame();
 
             if (frame == 10000/20) {
                 vkDeviceWaitIdle(deviceNode2->getComponent<VulkanDevice>()->getDevice());
+
+                //int currentImage = renderNode4->getComponent<VulkanOffscreenRenderer>()->getCurrentImage();
+                //std::cout << "Current Image: " << currentImage << std::endl;
+
                 std::cout << "test" << std::endl;
                 VertexArray<Vertex>* va = static_cast< VertexArray<Vertex>* >(graphicsObjects.getChildren()[0]->getComponent< VulkanDeviceBuffer >());
                 va->value[0].pos.x = 0.0;
@@ -859,21 +905,30 @@ private:
                 VkImage image = mainImage2->getComponent<VulkanImage>()->getImage(sharedRenderer2->getContext());
                 std::cout << image << std::endl;
 
-                int externalHandle =  mainImage2->getComponent<VulkanImage>()->getExternalHandle(sharedRenderer2->getContext());
-                std::cout << externalHandle << std::endl;
-
-                GLuint mem = 0;
+                //int externalHandle =  mainImage2->getComponent<VulkanImage>()->getExternalHandle(sharedRenderer2->getContext());
+                //std::cout << externalHandle << std::endl;
+                /*GLuint mem = 0;
                 glCreateMemoryObjectsEXT(1, &mem);
-                glImportMemoryFdEXT(mem, mainImage2->getComponent<Image>()->getSize(), GL_HANDLE_TYPE_OPAQUE_FD_EXT, externalHandle);
+                glImportMemoryFdEXT(mem, mainImage2->getComponent<Image>()->getSize(), GL_HANDLE_TYPE_OPAQUE_FD_EXT, externalHandle);*/
+
+                //externalHandle =  renderNode4->getComponent<VulkanOffscreenRenderer>()->externalHandles[currentImage];
+                for (int f = 0; f < 3; f++) {
+                    int externalHandle =  renderNode4->getComponent<VulkanOffscreenRenderer>()->externalHandles[f];
+                    std::cout << externalHandle << std::endl;
+                    glCreateMemoryObjectsEXT(1, &mem[f]);
+                    glImportMemoryFdEXT(mem[f], 512*512*4, GL_HANDLE_TYPE_OPAQUE_FD_EXT, externalHandle);
+                    glCreateTextures(GL_TEXTURE_2D, 1, &color[f]);
+                    // The internalFormat here should correspond to the format of 
+                    // the Vulkan image.  Similarly, the w & h values should correspond to 
+                    // the extent of the Vulkan image
+                    glTextureStorageMem2DEXT(color[f], 1, GL_RGBA8, 512, 512, mem[f], 0 );
+                    std::cout << "test " << color << std::endl;
+                }
+
+
                 //glImportMemoryWin32HandleEXT(mem, memorySize, GL_HANDLE_TYPE_OPAQUE_FD_EXT, handles.memory);
-                GLuint color = 0;
-                glCreateTextures(GL_TEXTURE_2D, 1, &color);
-                // The internalFormat here should correspond to the format of 
-                // the Vulkan image.  Similarly, the w & h values should correspond to 
-                // the extent of the Vulkan image
-                glTextureStorageMem2DEXT(color, 1, GL_RGBA8, mainImage2->getComponent<Image>()->getWidth(), mainImage2->getComponent<Image>()->getHeight(), mem, 0 );
-                std::cout << "test " << color << std::endl;
-                glBindTexture(GL_TEXTURE_2D, color);
+                
+                
                 /*glPixelStorei(GL_PACK_ALIGNMENT, 1);
                 unsigned char *raw_img = (unsigned char*) malloc(sizeof(unsigned char) * mainImage2->getComponent<Image>()->getWidth() * mainImage2->getComponent<Image>()->getHeight() * 4);
                 glFlush();
@@ -885,34 +940,44 @@ private:
 */
                 //glDrawVkImageNV((GLuint64)image, 0, 0.f,0.f, GLfloat(mainImage2->getComponent<Image>()->getWidth()), GLfloat(mainImage2->getComponent<Image>()->getHeight()),0.f,0.f,0.f,1.f,1.f);
                             // clear screen
-            glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
 
-            glm::mat4 view = glm::lookAt(glm::vec3(0.0f, 0.0f, 3.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
-            glm::mat4 proj = glm::perspective(glm::radians(45.0f), (float)WIDTH / (float)HEIGHT, 0.1f, 100.0f);
-            glm::mat4 model = glm::mat4(1.0f);
+            }
 
-            // Set shader parameters
-            glUseProgram(shaderProgram);
-            GLint loc = glGetUniformLocation(shaderProgram, "ProjectionMatrix");
-            glUniformMatrix4fv(loc, 1, GL_FALSE, glm::value_ptr(proj));
-            loc = glGetUniformLocation(shaderProgram, "ViewMatrix");
-            glUniformMatrix4fv(loc, 1, GL_FALSE, glm::value_ptr(view));
-            loc = glGetUniformLocation(shaderProgram, "ModelMatrix");
-            glUniformMatrix4fv(loc, 1, GL_FALSE, glm::value_ptr(model));
+            if (frame >= 10000/20) {
+                vkDeviceWaitIdle(deviceNode2->getComponent<VulkanDevice>()->getDevice());
 
-            // Draw cube
-            glBindVertexArray(vao);
-            glActiveTexture(GL_TEXTURE0+0);
-            glBindTexture(GL_TEXTURE_2D, texture);
-            glBindTexture(GL_TEXTURE_2D, color);
-            loc = glGetUniformLocation(shaderProgram, "tex");
-            glUniform1i(loc, 0);
-            glDrawArrays(GL_TRIANGLES, 0, 6);
-            glBindVertexArray(0);
+                int currentImage = renderNode4->getComponent<VulkanOffscreenRenderer>()->getCurrentImage();
 
-            // reset program
-            glUseProgram(0);
+                glBindTexture(GL_TEXTURE_2D, color[currentImage]);
 
+                glClearColor(1,1,1,1);
+                glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
+
+                glm::mat4 view = glm::lookAt(glm::vec3(0.0f, 0.0f, 3.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+                glm::mat4 proj = glm::perspective(glm::radians(45.0f), (float)WIDTH / (float)HEIGHT, 0.1f, 100.0f);
+                glm::mat4 model = glm::mat4(1.0f);
+
+                // Set shader parameters
+                glUseProgram(shaderProgram);
+                GLint loc = glGetUniformLocation(shaderProgram, "ProjectionMatrix");
+                glUniformMatrix4fv(loc, 1, GL_FALSE, glm::value_ptr(proj));
+                loc = glGetUniformLocation(shaderProgram, "ViewMatrix");
+                glUniformMatrix4fv(loc, 1, GL_FALSE, glm::value_ptr(view));
+                loc = glGetUniformLocation(shaderProgram, "ModelMatrix");
+                glUniformMatrix4fv(loc, 1, GL_FALSE, glm::value_ptr(model));
+
+                // Draw cube
+                glBindVertexArray(vao);
+                glActiveTexture(GL_TEXTURE0+0);
+                //glBindTexture(GL_TEXTURE_2D, texture);
+                glBindTexture(GL_TEXTURE_2D, color[currentImage]);
+                loc = glGetUniformLocation(shaderProgram, "tex");
+                glUniform1i(loc, 0);
+                glDrawArrays(GL_TRIANGLES, 0, 6);
+                glBindVertexArray(0);
+
+                // reset program
+                glUseProgram(0);
 
                 glfwSwapBuffers(window4);
             }

@@ -97,19 +97,22 @@ public:
         VkSubmitInfo submitInfo = {};
         submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
 
-        VkSemaphore waitSemaphores[] = {imageAvailableSemaphores[currentFrame]};
-        VkPipelineStageFlags waitStages[] = {VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};
-        submitInfo.waitSemaphoreCount = 1;
-        submitInfo.pWaitSemaphores = waitSemaphores;
-        submitInfo.pWaitDstStageMask = waitStages;
+        VkSemaphore signalSemaphores[] = {renderFinishedSemaphores[currentFrame]};
+
+        if (presentQueue) {
+            VkSemaphore waitSemaphores[] = {imageAvailableSemaphores[currentFrame]};
+            VkPipelineStageFlags waitStages[] = {VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};
+            submitInfo.waitSemaphoreCount = 1;
+            submitInfo.pWaitSemaphores = waitSemaphores;
+            submitInfo.pWaitDstStageMask = waitStages;
+
+            submitInfo.signalSemaphoreCount = 1; 
+            submitInfo.pSignalSemaphores = signalSemaphores;
+        }
 
         submitInfo.commandBufferCount = 1;
         VkCommandBuffer cmdBuffer = renderNode->getComponentRecursive<VulkanCommandBuffer>()->getCommandBuffer(vulkanRenderer->getContext());
         submitInfo.pCommandBuffers = &cmdBuffer;
-
-        VkSemaphore signalSemaphores[] = {renderFinishedSemaphores[currentFrame]};
-        submitInfo.signalSemaphoreCount = 1;
-        submitInfo.pSignalSemaphores = signalSemaphores;
 
         vkResetFences(getDevice().getDevice(), 1, &inFlightFences[currentFrame]);
 
@@ -117,27 +120,31 @@ public:
             throw std::runtime_error("failed to submit draw command buffer!");
         }
 
-        VkPresentInfoKHR presentInfo = {};
-        presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
+        if (presentQueue) {
+            VkPresentInfoKHR presentInfo = {};
+            presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
 
-        presentInfo.waitSemaphoreCount = 1;
-        presentInfo.pWaitSemaphores = signalSemaphores;
+            presentInfo.waitSemaphoreCount = 1;
+            presentInfo.pWaitSemaphores = signalSemaphores;
 
-        /*VkSwapchainKHR swapChains[] = {swapChain};
-        presentInfo.swapchainCount = 1;
-        presentInfo.pSwapchains = swapChains;*/
+            /*VkSwapchainKHR swapChains[] = {swapChain};
+            presentInfo.swapchainCount = 1;
+            presentInfo.pSwapchains = swapChains;*/
 
-        presentInfo.pImageIndices = &imageIndex;
+            presentInfo.pImageIndices = &imageIndex;
 
-        result = swapChain->queuePresent(presentQueue->getQueue(), presentInfo);
+            result = swapChain->queuePresent(presentQueue->getQueue(), presentInfo);
 
-        if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR || framebufferResized) {
-            std::cout << "Out of date / suboptimal / resized" << std::endl;
-            framebufferResized = false;
-            recreateSwapChain(renderNode->getComponent<VulkanSwapChain>());
-        } else if (result != VK_SUCCESS) {
-            throw std::runtime_error("failed to present swap chain image!");
+            if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR || framebufferResized) {
+                std::cout << "Out of date / suboptimal / resized" << std::endl;
+                framebufferResized = false;
+                recreateSwapChain(renderNode->getComponent<VulkanSwapChain>());
+            } else if (result != VK_SUCCESS) {
+                throw std::runtime_error("failed to present swap chain image!");
+            }
         }
+
+
 
         if (incrementCurrentFrame) {
         	incrementFrame();

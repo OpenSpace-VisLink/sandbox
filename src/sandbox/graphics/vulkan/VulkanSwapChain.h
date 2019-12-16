@@ -4,6 +4,7 @@
 #include "sandbox/Component.h"
 #include "sandbox/graphics/vulkan/VulkanDevice.h"
 #include "sandbox/graphics/vulkan/VulkanDeviceRenderer.h"
+#include "sandbox/graphics/vulkan/render/VulkanCommandPool.h"
 
 namespace sandbox {
 
@@ -155,7 +156,7 @@ public:
         return imageView;
     }
 
-    void createImage(const VulkanDevice* device, uint32_t width, uint32_t height, VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage, VkMemoryPropertyFlags properties, VkImage& image, VkDeviceMemory& imageMemory) {
+    static void createImage(const VulkanDevice* device, uint32_t width, uint32_t height, VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage, VkMemoryPropertyFlags properties, VkImage& image, VkDeviceMemory& imageMemory, bool external = false) {
         VkImageCreateInfo imageInfo = {};
         imageInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
         imageInfo.imageType = VK_IMAGE_TYPE_2D;
@@ -178,8 +179,16 @@ public:
         VkMemoryRequirements memRequirements;
         vkGetImageMemoryRequirements(device->getDevice(), image, &memRequirements);
 
+        VkExportMemoryAllocateInfo exportMemAlloc;
+        exportMemAlloc.sType = VK_STRUCTURE_TYPE_EXPORT_MEMORY_ALLOCATE_INFO;
+        exportMemAlloc.pNext = NULL;
+        exportMemAlloc.handleTypes = VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_FD_BIT;
+
         VkMemoryAllocateInfo allocInfo = {};
         allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+        if (external) {
+            allocInfo.pNext = &exportMemAlloc;
+        }
         allocInfo.allocationSize = memRequirements.size;
         allocInfo.memoryTypeIndex = device->findMemoryType(memRequirements.memoryTypeBits, properties);
 
@@ -188,6 +197,7 @@ public:
         }
 
         vkBindImageMemory(device->getDevice(), image, imageMemory, 0);
+
     }
 
 
@@ -210,8 +220,7 @@ protected:
 
 class VulkanBasicSwapChain : public VulkanBasicSwapChainBase {
 public:
-    VulkanBasicSwapChain(const std::string& name, Entity* surfaceEntity) : VulkanBasicSwapChainBase(name), surfaceEntity(surfaceEntity) { addType<VulkanBasicSwapChainBase>(); }
-
+    VulkanBasicSwapChain(const std::string& name, Entity* surfaceEntity) : VulkanBasicSwapChainBase(name), surfaceEntity(surfaceEntity) { addType<VulkanBasicSwapChain>(); }
 
     void createImages() {
         surface = surfaceEntity->getComponent<VulkanSurface>();
@@ -342,6 +351,139 @@ private:
     VkSwapchainKHR swapChain;
     VkFormat swapChainImageFormat;
     VkExtent2D swapChainExtent;
+};
+
+class VulkanImageTransition : public VulkanRenderObject {
+public:
+    VulkanImageTransition() { addType<VulkanImageTransition>(); }
+
+protected:
+    virtual void startRender(const GraphicsContext& context, VulkanDeviceState& state);
+
+    void transitionImageLayout(VkImage image, VkFormat format, VkImageLayout oldLayout, VkImageLayout newLayout, VulkanCommandPool* commandPool, const GraphicsContext& context) {
+        VkCommandBuffer commandBuffer = commandPool->beginSingleTimeCommands(context);
+
+        VkImageMemoryBarrier barrier = {};
+        barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+        barrier.oldLayout = oldLayout;
+        barrier.newLayout = newLayout;
+        barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+        barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+        barrier.image = image;
+        barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+        barrier.subresourceRange.baseMipLevel = 0;
+        barrier.subresourceRange.levelCount = 1;
+        barrier.subresourceRange.baseArrayLayer = 0;
+        barrier.subresourceRange.layerCount = 1;
+
+        VkPipelineStageFlags sourceStage;
+        VkPipelineStageFlags destinationStage;
+
+        if (oldLayout == VK_IMAGE_LAYOUT_UNDEFINED && newLayout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL) {
+            barrier.srcAccessMask = 0;
+            barrier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+
+            sourceStage = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
+            destinationStage = VK_PIPELINE_STAGE_TRANSFER_BIT;
+        } else if (oldLayout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL && newLayout == VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL) {
+            barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+            barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+
+            sourceStage = VK_PIPELINE_STAGE_TRANSFER_BIT;
+            destinationStage = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+        } else if (oldLayout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL && newLayout == VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL) {
+            barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+            barrier.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+
+            sourceStage = VK_PIPELINE_STAGE_TRANSFER_BIT;
+            destinationStage = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+        } else if (oldLayout == VK_IMAGE_LAYOUT_UNDEFINED && newLayout == VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL) {
+            barrier.srcAccessMask = 0;
+            barrier.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+
+            sourceStage = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
+            destinationStage = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+        }  else {
+            throw std::invalid_argument("unsupported layout transition!");
+        }
+
+        vkCmdPipelineBarrier(
+            commandBuffer,
+            sourceStage, destinationStage,
+            0,
+            0, nullptr,
+            0, nullptr,
+            1, &barrier
+        );
+
+        commandPool->endSingleTimeCommands(context, commandBuffer);
+    }
+};
+
+class VulkanOffscreenRenderer : public VulkanBasicSwapChainBase {
+public:
+    VulkanOffscreenRenderer(const std::string& name, VkFormat imageFormat, int width, int height, int imageCount) : VulkanBasicSwapChainBase(name), swapChainImageFormat(imageFormat), imageCount(imageCount), currentImage(0) { 
+        addType<VulkanOffscreenRenderer>();
+        swapChainExtent.width = width;
+        swapChainExtent.height = height;
+    }
+    
+    void createImages() {
+        for (int f = 0; f < imageCount; f++) {
+            VkImage image;
+            VkDeviceMemory memory;
+            VulkanBasicSwapChainBase::createImage(&getDevice(), swapChainExtent.width, swapChainExtent.height, swapChainImageFormat, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, image, memory, true);
+            
+            VkMemoryGetFdInfoKHR memoryGet;
+            memoryGet.sType = VK_STRUCTURE_TYPE_MEMORY_GET_FD_INFO_KHR;
+            memoryGet.pNext = NULL;
+            memoryGet.memory = memory;
+            memoryGet.handleType = VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_FD_BIT;
+            int externalHandle;
+            if (getDevice().getInstance().GetMemoryFdKHR(getDevice().getDevice(), &memoryGet, &externalHandle) != VK_SUCCESS) {
+                throw std::runtime_error("failed to vkGetMemoryFdKHR!");
+            }
+            std::cout << "handle memory " << externalHandle << std::endl;
+
+            swapChainImages.push_back(image);
+            imageMemory.push_back(memory);
+            externalHandles.push_back(externalHandle);
+        }
+
+    }
+
+    void destroyImages() {
+        for (int f = 0; f < swapChainImages.size(); f++) {
+            vkDestroyImage(getDevice().getDevice(), swapChainImages[f], nullptr);
+            vkFreeMemory(getDevice().getDevice(), imageMemory[f], nullptr);
+        }
+
+        swapChainImages.clear();
+        imageMemory.clear();
+        externalHandles.clear();
+    }
+
+    VkResult acquireNextImage(VkSemaphore semaphore, uint32_t* imageIndex) {
+        currentImage = (currentImage + 1) % imageCount;
+        *imageIndex = currentImage;
+        return VK_SUCCESS;
+    }
+
+    VkResult queuePresent(VkQueue queue, VkPresentInfoKHR& presentInfo) {
+        return VK_SUCCESS;
+    }
+
+    VkFormat getImageFormat() const { return swapChainImageFormat; }
+    VkExtent2D getExtent() const { return swapChainExtent; }
+    int getCurrentImage() { return currentImage; }
+
+public:
+    std::vector<VkDeviceMemory> imageMemory;
+    std::vector<int> externalHandles;
+    VkFormat swapChainImageFormat;
+    VkExtent2D swapChainExtent;
+    int imageCount;
+    int currentImage;
 };
 
 }
