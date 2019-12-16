@@ -31,10 +31,10 @@ public:
 	        framebufferInfo.height = state.getExtent().height;
 	        framebufferInfo.layers = 1;*/
 
-	        std::array<VkImageView, 2> attachments = {
-			    swapChain->getImageViews()[VulkanSwapChainState::get(context).getImageIndex()],
-			    swapChain->getDepthImageView()
-			};
+			std::vector<VkImageView> attachments;
+			attachments.resize(2);
+			attachments[0] = swapChain->getImageViews()[VulkanSwapChainState::get(context).getImageIndex()];
+			attachments[1] = swapChain->getDepthImageView();
 
 			VkFramebufferCreateInfo framebufferInfo = {};
 			framebufferInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;

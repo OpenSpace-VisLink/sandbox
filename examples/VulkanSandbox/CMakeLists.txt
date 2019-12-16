@@ -13,18 +13,29 @@ set (HEADERFILES
 
 # --------------------- Dependencies -----------------------
 
+
+add_external(glfw
+	GIT_REPOSITORY https://github.com/glfw/glfw.git
+	LIB_NAME glfw3
+)
+
 add_external(tuio 
 	GIT_REPOSITORY https://github.com/dtorban/TUIO11_CPP.git
 	LIB_NAME TUIO
 )
 
+add_external(glm 
+	GIT_REPOSITORY https://github.com/g-truc/glm.git
+	HEADER_ONLY
+)
 add_definitions(-DGLM_FORCE_INLINE)
+include_directories(${CMAKE_FRAMEWORK_DIR}/external/glm/src)
 
 include(${external_dir}/NanoGUI/NanoGUI.cmake)
 #useNanoGUI()
 
 include(${external_dir}/CPP11/CPP11.cmake)
-useCPP17()
+#useCPP17()
 
 include(${external_dir}/OpenGL/OpenGL.cmake)
 #useOpenGL()
@@ -34,8 +45,8 @@ message("vk Found" ${Vulkan_FOUND} ${Vulkan_INCLUDE_DIRS} ${Vulkan_LIBRARIES})
 include_directories(${Vulkan_INCLUDE_DIRS})
 set(DEP_LIBS ${DEP_LIBS} ${Vulkan_LIBRARIES})
 
-find_package(glfw3 REQUIRED)
-set(DEP_LIBS ${DEP_LIBS} glfw)
+#find_package(glfw3 REQUIRED)
+#set(DEP_LIBS ${DEP_LIBS} glfw)
 
 set(PROJECT_DEPS ${PROJECT_DEPS} sandbox)
 set(DEP_LIBS ${DEP_LIBS} sandbox)

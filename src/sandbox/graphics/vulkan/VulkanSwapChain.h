@@ -1,6 +1,7 @@
 #ifndef SANDBOX_GRAPHICS_VULKAN_SWAP_CHAIN_H_
 #define SANDBOX_GRAPHICS_VULKAN_SWAP_CHAIN_H_
 
+#include "glm/glm.hpp"
 #include "sandbox/Component.h"
 #include "sandbox/graphics/vulkan/VulkanDevice.h"
 #include "sandbox/graphics/vulkan/VulkanDeviceRenderer.h"
@@ -338,8 +339,8 @@ public:
                 static_cast<uint32_t>(height)
             };
 
-            actualExtent.width = std::max(capabilities.minImageExtent.width, std::min(capabilities.maxImageExtent.width, actualExtent.width));
-            actualExtent.height = std::max(capabilities.minImageExtent.height, std::min(capabilities.maxImageExtent.height, actualExtent.height));
+            actualExtent.width = glm::max(capabilities.minImageExtent.width, glm::min(capabilities.maxImageExtent.width, actualExtent.width));
+            actualExtent.height = glm::max(capabilities.minImageExtent.height, glm::min(capabilities.maxImageExtent.height, actualExtent.height));
 
             return actualExtent;
         }
