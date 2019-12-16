@@ -17,7 +17,6 @@ public:
     virtual const std::vector<VkImageView>& getImageViews() const = 0;
     virtual VkImageView getDepthImageView() const = 0;
 	virtual VkExtent2D getExtent() const = 0;
-    //virtual VkSwapchainKHR getSwapChain() const = 0;
     virtual const std::string& getName() const = 0;
     virtual VkResult acquireNextImage(VkSemaphore semaphore, uint32_t* index) = 0;
     virtual VkResult queuePresent(VkQueue queue, VkPresentInfoKHR& presentInfo) = 0;
@@ -50,18 +49,11 @@ private:
 	VulkanSwapChain* swapChain;
 };
 
-class VulkanBasicSwapChain : public VulkanSwapChain {
+class VulkanBasicSwapChainBase : public VulkanSwapChain {
 public:
-	VulkanBasicSwapChain(const std::string& name, Entity* surfaceEntity) : name(name), surfaceEntity(surfaceEntity), initialized(false) { addType<VulkanBasicSwapChain>(); }
-	virtual ~VulkanBasicSwapChain() {
+	VulkanBasicSwapChainBase(const std::string& name) : name(name), initialized(false) { addType<VulkanBasicSwapChainBase>(); }
+	virtual ~VulkanBasicSwapChainBase() {
 		cleanup();
-	}
-
-	void afterAdd() {
-		/*getEntity().addComponent(new Transform());
-		getEntity().addComponent(new ArcBall(input));
-		getEntity().addComponent(new MouseZoom(input));
-		getEntity().addComponent(new MouseTranslate(input));*/
 	}
 
 	void cleanup() {
@@ -81,33 +73,14 @@ public:
 			std::cout << "Destroy image view." << std::endl;
         }
 
-        vkDestroySwapchainKHR(getDevice().getDevice(), swapChain, nullptr);
-			std::cout << "Destroy swap chain." << std::endl;
-        /*for (auto framebuffer : swapChainFramebuffers) {
-            vkDestroyFramebuffer(device, framebuffer, nullptr);
-        }
+        //vkDestroySwapchainKHR(getDevice().getDevice(), swapChain, nullptr);
+            //std::cout << "Destroy swap chain." << std::endl;
 
-        vkFreeCommandBuffers(device, commandPool, static_cast<uint32_t>(commandBuffers.size()), commandBuffers.data());
-
-        vkDestroyPipeline(device, graphicsPipeline, nullptr);
-        vkDestroyPipelineLayout(device, pipelineLayout, nullptr);
-        
-        vkDestroyRenderPass(device, renderPass, nullptr);
-
-        for (auto imageView : swapChainImageViews) {
-            vkDestroyImageView(device, imageView, nullptr);
-        }
-
-        vkDestroySwapchainKHR(device, swapChain, nullptr);
-
-        for (size_t i = 0; i < swapChainImages.size(); i++) {
-            vkDestroyBuffer(device, uniformBuffers[i], nullptr);
-            vkFreeMemory(device, uniformBuffersMemory[i], nullptr);
-        }
-
-        vkDestroyDescriptorPool(device, descriptorPool, nullptr);
-        */
+        destroyImages();
     }
+
+    virtual void createImages() = 0;
+    virtual void destroyImages() = 0;
 
 	void update() {
 		if (initialized) {
@@ -115,63 +88,11 @@ public:
 			//return;
 		}
 
-		surface = surfaceEntity->getComponent<VulkanSurface>();
-
-        SwapChainSupportDetails swapChainSupport = getDevice().getInstance().querySwapChainSupport(getDevice().getPhysicalDevice(), surface->getSurface());
-
-        VkSurfaceFormatKHR surfaceFormat = chooseSwapSurfaceFormat(swapChainSupport.formats);
-        VkPresentModeKHR presentMode = chooseSwapPresentMode(swapChainSupport.presentModes);
-        VkExtent2D extent = chooseSwapExtent(swapChainSupport.capabilities);
-
-        uint32_t imageCount = swapChainSupport.capabilities.minImageCount + 1;
-        if (swapChainSupport.capabilities.maxImageCount > 0 && imageCount > swapChainSupport.capabilities.maxImageCount) {
-            imageCount = swapChainSupport.capabilities.maxImageCount;
-        }
-        std::cout << "image count " << imageCount << " " << swapChainSupport.capabilities.maxImageCount<< std::endl;
-
-        VkSwapchainCreateInfoKHR createInfo = {};
-        createInfo.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
-        createInfo.surface = surface->getSurface();
-
-        createInfo.minImageCount = imageCount;
-        createInfo.imageFormat = surfaceFormat.format;
-        createInfo.imageColorSpace = surfaceFormat.colorSpace;
-        createInfo.imageExtent = extent;
-        createInfo.imageArrayLayers = 1;
-        createInfo.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
-
-        VulkanGraphicsQueue* graphicsQueue = getDevice().getEntity().getComponentRecursive<VulkanGraphicsQueue>();
-        VulkanPresentQueue* presentQueue = getDevice().getEntity().getComponentRecursive<VulkanPresentQueue>();
-
-        uint32_t queueFamilyIndices[] = {graphicsQueue->getIndex(), presentQueue->getIndex()};
-
-        if (graphicsQueue->getIndex() != presentQueue->getIndex()) {
-            createInfo.imageSharingMode = VK_SHARING_MODE_CONCURRENT;
-            createInfo.queueFamilyIndexCount = 2;
-            createInfo.pQueueFamilyIndices = queueFamilyIndices;
-        } else {
-            createInfo.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE;
-        }
-
-        createInfo.preTransform = swapChainSupport.capabilities.currentTransform;
-        createInfo.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
-        createInfo.presentMode = presentMode;
-        createInfo.clipped = VK_TRUE;
-
-        if (vkCreateSwapchainKHR(getDevice().getDevice(), &createInfo, nullptr, &swapChain) != VK_SUCCESS) {
-            throw std::runtime_error("failed to create swap chain!");
-        }
-
-        vkGetSwapchainImagesKHR(getDevice().getDevice(), swapChain, &imageCount, nullptr);
-        swapChainImages.resize(imageCount);
-        vkGetSwapchainImagesKHR(getDevice().getDevice(), swapChain, &imageCount, swapChainImages.data());
-
-        swapChainImageFormat = surfaceFormat.format;
-        swapChainExtent = extent;
+		createImages();
         createImageViews();
         createDepthResources();
 
-
+        int imageCount = swapChainImages.size();
         if (!initialized) {
         	Context* shared = &swapChainContext;
         	SharedContext* sharedContextComponent = getEntity().getComponentRecursive<SharedContext>(false);
@@ -187,60 +108,17 @@ public:
 	        	VulkanDeviceRenderer* renderer = new VulkanDeviceRenderer(context);
 		        getEntity().addComponent(renderer);
 		        renderer->update();
-		        /*if (f == 0) {
-		        	renderer->render(VULKAN_RENDER_UPDATE_SHARED);
-		        }
-		        renderer->render(VULKAN_RENDER_UPDATE);*/
 	        }
         }
 
         initialized = true;
 	}
 
-	VkSurfaceFormatKHR chooseSwapSurfaceFormat(const std::vector<VkSurfaceFormatKHR>& availableFormats) {
-        for (const auto& availableFormat : availableFormats) {
-            if (availableFormat.format == VK_FORMAT_B8G8R8A8_UNORM && availableFormat.colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR) {
-                return availableFormat;
-            }
-        }
-
-        return availableFormats[0];
-    }
-
-    VkPresentModeKHR chooseSwapPresentMode(const std::vector<VkPresentModeKHR>& availablePresentModes) {
-        for (const auto& availablePresentMode : availablePresentModes) {
-            if (availablePresentMode == VK_PRESENT_MODE_MAILBOX_KHR) {
-                return availablePresentMode;
-            }
-        }
-
-        return VK_PRESENT_MODE_FIFO_KHR;
-    }
-
-    VkExtent2D chooseSwapExtent(const VkSurfaceCapabilitiesKHR& capabilities) {
-        if (false) {//capabilities.currentExtent.width != UINT32_MAX) {
-            return capabilities.currentExtent;
-        } else {
-            int width, height;
-            surface->getFramebufferSize(width, height);
-
-            VkExtent2D actualExtent = {
-                static_cast<uint32_t>(width),
-                static_cast<uint32_t>(height)
-            };
-
-            actualExtent.width = std::max(capabilities.minImageExtent.width, std::min(capabilities.maxImageExtent.width, actualExtent.width));
-            actualExtent.height = std::max(capabilities.minImageExtent.height, std::min(capabilities.maxImageExtent.height, actualExtent.height));
-
-            return actualExtent;
-        }
-    }
-
 
     void createDepthResources() {
         VkFormat depthFormat = getDevice().findDepthFormat();
 
-        createImage(&getDevice(), swapChainExtent.width, swapChainExtent.height, depthFormat, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, depthImage, depthImageMemory);
+        createImage(&getDevice(), getExtent().width, getExtent().height, depthFormat, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, depthImage, depthImageMemory);
         depthImageView = createImageView(depthImage, depthFormat, VK_IMAGE_ASPECT_DEPTH_BIT);
     }
 
@@ -248,21 +126,11 @@ public:
         return format == VK_FORMAT_D32_SFLOAT_S8_UINT || format == VK_FORMAT_D24_UNORM_S8_UINT;
     }
 
-
-    VulkanPhysicalDeviceCriteria* createPhysicalCriteria() const { 
-    	VulkanSurface* surface = surfaceEntity->getComponent<VulkanSurface>();
-		if (surface) {
-			return new DeviceSwapChainSupport(surface->getSurface()); 
-		}
-
-		return NULL;
-    }
-
     void createImageViews() {
         swapChainImageViews.resize(swapChainImages.size());
 
         for (size_t i = 0; i < swapChainImages.size(); i++) {
-            swapChainImageViews[i] = createImageView(swapChainImages[i], swapChainImageFormat, VK_IMAGE_ASPECT_COLOR_BIT);
+            swapChainImageViews[i] = createImageView(swapChainImages[i], getImageFormat(), VK_IMAGE_ASPECT_COLOR_BIT);
         }
     }
 
@@ -322,6 +190,90 @@ public:
         vkBindImageMemory(device->getDevice(), image, imageMemory, 0);
     }
 
+
+    const std::vector<VkImage>&  getImages() const { return swapChainImages; }
+    const std::vector<VkImageView>& getImageViews() const { return swapChainImageViews; }
+    VkImageView getDepthImageView() const { return depthImageView; }
+    const std::string& getName() const { return name; }
+
+protected:
+    bool initialized;
+    std::vector<VkImage> swapChainImages;
+    std::vector<VkImageView> swapChainImageViews;
+    Context swapChainContext;
+    std::string name;
+
+    VkImage depthImage;
+    VkDeviceMemory depthImageMemory;
+    VkImageView depthImageView;
+};
+
+class VulkanBasicSwapChain : public VulkanBasicSwapChainBase {
+public:
+    VulkanBasicSwapChain(const std::string& name, Entity* surfaceEntity) : VulkanBasicSwapChainBase(name), surfaceEntity(surfaceEntity) { addType<VulkanBasicSwapChainBase>(); }
+
+
+    void createImages() {
+        surface = surfaceEntity->getComponent<VulkanSurface>();
+
+        SwapChainSupportDetails swapChainSupport = getDevice().getInstance().querySwapChainSupport(getDevice().getPhysicalDevice(), surface->getSurface());
+
+        VkSurfaceFormatKHR surfaceFormat = chooseSwapSurfaceFormat(swapChainSupport.formats);
+        VkPresentModeKHR presentMode = chooseSwapPresentMode(swapChainSupport.presentModes);
+        VkExtent2D extent = chooseSwapExtent(swapChainSupport.capabilities);
+
+        uint32_t imageCount = swapChainSupport.capabilities.minImageCount + 1;
+        if (swapChainSupport.capabilities.maxImageCount > 0 && imageCount > swapChainSupport.capabilities.maxImageCount) {
+            imageCount = swapChainSupport.capabilities.maxImageCount;
+        }
+        std::cout << "image count " << imageCount << " " << swapChainSupport.capabilities.maxImageCount<< std::endl;
+
+        VkSwapchainCreateInfoKHR createInfo = {};
+        createInfo.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
+        createInfo.surface = surface->getSurface();
+
+        createInfo.minImageCount = imageCount;
+        createInfo.imageFormat = surfaceFormat.format;
+        createInfo.imageColorSpace = surfaceFormat.colorSpace;
+        createInfo.imageExtent = extent;
+        createInfo.imageArrayLayers = 1;
+        createInfo.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+
+        VulkanGraphicsQueue* graphicsQueue = getDevice().getEntity().getComponentRecursive<VulkanGraphicsQueue>();
+        VulkanPresentQueue* presentQueue = getDevice().getEntity().getComponentRecursive<VulkanPresentQueue>();
+
+        uint32_t queueFamilyIndices[] = {graphicsQueue->getIndex(), presentQueue->getIndex()};
+
+        if (graphicsQueue->getIndex() != presentQueue->getIndex()) {
+            createInfo.imageSharingMode = VK_SHARING_MODE_CONCURRENT;
+            createInfo.queueFamilyIndexCount = 2;
+            createInfo.pQueueFamilyIndices = queueFamilyIndices;
+        } else {
+            createInfo.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE;
+        }
+
+        createInfo.preTransform = swapChainSupport.capabilities.currentTransform;
+        createInfo.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
+        createInfo.presentMode = presentMode;
+        createInfo.clipped = VK_TRUE;
+
+        if (vkCreateSwapchainKHR(getDevice().getDevice(), &createInfo, nullptr, &swapChain) != VK_SUCCESS) {
+            throw std::runtime_error("failed to create swap chain!");
+        }
+
+        vkGetSwapchainImagesKHR(getDevice().getDevice(), swapChain, &imageCount, nullptr);
+        swapChainImages.resize(imageCount);
+        vkGetSwapchainImagesKHR(getDevice().getDevice(), swapChain, &imageCount, swapChainImages.data());
+
+        swapChainImageFormat = surfaceFormat.format;
+        swapChainExtent = extent;
+    }
+
+    void destroyImages() {
+        vkDestroySwapchainKHR(getDevice().getDevice(), swapChain, nullptr);
+            std::cout << "Destroy swap chain." << std::endl;
+    }
+
     VkResult acquireNextImage(VkSemaphore semaphore, uint32_t* imageIndex) {
         return vkAcquireNextImageKHR(getDevice().getDevice(), swapChain, UINT64_MAX, semaphore, VK_NULL_HANDLE, imageIndex);
     }
@@ -333,31 +285,63 @@ public:
         return vkQueuePresentKHR(queue, &presentInfo);
     }
 
-
     VkFormat getImageFormat() const { return swapChainImageFormat; }
-    //VkSwapchainKHR getSwapChain() const { return swapChain; }
-    const std::vector<VkImage>&  getImages() const { return swapChainImages; }
-    const std::vector<VkImageView>& getImageViews() const { return swapChainImageViews; }
-    VkImageView getDepthImageView() const { return depthImageView; }
     VkExtent2D getExtent() const { return swapChainExtent; }
-    //Context* getSharedContext() { return &sharedContext; };
-    const std::string& getName() const { return name; }
 
-//private:
-    bool initialized;
-	Entity* surfaceEntity;
-	VulkanSurface* surface;
-	VkSwapchainKHR swapChain;
-    std::vector<VkImage> swapChainImages;
+    VulkanPhysicalDeviceCriteria* createPhysicalCriteria() const { 
+        VulkanSurface* surface = surfaceEntity->getComponent<VulkanSurface>();
+        if (surface) {
+            return new DeviceSwapChainSupport(surface->getSurface()); 
+        }
+
+        return NULL;
+    }
+
+    VkSurfaceFormatKHR chooseSwapSurfaceFormat(const std::vector<VkSurfaceFormatKHR>& availableFormats) {
+        for (const auto& availableFormat : availableFormats) {
+            if (availableFormat.format == VK_FORMAT_B8G8R8A8_UNORM && availableFormat.colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR) {
+                return availableFormat;
+            }
+        }
+
+        return availableFormats[0];
+    }
+
+    VkPresentModeKHR chooseSwapPresentMode(const std::vector<VkPresentModeKHR>& availablePresentModes) {
+        for (const auto& availablePresentMode : availablePresentModes) {
+            if (availablePresentMode == VK_PRESENT_MODE_MAILBOX_KHR) {
+                return availablePresentMode;
+            }
+        }
+
+        return VK_PRESENT_MODE_FIFO_KHR;
+    }
+
+    VkExtent2D chooseSwapExtent(const VkSurfaceCapabilitiesKHR& capabilities) {
+        if (false) {//capabilities.currentExtent.width != UINT32_MAX) {
+            return capabilities.currentExtent;
+        } else {
+            int width, height;
+            surface->getFramebufferSize(width, height);
+
+            VkExtent2D actualExtent = {
+                static_cast<uint32_t>(width),
+                static_cast<uint32_t>(height)
+            };
+
+            actualExtent.width = std::max(capabilities.minImageExtent.width, std::min(capabilities.maxImageExtent.width, actualExtent.width));
+            actualExtent.height = std::max(capabilities.minImageExtent.height, std::min(capabilities.maxImageExtent.height, actualExtent.height));
+
+            return actualExtent;
+        }
+    }
+
+private:
+    Entity* surfaceEntity;
+    VulkanSurface* surface;
+    VkSwapchainKHR swapChain;
     VkFormat swapChainImageFormat;
     VkExtent2D swapChainExtent;
-    std::vector<VkImageView> swapChainImageViews;
-    Context swapChainContext;
-    std::string name;
-
-    VkImage depthImage;
-    VkDeviceMemory depthImageMemory;
-    VkImageView depthImageView;
 };
 
 }
