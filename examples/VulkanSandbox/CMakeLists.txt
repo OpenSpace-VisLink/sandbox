@@ -14,15 +14,25 @@ set (HEADERFILES
 # --------------------- Dependencies -----------------------
 
 
-add_external(glfw
-	GIT_REPOSITORY https://github.com/glfw/glfw.git
-	LIB_NAME glfw3
-)
+if (${CMAKE_SYSTEM_NAME} MATCHES "Linux")
+  find_package(glfw3 REQUIRED)
+  set(DEP_LIBS ${DEP_LIBS} glfw)
+else()
+  add_external(glfw
+    GIT_REPOSITORY https://github.com/glfw/glfw.git
+    CMAKE_ARGS glfwArgs
+    LIB_NAME glfw3
+  )
+  include_directories(${CMAKE_FRAMEWORK_DIR}/external/glfw/build/install/include)
+endif()
 
-add_external(tuio 
-	GIT_REPOSITORY https://github.com/dtorban/TUIO11_CPP.git
-	LIB_NAME TUIO
-)
+#find_package(glfw3 REQUIRED)
+#set(DEP_LIBS ${DEP_LIBS} glfw)
+
+#add_external(tuio 
+#	GIT_REPOSITORY https://github.com/dtorban/TUIO11_CPP.git
+#	LIB_NAME TUIO
+#)
 
 add_external(glm 
 	GIT_REPOSITORY https://github.com/g-truc/glm.git
@@ -45,8 +55,6 @@ message("vk Found" ${Vulkan_FOUND} ${Vulkan_INCLUDE_DIRS} ${Vulkan_LIBRARIES})
 include_directories(${Vulkan_INCLUDE_DIRS})
 set(DEP_LIBS ${DEP_LIBS} ${Vulkan_LIBRARIES})
 
-#find_package(glfw3 REQUIRED)
-#set(DEP_LIBS ${DEP_LIBS} glfw)
 
 set(PROJECT_DEPS ${PROJECT_DEPS} sandbox)
 set(DEP_LIBS ${DEP_LIBS} sandbox)
@@ -62,6 +70,8 @@ include_directories(
 
 include(${external_dir}/OpenGL/OpenGL.cmake)
 useOpenGL()
+#useGLEW()
+#useGlad()
 
 
 #/home/dan/lib/1.1.114.0/x86_64/bin/glslc examples/VulkanSandbox/src/shaders/shader.vert -o examples/VulkanSandbox/src/shaders/vert.spv

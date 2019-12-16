@@ -81,6 +81,18 @@ set (HEADERFILES
 
 # --------------------- Dependencies -----------------------
 
+if (${CMAKE_SYSTEM_NAME} MATCHES "Linux")
+  find_package(glfw3 REQUIRED)
+  set(DEP_LIBS ${DEP_LIBS} glfw)
+else()
+  add_external(glfw
+    GIT_REPOSITORY https://github.com/glfw/glfw.git
+    CMAKE_ARGS glfwArgs
+    LIB_NAME glfw3
+  )
+  include_directories(${CMAKE_FRAMEWORK_DIR}/external/glfw/build/install/include)
+endif()
+
 find_package(Vulkan REQUIRED)
 message("vk Found" ${Vulkan_FOUND} ${Vulkan_INCLUDE_DIRS} ${Vulkan_LIBRARIES})
 include_directories(${Vulkan_INCLUDE_DIRS})
@@ -90,11 +102,8 @@ add_external(glm
 	GIT_REPOSITORY https://github.com/g-truc/glm.git
 	HEADER_ONLY
 )
-#_GLFW_VULKAN_STATIC
 add_definitions(-DGLM_FORCE_INLINE)
 include_directories(${CMAKE_FRAMEWORK_DIR}/external/glm/src)
-
-include_directories(${CMAKE_FRAMEWORK_DIR}/external/glfw3/build/install/include)
 
 add_external(stb
   GIT_REPOSITORY https://github.com/nothings/stb.git
@@ -110,6 +119,8 @@ include_directories(
 
 include(${external_dir}/OpenGL/OpenGL.cmake)
 useOpenGL()
+#useGLEW()
+#useGlad()
 
 # --------------------- Executable -----------------------
 

@@ -1,7 +1,9 @@
 
-
+//#include <glad/glad.h>
 #define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
+
+#include "OpenGL.h"
 
 #include "vulkan.h"
 
@@ -26,8 +28,6 @@
 #include <array>
 #include <optional>
 #include <set>
-
-#include "OpenGL.h"
 
 #include <sandbox/image/Image.h>
 #include <sandbox/geometry/Mesh.h>
@@ -333,6 +333,7 @@ private:
         //glDrawVkImageNV((GLuint64)imageState->image, 0, 0,0, 100,100,0,0,0,100,100);
 
         glfwMakeContextCurrent(window4);
+        initializeGLExtentions();
         if (glfwExtensionSupported("GL_NV_draw_vulkan_image")) {
             std::cout << "nv supported" << std::endl;
             pfnDrawVkImageNV = (PFNGLDRAWVKIMAGENVPROC)
