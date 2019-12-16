@@ -17,8 +17,10 @@ public:
     virtual const std::vector<VkImageView>& getImageViews() const = 0;
     virtual VkImageView getDepthImageView() const = 0;
 	virtual VkExtent2D getExtent() const = 0;
-    virtual VkSwapchainKHR getSwapChain() const = 0;
+    //virtual VkSwapchainKHR getSwapChain() const = 0;
     virtual const std::string& getName() const = 0;
+    virtual VkResult acquireNextImage(VkSemaphore semaphore, uint32_t* index) = 0;
+    virtual VkResult queuePresent(VkQueue queue, VkPresentInfoKHR& presentInfo) = 0;
 };
 
 
@@ -320,9 +322,20 @@ public:
         vkBindImageMemory(device->getDevice(), image, imageMemory, 0);
     }
 
+    VkResult acquireNextImage(VkSemaphore semaphore, uint32_t* imageIndex) {
+        return vkAcquireNextImageKHR(getDevice().getDevice(), swapChain, UINT64_MAX, semaphore, VK_NULL_HANDLE, imageIndex);
+    }
+
+    VkResult queuePresent(VkQueue queue, VkPresentInfoKHR& presentInfo) {
+        VkSwapchainKHR swapChains[] = {swapChain};
+        presentInfo.swapchainCount = 1;
+        presentInfo.pSwapchains = swapChains;
+        return vkQueuePresentKHR(queue, &presentInfo);
+    }
+
 
     VkFormat getImageFormat() const { return swapChainImageFormat; }
-    VkSwapchainKHR getSwapChain() const { return swapChain; }
+    //VkSwapchainKHR getSwapChain() const { return swapChain; }
     const std::vector<VkImage>&  getImages() const { return swapChainImages; }
     const std::vector<VkImageView>& getImageViews() const { return swapChainImageViews; }
     VkImageView getDepthImageView() const { return depthImageView; }

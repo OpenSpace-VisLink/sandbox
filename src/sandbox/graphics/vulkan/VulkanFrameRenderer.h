@@ -78,14 +78,14 @@ public:
 
         vkWaitForFences(getDevice().getDevice(), 1, &inFlightFences[currentFrame], VK_TRUE, UINT64_MAX);
 
-        VkSwapchainKHR swapChain = renderNode->getComponent<VulkanSwapChain>()->getSwapChain();
+        VulkanSwapChain* swapChain = renderNode->getComponent<VulkanSwapChain>();
 
         uint32_t imageIndex;
-        VkResult result = vkAcquireNextImageKHR(getDevice().getDevice(), swapChain, UINT64_MAX, imageAvailableSemaphores[currentFrame], VK_NULL_HANDLE, &imageIndex);
+        VkResult result = swapChain->acquireNextImage(imageAvailableSemaphores[currentFrame], &imageIndex);
 
         if (result == VK_ERROR_OUT_OF_DATE_KHR) {
             std::cout << "Out of date" << std::endl;
-            recreateSwapChain(renderNode->getComponent<VulkanSwapChain>());
+            recreateSwapChain(swapChain);
             return;
         } else if (result != VK_SUCCESS && result != VK_SUBOPTIMAL_KHR) {
             throw std::runtime_error("failed to acquire swap chain image!");
@@ -123,13 +123,13 @@ public:
         presentInfo.waitSemaphoreCount = 1;
         presentInfo.pWaitSemaphores = signalSemaphores;
 
-        VkSwapchainKHR swapChains[] = {swapChain};
+        /*VkSwapchainKHR swapChains[] = {swapChain};
         presentInfo.swapchainCount = 1;
-        presentInfo.pSwapchains = swapChains;
+        presentInfo.pSwapchains = swapChains;*/
 
         presentInfo.pImageIndices = &imageIndex;
 
-        result = vkQueuePresentKHR(presentQueue->getQueue(), &presentInfo);
+        result = swapChain->queuePresent(presentQueue->getQueue(), presentInfo);
 
         if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR || framebufferResized) {
             std::cout << "Out of date / suboptimal / resized" << std::endl;
