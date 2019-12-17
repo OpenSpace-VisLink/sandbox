@@ -9,9 +9,6 @@ protected:
         ubo.view = glm::lookAt(glm::vec3(0.0f, 0.0f, 3.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
         ubo.proj = glm::perspective(glm::radians(45.0f), (float) state.getExtent().width / (float) state.getExtent().height, 0.01f, 100.0f);
         ubo.model = glm::mat4(1.0f);
-        /*if (VulkanSwapChainState::get(context).getSwapChain()->getName() == "window 2") {
-            ubo.model = glm::translate(ubo.model, glm::vec3(0.25,0,0.0));
-        }*/
         if (VulkanSwapChainState::get(context).getSwapChain()->getName() == "Vulkan2") {
             ubo.model = glm::translate(ubo.model, glm::vec3(0.25,0,0.0));
         }

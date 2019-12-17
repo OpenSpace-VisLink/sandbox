@@ -200,6 +200,7 @@ protected:
         glfwSetWindowPos (window, x, y);
     	windows.push_back(window);
     	windowNames.push_back(name);
+    	return window;
     }
 
     virtual void createWindows() {
