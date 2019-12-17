@@ -39,7 +39,7 @@
 
 using namespace sandbox;
 
-struct UniformBufferObject {
+struct ViewBufferObject {
     alignas(16) glm::mat4 model;
     alignas(16) glm::mat4 view;
     alignas(16) glm::mat4 proj;
@@ -50,65 +50,17 @@ struct TransformUniformBufferObject {
 };
 
 
-class MainUniformBuffer : public VulkanUniformBufferValue<UniformBufferObject> {
+class MainUniformBuffer : public VulkanUniformBufferValue<ViewBufferObject> {
 protected:
     void updateBuffer(const GraphicsContext& context, VulkanDeviceState& state, VulkanBuffer* buffer) {
-        static auto startTime = std::chrono::high_resolution_clock::now();
-
-        auto currentTime = std::chrono::high_resolution_clock::now();
-        float time = std::chrono::duration<float, std::chrono::seconds::period>(currentTime - startTime).count();
-        //UniformBufferObject ubo = {};
-        UniformBufferObject ubo = {};
-        ubo.model = glm::rotate(glm::mat4(1.0f), time * glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f));
-        if (VulkanSwapChainState::get(context).getSwapChain()->getName() == "window 2") {
-            ubo.model = glm::rotate(glm::mat4(1.0f), time * glm::radians(-90.0f), glm::vec3(0.0f, 0.0f, 1.0f));
-        }
-        if (VulkanSwapChainState::get(context).getSwapChain()->getName() == "window 3") {
-            ubo.model = glm::rotate(glm::mat4(1.0f), time * glm::radians(90.0f), glm::vec3(1.0f, 0.0f, 0.0f));
-        }
-        //ubo.view = glm::lookAt(glm::vec3(2.0f, 2.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+        ViewBufferObject ubo = {};
         ubo.view = glm::lookAt(glm::vec3(0.0f, 0.0f, 3.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
         ubo.proj = glm::perspective(glm::radians(45.0f), (float) state.getExtent().width / (float) state.getExtent().height, 0.1f, 100.0f);
         ubo.model = glm::mat4(1.0f);
         if (VulkanSwapChainState::get(context).getSwapChain()->getName() == "window 2") {
             ubo.model = glm::translate(ubo.model, glm::vec3(0.25,0,0.0));
         }
-        //ubo.model = glm::rotate(glm::mat4(1.0f), glm::radians(90.0f), glm::vec3(1.0f, 0.0f, 0.0f));
-        //std::cout << VulkanSwapChainState::get(context).getSwapChain()->getName() << " " << state.getExtent().width << " " << (float) state.getExtent().height << std::endl;
         ubo.proj[1][1] *= -1;
-        //VulkanUniformBufferValue<UniformBufferObject>::updateBuffer(context, state, buffer);
-
-        buffer->update(&ubo, sizeof(ubo));
-    }
-};
-
-class MainUniformBuffer2 : public VulkanUniformBufferValue<UniformBufferObject> {
-protected:
-    void updateBuffer(const GraphicsContext& context, VulkanDeviceState& state, VulkanBuffer* buffer) {
-        static auto startTime = std::chrono::high_resolution_clock::now();
-
-        auto currentTime = std::chrono::high_resolution_clock::now();
-        float time = std::chrono::duration<float, std::chrono::seconds::period>(currentTime - startTime).count();
-        //UniformBufferObject ubo = {};
-        UniformBufferObject ubo = {};
-        ubo.model = glm::rotate(glm::mat4(1.0f), time * glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f));
-        if (VulkanSwapChainState::get(context).getSwapChain()->getName() == "window 2") {
-            ubo.model = glm::rotate(glm::mat4(1.0f), time * glm::radians(-90.0f), glm::vec3(0.0f, 0.0f, 1.0f));
-        }
-        if (VulkanSwapChainState::get(context).getSwapChain()->getName() == "window 3") {
-            ubo.model = glm::rotate(glm::mat4(1.0f), time * glm::radians(90.0f), glm::vec3(1.0f, 0.0f, 0.0f));
-        }
-        //ubo.view = glm::lookAt(glm::vec3(2.0f, 2.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
-        ubo.view = glm::lookAt(glm::vec3(0.0f, 0.0f, 1.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
-        ubo.proj = glm::perspective(glm::radians(45.0f), (float) state.getExtent().width / (float) state.getExtent().height, 0.1f, 100.0f);
-        ubo.model = glm::translate(glm::mat4(1.0f), glm::vec3(0.25,0,0.0));
-        if (VulkanSwapChainState::get(context).getSwapChain()->getName() == "window 2") {
-            ubo.model = glm::translate(ubo.model, glm::vec3(0.25,0,0.0));
-        }
-        //ubo.model = glm::rotate(glm::mat4(1.0f), glm::radians(90.0f), glm::vec3(1.0f, 0.0f, 0.0f));
-        //std::cout << VulkanSwapChainState::get(context).getSwapChain()->getName() << " " << state.getExtent().width << " " << (float) state.getExtent().height << std::endl;
-        ubo.proj[1][1] *= -1;
-        //VulkanUniformBufferValue<UniformBufferObject>::updateBuffer(context, state, buffer);
 
         buffer->update(&ubo, sizeof(ubo));
     }
@@ -125,7 +77,7 @@ public:
 
 class TransformUniformBuffer : public VulkanAlignedUniformArrayBuffer< TransformUniformBufferObject > {
 public:
-    TransformUniformBuffer() : VulkanAlignedUniformArrayBuffer< TransformUniformBufferObject >(256,true) {}
+    TransformUniformBuffer() : VulkanAlignedUniformArrayBuffer< TransformUniformBufferObject >(256,true) { addType<TransformUniformBuffer>(); }
 };
 
 class UpdateTransform : public RenderObject {
@@ -205,36 +157,8 @@ private:
 const int WIDTH = 512;
 const int HEIGHT = 512;
 
-struct Vertex {
-    glm::vec2 pos;
-    glm::vec3 color;
-    glm::vec2 texCoord;
-};
 
-
-const std::vector<Vertex> vertices = {
-    {{-0.5f, -0.5f}, {1.0f, 0.0f, 0.0f}, {1.0f, 0.0f}},
-    {{0.5f, -0.5f}, {0.0f, 1.0f, 0.0f}, {0.0f, 0.0f}},
-    {{0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}, {0.0f, 1.0f}},
-    {{-0.5f, 0.5f}, {1.0f, 1.0f, 1.0f}, {1.0f, 1.0f}}
-};
-
-const std::vector<uint16_t> indices = {
-    0, 1, 2, 2, 3, 0
-};
-
-const std::vector<Vertex> tri_vertices = {
-    {{-0.5f, -0.5f}, {1.0f, 0.0f, 0.0f}, {1.0f, 0.0f}},
-    {{0.5f, -0.5f}, {0.0f, 1.0f, 0.0f}, {0.0f, 0.0f}},
-    {{0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}, {0.0f, 1.0f}},
-    {{-1.0f, 1.0f}, {1.0f, 1.0f, 1.0f}, {1.0f, 1.0f}}
-};
-const std::vector<uint16_t> tri_indices = {
-    0, 1, 2
-};
-
-
-class HelloTriangleApplication {
+class PlanetApplication {
 public:
     void run() {
         initWindow();
@@ -244,16 +168,22 @@ public:
     }
 
 private:
+    struct PlanetAppInfo {
+        EntityNode images;
+        EntityNode descriptorSetGroup;
+        EntityNode shaderObjects;
+        EntityNode* sphere;
+        EntityNode* transformDescriptorSet;
+    } appInfo;
+
     GLFWwindow* window;
     EntityNode vulkanNode;
     EntityNode renderPassNode;
     EntityNode pipelineNode;
-    EntityNode shaderObjects;
     EntityNode graphicsObjects;
-    EntityNode descriptorSetGroup;
     EntityNode scene;
     EntityNode input;
-    EntityNode images;
+    //EntityNode images;
     EntityNode* updateSharedNode;
     EntityNode* sceneGraph;
     Entity* renderNode;
@@ -269,60 +199,126 @@ private:
     }
 
 
+    class Planet {
+    public:
+        Planet(PlanetAppInfo& appInfo, const std::string& texture, float yearSpeed = 0.0f, float daySpeed = 0.0f) : appInfo(appInfo), yearSpeed(yearSpeed), daySpeed(daySpeed) {
+            image = new EntityNode(&appInfo.images);
+                image->addComponent(new Image(texture));
+                image->addComponent(new VulkanImage());
+                image->addComponent(new VulkanImageView());
+            image->update();
+            shape = appInfo.sphere;
+            materialDescriptorSet = new EntityNode(&appInfo.descriptorSetGroup);
+                materialDescriptorSet->addComponent(new VulkanDescriptorSetLayout()); 
+                materialDescriptorSet->addComponent(new VulkanSwapChainDescriptorPool());
+                materialDescriptorSet->addComponent(new VulkanDescriptorSet());
+                materialDescriptorSet->addComponent(new VulkanDescriptor(new VulkanImageViewDecorator(appInfo.shaderObjects.getComponentRecursive<VulkanSampler>(), image->getComponent<VulkanImageView>()), VK_SHADER_STAGE_FRAGMENT_BIT));
+        }
+
+        EntityNode* addAt(EntityNode* entity, glm::mat4 transform = glm::mat4(1.0f)) {
+            TransformUniformBuffer* transformUniformBuffer = appInfo.shaderObjects.getComponentRecursive<TransformUniformBuffer>();
+            planetNode = new EntityNode(entity);
+                planetNode->addComponent(new Transform());
+                planetNode->addComponent(new Transform(transform));
+                rotationNode = new EntityNode(planetNode);
+                    rotationNode->addComponent(new Transform());
+                    rotationNode->addComponent(new VulkanCmdBindDynamicDescriptorSet2(appInfo.transformDescriptorSet->getComponent<VulkanDescriptorSet>(), transformUniformBuffer, 1)); 
+                    rotationNode->addComponent(new UpdateTransform(transformUniformBuffer)); 
+                    rotationNode->addComponent(new RenderNode(appInfo.sphere));
+            return planetNode;
+        }
+
+        void render(EntityNode* drawObject, EntityNode* sceneGraph) {
+            drawObject->addComponent(new VulkanCmdBindDescriptorSet(materialDescriptorSet->getComponent<VulkanDescriptorSet>(), 2));
+            drawObject->addComponent(new RenderNode(sceneGraph, RENDER_ACTION_RENDER, new RenderAt(rotationNode)));
+        }
+
+        void update() {
+            static auto startTime = std::chrono::high_resolution_clock::now();
+            auto currentTime = std::chrono::high_resolution_clock::now();
+            float time = std::chrono::duration<float, std::chrono::seconds::period>(currentTime - startTime).count();
+            planetNode->getComponent<Transform>()->setTransform(glm::rotate(glm::mat4(1.0f), yearSpeed*time, glm::vec3(0.0f,1.0f,0.0f)));
+            rotationNode->getComponent<Transform>()->setTransform(glm::rotate(glm::mat4(1.0f), daySpeed*time, glm::vec3(0.0f,1.0f,0.0f)));
+        }
+
+    private:
+        EntityNode* image;
+        EntityNode* materialDescriptorSet;
+        EntityNode* shape;
+        EntityNode* planetNode;
+        EntityNode* rotationNode;
+        PlanetAppInfo& appInfo;
+        float yearSpeed;
+        float daySpeed;
+    };
+
+    std::vector<Planet*> planets;
+
+    EntityNode* createSphere() {
+        EntityNode* sphere = new EntityNode(&graphicsObjects);
+            Mesh* mesh = new Mesh();
+            sphere->addComponent(mesh);
+            sphere->addComponent(new ShapeLoader(SHAPE_SPHERE, 50));
+            //sphere->addComponent(new ShapeLoader(SHAPE_CIRCLE, 20));
+            //sphere->addComponent(new ShapeLoader(SHAPE_sphere));
+            sphere->update();
+            VertexArray<glm::vec3>* sphere_vertexArray = new VertexArray<glm::vec3>(0);
+            sphere_vertexArray->value = mesh->getNodes();
+            sphere->addComponent(sphere_vertexArray);
+            sphere_vertexArray = new VertexArray<glm::vec3>(1);
+            sphere_vertexArray->value = mesh->getNormals();
+            sphere->addComponent(sphere_vertexArray);
+            VertexArray<glm::vec2>* sphere_coords = new VertexArray<glm::vec2>(2);
+            sphere_coords->value = mesh->getCoords();
+            sphere->addComponent(sphere_coords);
+            IndexArray* sphere_indexArray = new IndexArray();
+            sphere_indexArray->value = mesh->getIndices();
+            sphere->addComponent(sphere_indexArray);
+        return sphere;
+    }
+
+
     void initVulkan() {
 
-        Entity* mainImage = new EntityNode(&images);
+        Entity* mainImage = new EntityNode(&appInfo.images);
             mainImage->addComponent(new Image("examples/VulkanSandbox/textures/texture.jpg"));
             mainImage->addComponent(new VulkanImage());
             mainImage->addComponent(new VulkanImageView());
-        images.update();
+        appInfo.images.update();
 
-        EntityNode* mainUniformBuffer = new EntityNode(&shaderObjects);
+        EntityNode* mainUniformBuffer = new EntityNode(&appInfo.shaderObjects);
             mainUniformBuffer->addComponent(new MainUniformBuffer());
-        EntityNode* samplerNode = new EntityNode(&shaderObjects);
+        EntityNode* samplerNode = new EntityNode(&appInfo.shaderObjects);
             samplerNode->addComponent(new VulkanSampler());
-        EntityNode* transformUniformBuffer = new EntityNode(&shaderObjects);
+        EntityNode* transformUniformBuffer = new EntityNode(&appInfo.shaderObjects);
             transformUniformBuffer->addComponent(new TransformUniformBuffer());
 
-        EntityNode* mainDescriptorSet = new EntityNode(&descriptorSetGroup);
+        EntityNode* mainDescriptorSet = new EntityNode(&appInfo.descriptorSetGroup);
             mainDescriptorSet->addComponent(new VulkanDescriptorSetLayout()); 
             mainDescriptorSet->addComponent(new VulkanSwapChainDescriptorPool());
             mainDescriptorSet->addComponent(new VulkanDescriptorSet());
             mainDescriptorSet->addComponent(new VulkanDescriptor(mainUniformBuffer->getComponent<VulkanUniformBuffer>(), VK_SHADER_STAGE_VERTEX_BIT));
-            mainDescriptorSet->addComponent(new VulkanDescriptor(new VulkanImageViewDecorator(samplerNode->getComponent<VulkanSampler>(), mainImage->getComponent<VulkanImageView>()), VK_SHADER_STAGE_FRAGMENT_BIT));
 
-        EntityNode* transformDescriptorSet = new EntityNode(&descriptorSetGroup);
-            transformDescriptorSet->addComponent(new VulkanDescriptorSetLayout());
-            transformDescriptorSet->addComponent(new VulkanSwapChainDescriptorPool());
-            transformDescriptorSet->addComponent(new VulkanDescriptorSet());
-            transformDescriptorSet->addComponent(new VulkanDescriptor(transformUniformBuffer->getComponent<VulkanUniformBuffer>(), VK_SHADER_STAGE_VERTEX_BIT));
+        appInfo.transformDescriptorSet = new EntityNode(&appInfo.descriptorSetGroup);
+            appInfo.transformDescriptorSet->addComponent(new VulkanDescriptorSetLayout());
+            appInfo.transformDescriptorSet->addComponent(new VulkanSwapChainDescriptorPool());
+            appInfo.transformDescriptorSet->addComponent(new VulkanDescriptorSet());
+            appInfo.transformDescriptorSet->addComponent(new VulkanDescriptor(transformUniformBuffer->getComponent<VulkanUniformBuffer>(), VK_SHADER_STAGE_VERTEX_BIT));
 
-        EntityNode* quad = new EntityNode(&graphicsObjects);
-            Mesh* mesh = new Mesh();
-            quad->addComponent(mesh);
-            quad->addComponent(new ShapeLoader(SHAPE_SPHERE, 50));
-            //quad->addComponent(new ShapeLoader(SHAPE_CIRCLE, 20));
-            //quad->addComponent(new ShapeLoader(SHAPE_QUAD));
-            quad->update();
-            VertexArray<glm::vec3>* quad_vertexArray = new VertexArray<glm::vec3>(0);
-            quad_vertexArray->value = mesh->getNodes();
-            quad->addComponent(quad_vertexArray);
-            quad_vertexArray = new VertexArray<glm::vec3>(1);
-            quad_vertexArray->value = mesh->getNormals();
-            quad->addComponent(quad_vertexArray);
-            VertexArray<glm::vec2>* quad_coords = new VertexArray<glm::vec2>(2);
-            quad_coords->value = mesh->getCoords();
-            quad->addComponent(quad_coords);
-            IndexArray* quad_indexArray = new IndexArray();
-            quad_indexArray->value = mesh->getIndices();
-            quad->addComponent(quad_indexArray);
+        EntityNode* materialDescriptorSet = new EntityNode(&appInfo.descriptorSetGroup);
+            materialDescriptorSet->addComponent(new VulkanDescriptorSetLayout()); 
+            materialDescriptorSet->addComponent(new VulkanSwapChainDescriptorPool());
+            materialDescriptorSet->addComponent(new VulkanDescriptorSet());
+            materialDescriptorSet->addComponent(new VulkanDescriptor(new VulkanImageViewDecorator(samplerNode->getComponent<VulkanSampler>(), mainImage->getComponent<VulkanImageView>()), VK_SHADER_STAGE_FRAGMENT_BIT));
 
+        appInfo.sphere = createSphere();
 
-        pipelineNode.addComponent(new VulkanShaderModule("examples/VulkanSandbox/src/shaders/vert2.spv", VK_SHADER_STAGE_VERTEX_BIT));
-        pipelineNode.addComponent(new VulkanShaderModule("examples/VulkanSandbox/src/shaders/frag.spv", VK_SHADER_STAGE_FRAGMENT_BIT));
+        pipelineNode.addComponent(new VulkanShaderModule("examples/Planets/src/shaders/vert2.spv", VK_SHADER_STAGE_VERTEX_BIT));
+        pipelineNode.addComponent(new VulkanShaderModule("examples/Planets/src/shaders/frag.spv", VK_SHADER_STAGE_FRAGMENT_BIT));
         std::vector<VulkanDescriptorSetLayout*> layouts;
         layouts.push_back(mainDescriptorSet->getComponent<VulkanDescriptorSetLayout>());
-        layouts.push_back(transformDescriptorSet->getComponent<VulkanDescriptorSetLayout>());
+        layouts.push_back(appInfo.transformDescriptorSet->getComponent<VulkanDescriptorSetLayout>());
+        layouts.push_back(materialDescriptorSet->getComponent<VulkanDescriptorSetLayout>());
         pipelineNode.addComponent(new VulkanGraphicsPipeline(layouts));
         VulkanVertexInput* vertexInput = new VulkanVertexInput(sizeof(glm::vec3), 0);
         vertexInput->addAttribute(VK_FORMAT_R32G32B32_SFLOAT, 0);
@@ -337,15 +333,28 @@ private:
         renderPassNode.addComponent(new VulkanBasicRenderPass());
         renderPassNode.addComponent(new VulkanSwapChainFramebuffer());
 
-        UniformBufferIterator bufferTransform(transformUniformBuffer->getComponent<VulkanUniformBuffer>(), transformDescriptorSet->getComponent<VulkanDescriptorSet>(), 1);
+        UniformBufferIterator bufferTransform(transformUniformBuffer->getComponent<VulkanUniformBuffer>(), appInfo.transformDescriptorSet->getComponent<VulkanDescriptorSet>(), 1);
+
+        planets.push_back(new Planet(appInfo, "examples/Planets/textures/2k_sun.jpg"));
+        planets.push_back(new Planet(appInfo, "examples/Planets/textures/earth-1k.png", 1.0f/365.0f, 1.0f));
+        planets.push_back(new Planet(appInfo, "examples/Planets/textures/moon-1k.jpg", 1.0f/30.0f, 0.0f)); 
+        //planets.push_back(new Planet(appInfo, "examples/Planets/textures/2k_earth_daymap.jpg"));
 
         sceneGraph = new EntityNode(&graphicsObjects, "sceneGraph"); 
             sceneGraph->addComponent(new TransformRoot());
             //sceneGraph->addComponent(new Transform(glm::rotate(glm::scale(glm::mat4(1.0f), glm::vec3(0.25f)), glm::radians(-45.0f), glm::vec3(1.0f, 0.0f, 0.0f))));
             sceneGraph->addComponent(new Transform());
-            sceneGraph->addComponent(new Transform());
-            bufferTransform.apply(sceneGraph);
-            sceneGraph->addComponent(new RenderNode(quad));
+            //sceneGraph->addComponent(new Transform());
+            //bufferTransform.apply(sceneGraph);
+            planets[0]->addAt(sceneGraph);
+            //sceneGraph->addComponent();
+            EntityNode* planetNodes = new EntityNode(sceneGraph);
+                glm::mat4 trans = glm::translate(glm::mat4(1.0f), glm::vec3(2.0, 0, 0));
+                EntityNode* earth = planets[1]->addAt(planetNodes, glm::scale(trans, glm::vec3(0.1)));
+                trans = glm::translate(glm::mat4(1.0f), glm::vec3(2.0, 0, 0));
+                planets[2]->addAt(earth, glm::scale(trans, glm::vec3(0.1)));
+
+            //sceneGraph->addComponent(new RenderNode(appInfo.sphere));
 
         scene.addComponent(new MouseInteraction(&input));
         scene.addComponent(new TouchTranslate(&input));
@@ -354,7 +363,11 @@ private:
             drawObject->addComponent(new RenderNode(&renderPassNode, RENDER_ACTION_START));
             drawObject->addComponent(new RenderNode(&pipelineNode, RENDER_ACTION_START));
             drawObject->addComponent(new VulkanCmdBindDescriptorSet(mainDescriptorSet->getComponent<VulkanDescriptorSet>(), 0));
-            drawObject->addComponent(new RenderNode(sceneGraph));
+            //drawObject->addComponent(new VulkanCmdBindDescriptorSet(materialDescriptorSet->getComponent<VulkanDescriptorSet>(), 2));
+            for (int f = 0; f < planets.size(); f++) {
+                planets[f]->render(drawObject,sceneGraph);
+            }
+            //drawObject->addComponent(new RenderNode(sceneGraph));
             drawObject->addComponent(new RenderNode(&pipelineNode, RENDER_ACTION_END));
             drawObject->addComponent(new RenderNode(&renderPassNode, RENDER_ACTION_END));
 
@@ -374,11 +387,11 @@ private:
                 updateSharedNode->addComponent(new VulkanDeviceRenderer());
                 updateSharedNode->addComponent(new VulkanCommandPool(graphicsQueue));
                 updateSharedNode->addComponent(new RenderNode(&graphicsObjects));
-                updateSharedNode->addComponent(new RenderNode(&images));
+                updateSharedNode->addComponent(new RenderNode(&appInfo.images));
                 EntityNode* renderSpecific = new EntityNode(updateSharedNode);
                     renderSpecific->addComponent(new AllowRenderModes(VULKAN_RENDER_SHARED_ONLY));
-                    renderSpecific->addComponent(new RenderNode(&shaderObjects));
-                    renderSpecific->addComponent(new RenderNode(&descriptorSetGroup));
+                    renderSpecific->addComponent(new RenderNode(&appInfo.shaderObjects));
+                    renderSpecific->addComponent(new RenderNode(&appInfo.descriptorSetGroup));
                     renderSpecific->addComponent(new RenderNode(&renderPassNode, RENDER_ACTION_START));
                     renderSpecific->addComponent(new RenderNode(&pipelineNode));
                     renderSpecific->addComponent(new RenderNode(&renderPassNode, RENDER_ACTION_END));
@@ -416,8 +429,8 @@ private:
             renderNode->addComponent(new VulkanFrameRenderer(graphicsQueue, presentQueue));
             EntityNode* updateNode = new EntityNode(renderNode);
                 updateNode->addComponent(new AllowRenderModes(VULKAN_RENDER_UPDATE_DISPLAY | VULKAN_RENDER_UPDATE | VULKAN_RENDER_OBJECT | VULKAN_RENDER_CLEANUP_DISPLAY | VULKAN_RENDER_CLEANUP));
-                updateNode->addComponent(new RenderNode(&shaderObjects));
-                updateNode->addComponent(new RenderNode(&descriptorSetGroup));
+                updateNode->addComponent(new RenderNode(&appInfo.shaderObjects));
+                updateNode->addComponent(new RenderNode(&appInfo.descriptorSetGroup));
                 updateNode->addComponent(new RenderNode(&renderPassNode, RENDER_ACTION_START));
                 updateNode->addComponent(new RenderNode(&pipelineNode));
                 updateNode->addComponent(new RenderNode(&renderPassNode, RENDER_ACTION_END));
@@ -436,6 +449,9 @@ private:
             glfwPollEvents();
             input.update();
             scene.update();
+            for (int f = 0; f < planets.size(); f++) {
+                planets[f]->update();
+            }
 
             // independent windows
             renderNode->getComponent<VulkanFrameRenderer>()->drawFrame();
@@ -467,7 +483,7 @@ private:
 };
 
 int main() {
-    HelloTriangleApplication app;
+    PlanetApplication app;
 
     try {
         app.run();
