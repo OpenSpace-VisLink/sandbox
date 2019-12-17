@@ -62,11 +62,11 @@ public:
 			TuioCursor *tcur = (*iter);
 
 			if (cursorsDown.find(tcur->getCursorID()) == cursorsDown.end()) {
-	            cursorPositions[tcur->getCursorID()] = glm::vec2((float)xScale*tcur->getX(), (float)yScale*tcur->getY());
+	            cursorPositions[tcur->getCursorID()] = glm::vec2((float)xScale*tcur->getX(), (float)yScale*(1.0f-tcur->getY()));
 				cursorsDown.insert(tcur->getCursorID());
 			}
 			else if (tcur->getMotionSpeed() > 0.0) {
-	            cursorPositions[tcur->getCursorID()] = glm::vec2((float)xScale*tcur->getX(), (float)yScale*tcur->getY());
+	            cursorPositions[tcur->getCursorID()] = glm::vec2((float)xScale*tcur->getX(), (float)yScale*(1.0f-tcur->getY()));
 			}
 
 			//std::cout << tcur->getCursorID() << " " << cursorPositions[tcur->getCursorID()].x << " " << cursorPositions[tcur->getCursorID()].y << std::endl;

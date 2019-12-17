@@ -16,18 +16,21 @@ set (HEADERFILES
 add_external(tuio 
 	GIT_REPOSITORY https://github.com/dtorban/TUIO11_CPP.git
 	LIB_NAME TUIO
+	DEBUG_POSTFIX d
 )
 
+add_external(glm 
+	GIT_REPOSITORY https://github.com/g-truc/glm.git
+  HEADER_ONLY
+)
 add_definitions(-DGLM_FORCE_INLINE)
+include_directories(${external_dir}/glm/src)
 
-include(${external_dir}/NanoGUI/NanoGUI.cmake)
-#useNanoGUI()
-
-include(${external_dir}/CPP11/CPP11.cmake)
-useCPP17()
-
-include(${external_dir}/OpenGL/OpenGL.cmake)
-#useOpenGL()
+add_external(stb
+  GIT_REPOSITORY https://github.com/nothings/stb.git
+  HEADER_ONLY
+)
+include_directories(${external_dir}/stb/src)
 
 find_package(Vulkan REQUIRED)
 message("vk Found" ${Vulkan_FOUND} ${Vulkan_INCLUDE_DIRS} ${Vulkan_LIBRARIES})
@@ -40,15 +43,8 @@ set(DEP_LIBS ${DEP_LIBS} glfw)
 set(PROJECT_DEPS ${PROJECT_DEPS} sandbox)
 set(DEP_LIBS ${DEP_LIBS} sandbox)
 
-add_external(stb
-  GIT_REPOSITORY git@github.com:nothings/stb.git
-  HEADER_ONLY
-)
-
-include_directories(
-  ${external_dir}/stb/src
-)
-
+include(${external_dir}/OpenGL/OpenGL.cmake)
+useOpenGL()
 
 #/home/dan/lib/1.1.114.0/x86_64/bin/glslc examples/VulkanSandbox/src/shaders/shader.vert -o examples/VulkanSandbox/src/shaders/vert.spv
 #/home/dan/lib/1.1.114.0/x86_64/bin/glslc examples/VulkanSandbox/src/shaders/shader.frag -o examples/VulkanSandbox/src/shaders/frag.spv

@@ -82,20 +82,24 @@ set (HEADERFILES
 
 add_external(glm 
 	GIT_REPOSITORY https://github.com/g-truc/glm.git
-)
-add_definitions(-DGLM_FORCE_INLINE)
-
-add_external(stb
-  GIT_REPOSITORY git@github.com:nothings/stb.git
   HEADER_ONLY
 )
+add_definitions(-DGLM_FORCE_INLINE)
+include_directories(${external_dir}/glm/src)
 
-include_directories(
-  ${external_dir}/stb/src
+add_external(stb
+  GIT_REPOSITORY https://github.com/nothings/stb.git
+  HEADER_ONLY
 )
+include_directories(${external_dir}/stb/src)
 
-#include(${external_dir}/Assimp/Assimp.cmake)
-#useAssimp()
+find_package(Vulkan REQUIRED)
+message("vk Found" ${Vulkan_FOUND} ${Vulkan_INCLUDE_DIRS} ${Vulkan_LIBRARIES})
+include_directories(${Vulkan_INCLUDE_DIRS})
+set(DEP_LIBS ${DEP_LIBS} ${Vulkan_LIBRARIES})
+
+find_package(glfw3 REQUIRED)
+set(DEP_LIBS ${DEP_LIBS} glfw)
 
 include(${external_dir}/OpenGL/OpenGL.cmake)
 useOpenGL()
