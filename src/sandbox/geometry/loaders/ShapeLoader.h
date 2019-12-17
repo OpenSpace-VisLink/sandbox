@@ -8,7 +8,9 @@ namespace sandbox {
 enum Shape {
 	SHAPE_QUAD,
 	SHAPE_CYLINDAR,
-	SHAPE_CIRCLE
+	SHAPE_CIRCLE,
+	SHAPE_SPHERE,
+	SHAPE_GRID
 };
 
 class ShapeLoader : public MeshLoader {

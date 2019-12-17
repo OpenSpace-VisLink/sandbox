@@ -50,8 +50,8 @@ void ShapeLoader::load(Mesh* mesh) {
 			nodes.push_back(glm::vec3(topRadius*x, 0.5, topRadius*y));
 			normals.push_back(glm::vec3(x, 0, y));
 			normals.push_back(glm::vec3(x, 0, y));
-			coords.push_back(glm::vec2(1.0f*f/numSegments, 0));
 			coords.push_back(glm::vec2(1.0f*f/numSegments, 1));
+			coords.push_back(glm::vec2(1.0f*f/numSegments, 0));
 
 			if (f > 0) {
 				indices.push_back((f-1)*2+0);
@@ -60,6 +60,80 @@ void ShapeLoader::load(Mesh* mesh) {
 				indices.push_back((f-1)*2+2);
 				indices.push_back((f-1)*2+3);
 				indices.push_back((f-1)*2+1);
+			}
+		}
+	}
+	else if (shape == SHAPE_SPHERE) {
+		float dx = (1.0f/(resolution-1));
+		float dy = dx;
+		for (int j = 0; j < resolution; j++) {
+			for (int i = 0; i < resolution; i++) {
+				glm::vec3 gridPoint = glm::vec3(-0.5 + dx*i, 0.5 - dy*j, 0.0);
+				glm::vec3 latLong = gridPoint*glm::vec3(2.0)*glm::vec3(3.14159, 3.14159/2.0f, 0.0f);
+				//glm::vec3 spherePoint(std::cos(latLong.x)*std::sin(latLong.y), std::sin(latLong.x), std::cos(latLong.x)*std::cos(latLong.y));
+				//glm::vec3 spherePoint(std::sin(latLong.x), std::cos(latLong.x)*std::sin(latLong.y), std::cos(latLong.x)*std::cos(latLong.y));
+				glm::vec3 spherePoint(std::cos(latLong.y)*std::sin(latLong.x), std::sin(latLong.y), std::cos(latLong.x)*std::cos(latLong.y));
+				nodes.push_back(spherePoint);
+				normals.push_back(glm::vec3(0, 0, 1.0f));
+				coords.push_back(glm::vec2(dx*i, dy*j));
+			}
+		}
+
+		for (int i = 0; i < resolution-1; i++) {
+			for (int j = 0; j < resolution-1; j++) {
+				indices.push_back(i*resolution+j);
+				indices.push_back((i+1)*resolution+j);
+				indices.push_back((i)*resolution+j+1);
+				indices.push_back((i)*resolution+j+1);
+				indices.push_back((i+1)*resolution+j);
+				indices.push_back((i+1)*resolution+j+1);
+			}
+		}
+	}
+	/*else if (shape == SHAPE_TWIST) {
+		float dx = (1.0f/(resolution-1));
+		float dy = dx;
+		for (int j = 0; j < resolution; j++) {
+			for (int i = 0; i < resolution; i++) {
+				glm::vec3 gridPoint = glm::vec3(-0.5 + dx*i, 0.5 - dy*j, 0.0);
+				glm::vec3 latLong = gridPoint*glm::vec3(2.0)*glm::vec3(3.14159, 3.14159/2.0f, 0.0f);
+				glm::vec3 spherePoint(std::cos(latLong.x)*std::sin(latLong.y), std::sin(latLong.y), std::cos(latLong.x)*std::cos(latLong.y));
+				nodes.push_back(spherePoint);
+				normals.push_back(glm::vec3(0, 0, 1.0f));
+				coords.push_back(glm::vec2(dx*i, dy*j));
+			}
+		}
+
+		for (int i = 0; i < resolution-1; i++) {
+			for (int j = 0; j < resolution-1; j++) {
+				indices.push_back(i*resolution+j);
+				indices.push_back((i+1)*resolution+j);
+				indices.push_back((i)*resolution+j+1);
+				indices.push_back((i)*resolution+j+1);
+				indices.push_back((i+1)*resolution+j);
+				indices.push_back((i+1)*resolution+j+1);
+			}
+		}
+	}*/
+	else if (shape == SHAPE_GRID) {
+		float dx = (1.0f/(resolution-1));
+		float dy = dx;
+		for (int j = 0; j < resolution; j++) {
+			for (int i = 0; i < resolution; i++) {
+				nodes.push_back(glm::vec3(-0.5 + dx*i, 0.5 - dy*j, 0.0));
+				normals.push_back(glm::vec3(0, 0, 1.0f));
+				coords.push_back(glm::vec2(dx*i, dy*j));
+			}
+		}
+
+		for (int i = 0; i < resolution-1; i++) {
+			for (int j = 0; j < resolution-1; j++) {
+				indices.push_back(i*resolution+j);
+				indices.push_back((i+1)*resolution+j);
+				indices.push_back((i)*resolution+j+1);
+				indices.push_back((i)*resolution+j+1);
+				indices.push_back((i+1)*resolution+j);
+				indices.push_back((i+1)*resolution+j+1);
 			}
 		}
 	}
