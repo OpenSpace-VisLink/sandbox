@@ -2,7 +2,31 @@
 
 using namespace sandbox;
 
+class StereoUniformBuffer : public VulkanUniformBufferValue<ViewBufferObject> {
+protected:
+    void updateBuffer(const GraphicsContext& context, VulkanDeviceState& state, VulkanBuffer* buffer) {
+        ViewBufferObject ubo = {};
+        ubo.view = glm::lookAt(glm::vec3(0.0f, 0.0f, 3.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+        ubo.proj = glm::perspective(glm::radians(45.0f), (float) state.getExtent().width / (float) state.getExtent().height, 0.01f, 100.0f);
+        ubo.model = glm::mat4(1.0f);
+        /*if (VulkanSwapChainState::get(context).getSwapChain()->getName() == "window 2") {
+            ubo.model = glm::translate(ubo.model, glm::vec3(0.25,0,0.0));
+        }*/
+        if (VulkanSwapChainState::get(context).getSwapChain()->getName() == "Vulkan2") {
+            ubo.model = glm::translate(ubo.model, glm::vec3(0.25,0,0.0));
+        }
+        ubo.proj[1][1] *= -1;
+
+        buffer->update(&ubo, sizeof(ubo));
+    }
+};
+
 class PlanetApp : public VulkanAppBase {
+    void createWindows() {
+        createWindow(0, 0, WIDTH, HEIGHT, "Vulkan");
+        createWindow(WIDTH, 0, WIDTH, HEIGHT, "Vulkan2");
+    }
+
     class Planet {
     public:
         Planet(PlanetAppInfo& appInfo, const std::string& texture, float yearSpeed = 0.0f, float daySpeed = 0.0f) : appInfo(appInfo), yearSpeed(yearSpeed), daySpeed(daySpeed) {
@@ -62,6 +86,15 @@ class PlanetApp : public VulkanAppBase {
         planets.push_back(new Planet(appInfo, "examples/Planets/textures/moon-1k.jpg", 1.0f/30.0f, 0.0f)); 
 
         Entity* materialDescriptorSet = appInfo.descriptorSetGroup.getChildren()[2];
+
+        EntityNode* stereoUniformBuffer = new EntityNode(&appInfo.shaderObjects);
+            stereoUniformBuffer->addComponent(new StereoUniformBuffer());
+
+        appInfo.viewDescriptorSet = new EntityNode(&appInfo.descriptorSetGroup);
+            appInfo.viewDescriptorSet->addComponent(new VulkanDescriptorSetLayout()); 
+            appInfo.viewDescriptorSet->addComponent(new VulkanSwapChainDescriptorPool());
+            appInfo.viewDescriptorSet->addComponent(new VulkanDescriptorSet());
+            appInfo.viewDescriptorSet->addComponent(new VulkanDescriptor(stereoUniformBuffer->getComponent<VulkanUniformBuffer>(), VK_SHADER_STAGE_VERTEX_BIT));
 
         appInfo.sphere = new EntityNode(&graphicsObjects);
             appInfo.sphere->addComponent(new Mesh());

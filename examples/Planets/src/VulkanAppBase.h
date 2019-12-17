@@ -52,7 +52,7 @@ struct TransformUniformBufferObject {
 };
 
 
-class MainUniformBuffer : public VulkanUniformBufferValue<ViewBufferObject> {
+class ViewUniformBuffer : public VulkanUniformBufferValue<ViewBufferObject> {
 protected:
     void updateBuffer(const GraphicsContext& context, VulkanDeviceState& state, VulkanBuffer* buffer) {
         ViewBufferObject ubo = {};
@@ -179,6 +179,9 @@ protected:
         EntityNode* transformDescriptorSet;
     } appInfo;
 
+    std::vector<GLFWwindow*> windows;
+    std::vector<std::string> windowNames;
+    std::vector<EntityNode*> renderNodes;
     GLFWwindow* window;
     EntityNode vulkanNode;
     EntityNode renderPassNode;
@@ -191,14 +194,28 @@ protected:
     EntityNode* sceneGraph;
     Entity* renderNode;
 
+    virtual GLFWwindow* createWindow(int x, int y, int width, int height, const std::string& name) {
+    	GLFWwindow* window = glfwCreateWindow(width, height, name.c_str(), nullptr, nullptr);
+        glfwSetWindowUserPointer(window, this);
+        glfwSetWindowPos (window, x, y);
+    	windows.push_back(window);
+    	windowNames.push_back(name);
+    }
+
+    virtual void createWindows() {
+    	createWindow(0, 0, WIDTH, HEIGHT, "Vulkan");
+    }
+
     void initWindow() { 
         glfwInit();
 
         glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
 
-        window = glfwCreateWindow(WIDTH, HEIGHT, "Vulkan", nullptr, nullptr);
+        createWindows();
+        window = windows[0];//createWindow(0, 0, WIDTH, HEIGHT, "Vulkan");
+        /*window = glfwCreateWindow(WIDTH, HEIGHT, "Vulkan", nullptr, nullptr);
         glfwSetWindowUserPointer(window, this);
-        glfwSetWindowPos (window, 0, 0);
+        glfwSetWindowPos (window, 0, 0);*/
     }
 
 
@@ -207,7 +224,7 @@ protected:
     void initVulkan() {
 
         EntityNode* viewUniformBuffer = new EntityNode(&appInfo.shaderObjects);
-            viewUniformBuffer->addComponent(new MainUniformBuffer());
+            viewUniformBuffer->addComponent(new ViewUniformBuffer());
         EntityNode* samplerNode = new EntityNode(&appInfo.shaderObjects);
             samplerNode->addComponent(new VulkanSampler());
         EntityNode* transformUniformBuffer = new EntityNode(&appInfo.shaderObjects);
@@ -229,21 +246,32 @@ protected:
 
         createVulkanNode();
 
-        input.addComponent(new GLFWInput(window));
+        for (int f = 0; f < windows.size(); f++) {
+        	input.addComponent(new GLFWInput(windows[f]));
+        }
         input.addComponent(new TUIOTouchInput());
         input.update();
     }
 
     void createVulkanNode() {
         vulkanNode.addComponent(new VulkanInstance());
-        EntityNode* surfaceNode = new EntityNode(&vulkanNode);
-            surfaceNode->addComponent(new GlfwSurface(window, &vulkanNode));
+
+        // Add surfaces
+        std::vector<EntityNode*> surfaceNodes;
+        for (int f = 0; f < windows.size(); f++) {
+	        EntityNode* surfaceNode = new EntityNode(&vulkanNode);
+	            surfaceNode->addComponent(new GlfwSurface(windows[f], &vulkanNode));
+	        surfaceNodes.push_back(surfaceNode);
+        }
+
         Entity* deviceNode = new EntityNode(&vulkanNode);
             deviceNode->addComponent(new SharedContext());
             deviceNode->addComponent(new VulkanDevice(&vulkanNode));
             EntityNode* queues = new EntityNode(deviceNode);
                 queues->addComponent(new VulkanGraphicsQueue());
-                queues->addComponent(new VulkanPresentQueue(surfaceNode));
+        		for (int f = 0; f < surfaceNodes.size(); f++) {
+                	queues->addComponent(new VulkanPresentQueue(surfaceNodes[f]));
+            	}
                 VulkanGraphicsQueue* graphicsQueue = queues->getComponent<VulkanGraphicsQueue>();
                 VulkanPresentQueue* presentQueue = queues->getComponent<VulkanPresentQueue>();
             updateSharedNode = new EntityNode(deviceNode);
@@ -260,7 +288,9 @@ protected:
                     renderSpecific->addComponent(new RenderNode(&pipelineNode));
                     renderSpecific->addComponent(new RenderNode(&renderPassNode, RENDER_ACTION_END));
             EntityNode* windowNodes = new EntityNode(deviceNode);
-                renderNode = createSwapChain(windowNodes, surfaceNode, queues, "Window");
+	            for (int f = 0; f < surfaceNodes.size(); f++) {
+	                renderNodes.push_back(createSwapChain(windowNodes, surfaceNodes[f], queues, windowNames[f]));
+	            }
 
         vulkanNode.update();
 
@@ -268,9 +298,11 @@ protected:
         sharedRenderer->render(VULKAN_RENDER_UPDATE_SHARED);
         sharedRenderer->render(VULKAN_RENDER_OBJECT);
 
-        VulkanDeviceRenderer* renderer = renderNode->getComponentRecursive<VulkanDeviceRenderer>();
-        renderer->render(VULKAN_RENDER_UPDATE_SHARED);
-        renderer->render(VULKAN_RENDER_UPDATE_DISPLAY);
+        for (int f = 0; f < renderNodes.size(); f++) {
+		    VulkanDeviceRenderer* renderer = renderNodes[f]->getComponentRecursive<VulkanDeviceRenderer>();
+		    renderer->render(VULKAN_RENDER_UPDATE_SHARED);
+		    renderer->render(VULKAN_RENDER_UPDATE_DISPLAY);
+        }
 
         std::vector<VulkanDeviceRenderer*> renderers = windowNodes->getComponentsRecursive<VulkanDeviceRenderer>();
         for (int f = 0; f < renderers.size(); f++) {  
@@ -315,7 +347,9 @@ protected:
             update();
 
             // independent windows
-            renderNode->getComponent<VulkanFrameRenderer>()->drawFrame();
+            for (int f = 0; f < renderNodes.size(); f++) {
+            	renderNodes[f]->getComponent<VulkanFrameRenderer>()->drawFrame();
+            }
 
             if (frame>=0) {   
                 static GraphicsContext updateContext;
