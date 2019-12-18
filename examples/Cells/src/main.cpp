@@ -4,8 +4,10 @@
 using namespace sandbox;
 
 struct InstanceInfo {
-    glm::vec3 location;
-    glm::ivec4 info;
+    alignas(4) glm::vec3 location;
+    alignas(4) glm::vec3 info;
+    float armAngles[16];
+    float armLengths[16];
 };
 
 class CellApp : public VulkanAppBase {
@@ -17,6 +19,15 @@ class CellApp : public VulkanAppBase {
     void createInstanceInput(EntityNode* entity) {
         VulkanVertexInput* vertexInput = new VulkanVertexInput(sizeof(InstanceInfo), 3, VK_VERTEX_INPUT_RATE_INSTANCE);
         vertexInput->addAttribute(VK_FORMAT_R32G32B32_SFLOAT, offsetof(InstanceInfo, location));
+        vertexInput->addAttribute(VK_FORMAT_R32G32B32_SFLOAT, offsetof(InstanceInfo, info));
+        vertexInput->addAttribute(VK_FORMAT_R32G32B32A32_SFLOAT, offsetof(InstanceInfo, armAngles));
+        vertexInput->addAttribute(VK_FORMAT_R32G32B32A32_SFLOAT, offsetof(InstanceInfo, armAngles)+sizeof(glm::vec4));
+        vertexInput->addAttribute(VK_FORMAT_R32G32B32A32_SFLOAT, offsetof(InstanceInfo, armAngles)+2*sizeof(glm::vec4));
+        vertexInput->addAttribute(VK_FORMAT_R32G32B32A32_SFLOAT, offsetof(InstanceInfo, armAngles)+3*sizeof(glm::vec4));
+        vertexInput->addAttribute(VK_FORMAT_R32G32B32A32_SFLOAT, offsetof(InstanceInfo, armLengths));
+        vertexInput->addAttribute(VK_FORMAT_R32G32B32A32_SFLOAT, offsetof(InstanceInfo, armLengths)+sizeof(glm::vec4));
+        vertexInput->addAttribute(VK_FORMAT_R32G32B32A32_SFLOAT, offsetof(InstanceInfo, armLengths)+2*sizeof(glm::vec4));
+        vertexInput->addAttribute(VK_FORMAT_R32G32B32A32_SFLOAT, offsetof(InstanceInfo, armLengths)+3*sizeof(glm::vec4));
         entity->addComponent(vertexInput);
     }
 
@@ -24,7 +35,7 @@ class CellApp : public VulkanAppBase {
 
         appInfo.sphere = new EntityNode(&graphicsObjects);
             appInfo.sphere->addComponent(new Mesh());
-            appInfo.sphere->addComponent(new ShapeLoader(SHAPE_SPHERE, 50));
+            appInfo.sphere->addComponent(new ShapeLoader(SHAPE_SPHERE, 100));
             appInfo.sphere->addComponent(new VulkanMeshRenderer());
             appInfo.sphere->update();
 
@@ -32,12 +43,38 @@ class CellApp : public VulkanAppBase {
             VertexArray<InstanceInfo>* cellArray = new VertexArray<InstanceInfo>(3);
             InstanceInfo cell;
             cell.location = glm::vec3(3.0,0,0);
+            cell.info.x = 1;
+            cell.armAngles[0] = 0.0f;
+            cell.armLengths[0] = 1.0f;
             cellArray->value.push_back(cell);
             cell.location = glm::vec3(-2.0,0,0);
+            cell.info.x = 2;
+            cell.armAngles[0] = 0.0f;
+            cell.armAngles[1] = 3.14159;
+            cell.armLengths[0] = 1.0f;
+            cell.armLengths[1] = 0.5f;
             cellArray->value.push_back(cell);
             cell.location = glm::vec3(0.0,0,0);
+            cell.info.x = 3;
+            cell.armAngles[0] = 0.0f;
+            cell.armAngles[1] = 2.0*3.1415/3;
+            cell.armAngles[2] = 2.0*2.0*3.1415/3;
+            cell.armLengths[0] = 1.0f;
+            cell.armLengths[1] = 0.5f;
+            cell.armLengths[2] = 0.75f;
             cellArray->value.push_back(cell);
             cell.location = glm::vec3(0.0,2.0,0);
+            cell.info.x = 5;
+            cell.armAngles[0] = 0.0f;
+            cell.armAngles[1] = 1.0*2.0*3.1415/5;
+            cell.armAngles[2] = 2.0*2.0*3.1415/5;
+            cell.armAngles[3] = 3.0*2.0*3.1415/5;
+            cell.armAngles[4] = 4.0*2.0*3.1415/5;
+            cell.armLengths[0] = 1.0f;
+            cell.armLengths[1] = 0.5f;
+            cell.armLengths[2] = 1.0f;
+            cell.armLengths[3] = 1.0f;
+            cell.armLengths[4] = 1.0f;
             cellArray->value.push_back(cell);
             instances->addComponent(cellArray);
             instances->addComponent(new VulkanDrawInstanced());
