@@ -6,11 +6,14 @@ class StereoUniformBuffer : public VulkanUniformBufferValue<ViewBufferObject> {
 protected:
     void updateBuffer(const GraphicsContext& context, VulkanDeviceState& state, VulkanBuffer* buffer) {
         ViewBufferObject ubo = {};
-        ubo.view = glm::lookAt(glm::vec3(0.0f, 0.0f, 3.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+        ubo.view = glm::lookAt(glm::vec3(0.0f, 0.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
         ubo.proj = glm::perspective(glm::radians(45.0f), (float) state.getExtent().width / (float) state.getExtent().height, 0.01f, 100.0f);
         ubo.model = glm::mat4(1.0f);
+        if (VulkanSwapChainState::get(context).getSwapChain()->getName() == "Vulkan") {
+            ubo.model = glm::translate(ubo.model, glm::vec3(-0.25/2.0,0,0.0));
+        }
         if (VulkanSwapChainState::get(context).getSwapChain()->getName() == "Vulkan2") {
-            ubo.model = glm::translate(ubo.model, glm::vec3(0.25,0,0.0));
+            ubo.model = glm::translate(ubo.model, glm::vec3(0.25/2.0,0,0.0));
         }
         ubo.proj[1][1] *= -1;
 
@@ -99,20 +102,24 @@ class PlanetApp : public VulkanAppBase {
             appInfo.sphere->addComponent(new VulkanMeshRenderer());
             appInfo.sphere->update();
 
-        pipelineNode.addComponent(new VulkanShaderModule("examples/Planets/src/shaders/vert2.spv", VK_SHADER_STAGE_VERTEX_BIT));
-        pipelineNode.addComponent(new VulkanShaderModule("examples/Planets/src/shaders/frag.spv", VK_SHADER_STAGE_FRAGMENT_BIT));
-        std::vector<VulkanDescriptorSetLayout*> layouts;
-        layouts.push_back(appInfo.viewDescriptorSet->getComponent<VulkanDescriptorSetLayout>());
-        layouts.push_back(appInfo.transformDescriptorSet->getComponent<VulkanDescriptorSetLayout>());
-        layouts.push_back(materialDescriptorSet->getComponent<VulkanDescriptorSetLayout>());
-        pipelineNode.addComponent(new VulkanGraphicsPipeline(layouts));
-        VulkanMeshRenderer::addVertexInput(&pipelineNode);
 
-        renderPassNode.addComponent(new VulkanBasicRenderPass());
-        renderPassNode.addComponent(new VulkanSwapChainFramebuffer());
+        std::vector<VulkanDescriptorSetLayout*> layouts;
+            layouts.push_back(appInfo.viewDescriptorSet->getComponent<VulkanDescriptorSetLayout>());
+            layouts.push_back(appInfo.transformDescriptorSet->getComponent<VulkanDescriptorSetLayout>());
+            layouts.push_back(materialDescriptorSet->getComponent<VulkanDescriptorSetLayout>());
+
+        basicRenderPass.addComponent(new VulkanBasicRenderPass());
+        basicRenderPass.addComponent(new VulkanSwapChainFramebuffer());
+
+        EntityNode* planetPipeline = new EntityNode(&basicPipelines);
+            planetPipeline->addComponent(new VulkanShaderModule("examples/Planets/src/shaders/vert2.spv", VK_SHADER_STAGE_VERTEX_BIT));
+            planetPipeline->addComponent(new VulkanShaderModule("examples/Planets/src/shaders/frag.spv", VK_SHADER_STAGE_FRAGMENT_BIT));
+            planetPipeline->addComponent(new VulkanGraphicsPipeline(layouts));
+            VulkanMeshRenderer::addVertexInput(planetPipeline);
 
         sceneGraph = new EntityNode(&graphicsObjects, "SceneGraph"); 
             sceneGraph->addComponent(new TransformRoot());
+            sceneGraph->addComponent(new Transform(glm::scale(glm::mat4(1.0f), glm::vec3(0.5f))));
             planets[0]->addAt(sceneGraph);
             EntityNode* planetNodes = new EntityNode(sceneGraph, "Planets");
                 glm::mat4 trans = glm::translate(glm::mat4(1.0f), glm::vec3(2.0, 0, 0));
@@ -124,16 +131,22 @@ class PlanetApp : public VulkanAppBase {
         scene.addComponent(new TouchTranslate(&input));
         scene.addComponent(new TouchScale(&input));
         EntityNode* drawObject = new EntityNode(&scene);
-            drawObject->addComponent(new RenderNode(&renderPassNode, RENDER_ACTION_START));
-            drawObject->addComponent(new RenderNode(&pipelineNode, RENDER_ACTION_START));
+            drawObject->addComponent(new RenderNode(&basicRenderPass, RENDER_ACTION_START));
+            drawObject->addComponent(new RenderNode(planetPipeline, RENDER_ACTION_START));
             drawObject->addComponent(new VulkanCmdBindDescriptorSet(appInfo.viewDescriptorSet->getComponent<VulkanDescriptorSet>(), 0));
             for (int f = 0; f < planets.size(); f++) {
                 planets[f]->render(drawObject,sceneGraph);
             }
-            drawObject->addComponent(new RenderNode(&pipelineNode, RENDER_ACTION_END));
-            drawObject->addComponent(new RenderNode(&renderPassNode, RENDER_ACTION_END));
+            drawObject->addComponent(new RenderNode(planetPipeline, RENDER_ACTION_END));
+            drawObject->addComponent(new RenderNode(&basicRenderPass, RENDER_ACTION_END));
 
 
+    }
+
+    void initPipelines(EntityNode* renderNode) {
+        renderNode->addComponent(new RenderNode(&basicRenderPass, RENDER_ACTION_START));
+        renderNode->addComponent(new RenderNode(&basicPipelines));
+        renderNode->addComponent(new RenderNode(&basicRenderPass, RENDER_ACTION_END));
     }
 
     void update() {
@@ -143,6 +156,8 @@ class PlanetApp : public VulkanAppBase {
     }
 
     std::vector<Planet*> planets;
+    EntityNode basicRenderPass;
+    EntityNode basicPipelines;
 };
 
 int main() {

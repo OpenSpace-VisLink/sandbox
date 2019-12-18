@@ -254,6 +254,12 @@ protected:
         input.update();
     }
 
+    virtual void initPipelines(EntityNode* renderNode) {
+        renderNode->addComponent(new RenderNode(&renderPassNode, RENDER_ACTION_START));
+        renderNode->addComponent(new RenderNode(&pipelineNode));
+        renderNode->addComponent(new RenderNode(&renderPassNode, RENDER_ACTION_END));
+    }
+
     void createVulkanNode() {
         vulkanNode.addComponent(new VulkanInstance());
 
@@ -285,9 +291,10 @@ protected:
                     renderSpecific->addComponent(new AllowRenderModes(VULKAN_RENDER_SHARED_ONLY));
                     renderSpecific->addComponent(new RenderNode(&appInfo.shaderObjects));
                     renderSpecific->addComponent(new RenderNode(&appInfo.descriptorSetGroup));
-                    renderSpecific->addComponent(new RenderNode(&renderPassNode, RENDER_ACTION_START));
-                    renderSpecific->addComponent(new RenderNode(&pipelineNode));
-                    renderSpecific->addComponent(new RenderNode(&renderPassNode, RENDER_ACTION_END));
+                    initPipelines(renderSpecific);
+                    //renderSpecific->addComponent(new RenderNode(&renderPassNode, RENDER_ACTION_START));
+                    //renderSpecific->addComponent(new RenderNode(&pipelineNode));
+                    //renderSpecific->addComponent(new RenderNode(&renderPassNode, RENDER_ACTION_END));
             EntityNode* windowNodes = new EntityNode(deviceNode);
 	            for (int f = 0; f < surfaceNodes.size(); f++) {
 	                renderNodes.push_back(createSwapChain(windowNodes, surfaceNodes[f], queues, windowNames[f]));
@@ -324,9 +331,10 @@ protected:
                 updateNode->addComponent(new AllowRenderModes(VULKAN_RENDER_UPDATE_DISPLAY | VULKAN_RENDER_UPDATE | VULKAN_RENDER_OBJECT | VULKAN_RENDER_CLEANUP_DISPLAY | VULKAN_RENDER_CLEANUP));
                 updateNode->addComponent(new RenderNode(&appInfo.shaderObjects));
                 updateNode->addComponent(new RenderNode(&appInfo.descriptorSetGroup));
-                updateNode->addComponent(new RenderNode(&renderPassNode, RENDER_ACTION_START));
+                initPipelines(updateNode);
+                /*updateNode->addComponent(new RenderNode(&renderPassNode, RENDER_ACTION_START));
                 updateNode->addComponent(new RenderNode(&pipelineNode));
-                updateNode->addComponent(new RenderNode(&renderPassNode, RENDER_ACTION_END));
+                updateNode->addComponent(new RenderNode(&renderPassNode, RENDER_ACTION_END));*/
             EntityNode* commandNode = new EntityNode(renderNode);
                 commandNode->addComponent(new VulkanCommandPool(graphicsQueue));
                 commandNode->addComponent(new VulkanCommandBuffer());
