@@ -32,6 +32,10 @@ layout(location = 1) out vec2 fragTexCoord;
 
 void main() {
 	vec3 pos = inPosition;
+	float angle = atan(pos.y, pos.x)+3.14159;
+	float len = length(pos.xy)*angle/(2.0*3.14159);
+	pos.x = len*cos(angle);
+	pos.y = len*sin(angle);
 	if (pos.z < 0) {
 		pos.z /= 10.0;
 	}

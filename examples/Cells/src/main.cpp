@@ -3,10 +3,21 @@
 
 using namespace sandbox;
 
+struct InstanceInfo {
+    glm::vec3 location;
+    glm::ivec4 info;
+};
+
 class CellApp : public VulkanAppBase {
     void createWindows() {
         createWindow(0, 0, 1024, 768, "Vulkan");
         //createWindow(WIDTH, 0, WIDTH, HEIGHT, "Vulkan2");
+    }
+
+    void createInstanceInput(EntityNode* entity) {
+        VulkanVertexInput* vertexInput = new VulkanVertexInput(sizeof(InstanceInfo), 3, VK_VERTEX_INPUT_RATE_INSTANCE);
+        vertexInput->addAttribute(VK_FORMAT_R32G32B32_SFLOAT, offsetof(InstanceInfo, location));
+        entity->addComponent(vertexInput);
     }
 
     void initScene() {
@@ -18,17 +29,22 @@ class CellApp : public VulkanAppBase {
             appInfo.sphere->update();
 
         EntityNode* instances = new EntityNode(&graphicsObjects);
-            VertexArray<glm::vec3>* locArray = new VertexArray<glm::vec3>(3);
-            locArray->value.push_back(glm::vec3(3.0,0,0));
-            locArray->value.push_back(glm::vec3(-1.0,0,0));
-            locArray->value.push_back(glm::vec3(0.0,0,0));
-            locArray->value.push_back(glm::vec3(0.0,1.0,0));
-            instances->addComponent(locArray);
+            VertexArray<InstanceInfo>* cellArray = new VertexArray<InstanceInfo>(3);
+            InstanceInfo cell;
+            cell.location = glm::vec3(3.0,0,0);
+            cellArray->value.push_back(cell);
+            cell.location = glm::vec3(-2.0,0,0);
+            cellArray->value.push_back(cell);
+            cell.location = glm::vec3(0.0,0,0);
+            cellArray->value.push_back(cell);
+            cell.location = glm::vec3(0.0,2.0,0);
+            cellArray->value.push_back(cell);
+            instances->addComponent(cellArray);
             instances->addComponent(new VulkanDrawInstanced());
         instances->update();
 
         EntityNode* image = new EntityNode(&appInfo.images);
-            image->addComponent(new Image("examples/Planets/textures/2k_sun.jpg"));
+            image->addComponent(new Image("examples/Cells/textures/cell_texture.png"));
             image->addComponent(new VulkanImage());
             image->addComponent(new VulkanImageView());
         image->update();
@@ -54,22 +70,21 @@ class CellApp : public VulkanAppBase {
             pipeline->cullMode = VK_CULL_MODE_FRONT_BIT;
             pipelineBack->addComponent(pipeline);
             VulkanMeshRenderer::addVertexInput(pipelineBack);
-            VulkanVertexInput* vertexInput = new VulkanVertexInput(sizeof(glm::vec3), 3, VK_VERTEX_INPUT_RATE_INSTANCE);
-            vertexInput->addAttribute(VK_FORMAT_R32G32B32_SFLOAT, 0);
-            pipelineBack->addComponent(vertexInput);
+            createInstanceInput(pipelineBack);
         }
         EntityNode* pipelineFront = new EntityNode(&basicPipelines); {
             pipelineFront->addComponent(new VulkanShaderModule("examples/Cells/src/shaders/vert.spv", VK_SHADER_STAGE_VERTEX_BIT));
             pipelineFront->addComponent(new VulkanShaderModule("examples/Cells/src/shaders/frag.spv", VK_SHADER_STAGE_FRAGMENT_BIT));
             VulkanGraphicsPipeline* pipeline = new VulkanGraphicsPipeline(layouts);
             //pipeline->cullMode = VK_CULL_MODE_FRONT_BIT;
-            pipeline->depthTestEnable = VK_FALSE;
+            //pipeline->depthTestEnable = VK_FALSE;
             pipeline->blendEnable = VK_TRUE;
             pipelineFront->addComponent(pipeline);
             VulkanMeshRenderer::addVertexInput(pipelineFront);
-            VulkanVertexInput* vertexInput = new VulkanVertexInput(sizeof(glm::vec3), 3, VK_VERTEX_INPUT_RATE_INSTANCE);
-            vertexInput->addAttribute(VK_FORMAT_R32G32B32_SFLOAT, 0);
-            pipelineFront->addComponent(vertexInput);
+            /*VulkanVertexInput* vertexInput = new VulkanVertexInput(sizeof(InstanceInfo), 3, VK_VERTEX_INPUT_RATE_INSTANCE);
+            vertexInput->addAttribute(VK_FORMAT_R32G32B32_SFLOAT, offsetof(InstanceInfo, location));
+            pipelineFront->addComponent(vertexInput);*/
+            createInstanceInput(pipelineFront);
         }
 
         TransformUniformBuffer* transformUniformBuffer = appInfo.shaderObjects.getComponentRecursive<TransformUniformBuffer>();
