@@ -10,11 +10,20 @@ namespace sandbox {
 
 class VulkanGraphicsPipeline : public VulkanRenderObject {
 public:
-	VulkanGraphicsPipeline(const std::vector<VulkanDescriptorSetLayout*>& descriptorSetLayouts) : descriptorSetLayouts(descriptorSetLayouts) { addType<VulkanGraphicsPipeline>(); }
+	VulkanGraphicsPipeline(const std::vector<VulkanDescriptorSetLayout*>& descriptorSetLayouts) : descriptorSetLayouts(descriptorSetLayouts) {
+		addType<VulkanGraphicsPipeline>();
+		cullMode = VK_CULL_MODE_BACK_BIT;
+		depthTestEnable = VK_TRUE;
+		blendEnable = VK_FALSE;
+	}
 	virtual ~VulkanGraphicsPipeline() {}
 
 	VkPipeline getGraphicsPipeline(const GraphicsContext& context) const { return contextHandler.getDisplayState(context)->graphicsPipeline; }
 	VkPipelineLayout getPipelineLayout(const GraphicsContext& context) const { return contextHandler.getDisplayState(context)->pipelineLayout; }
+
+	VkCullModeFlagBits cullMode;
+	VkBool32 depthTestEnable;
+	VkBool32 blendEnable;
 
 protected:
 	void startRender(const GraphicsContext& context, VulkanDeviceState& state);

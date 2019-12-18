@@ -24,6 +24,7 @@ public:
 		imageFormat.set(VK_FORMAT_UNDEFINED);
 		commandBuffer.set(NULL);
 		graphicsPipeline.set(NULL);
+		numInstances.set(1);
 	}
 
 	virtual ~VulkanDeviceState() {}
@@ -42,6 +43,7 @@ public:
 	StateContainerItemStack<VulkanRenderPass*>& getRenderPass() { return renderPass; }
 	StateContainerItemStack<VulkanCommandBuffer*>& getCommandBuffer() { return commandBuffer; }
 	StateContainerItemStack<VulkanGraphicsPipeline*>& getGraphicsPipeline() { return graphicsPipeline; }
+	StateContainerValueItemStack<int>& getNumInstances() { return numInstances; }
 
 	static VulkanDeviceState& get(const GraphicsContext& context) { return context.getRenderState()->getItem<VulkanDeviceState>(); }
 
@@ -55,6 +57,7 @@ private:
 	StateContainerItemStack<VkFormat> imageFormat;
 	StateContainerItemStack<VulkanCommandBuffer*> commandBuffer;
 	StateContainerItemStack<VulkanGraphicsPipeline*> graphicsPipeline;
+	StateContainerValueItemStack<int> numInstances;
 
 };
 

@@ -559,6 +559,7 @@ private:
         }
 
         std::cout << deviceNode->getComponent<VulkanDevice>()->getProperties().limits.maxUniformBufferRange << std::endl;
+        std::cout << deviceNode->getComponent<VulkanDevice>()->getProperties().limits.maxVertexInputBindings << std::endl;
         /*size_t minUboAlignment = deviceNode->getComponent<VulkanDevice>()->getProperties().limits.minUniformBufferOffsetAlignment;
         std::cout << "minUboAlignment " << minUboAlignment << std::endl;
         size_t dynamicAlignment = sizeof(TransformUniformBufferObject);

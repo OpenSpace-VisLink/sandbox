@@ -206,6 +206,8 @@ public:
 		BufferState* bufferState = sharedContext ? contextHandler.getSharedState(context) : contextHandler.getState(context);
 		return bufferState->buffer->getBuffer(); 
 	}
+	
+	virtual int getNumValues() { return 1; }
 
 protected:
 	void startRender(const GraphicsContext& context, VulkanDeviceState& state) {
@@ -230,6 +232,7 @@ protected:
 			delete bufferState->buffer;
 		}
 	}
+
 
 
 protected:
@@ -274,6 +277,8 @@ public:
 	VulkanArrayBuffer(VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, bool sharedContext) : VulkanDeviceBufferValue< std::vector<T> >(usage, properties, sharedContext) { /*this->addType< VulkanArrayBuffer<T> >();*/ }
 	virtual ~VulkanArrayBuffer() {}
 
+	int getNumValues() { return this->value.size(); }
+
 protected:
 	VkDeviceSize getBufferSize() const { return this->value.size()*sizeof(T); }
 	void* getData() { return this->value.data(); }
@@ -316,7 +321,7 @@ protected:
 		if ((state.getRenderMode().get() & VULKAN_RENDER_COMMAND) == VULKAN_RENDER_COMMAND) {
 			std::cout << "bind index array and draw" << std::endl;
             vkCmdBindIndexBuffer(state.getCommandBuffer().get()->getCommandBuffer(context), getBuffer(context), 0, VK_INDEX_TYPE_UINT16);
-            vkCmdDrawIndexed(state.getCommandBuffer().get()->getCommandBuffer(context), static_cast<uint32_t>(value.size()), 1, 0, 0, 0);
+            vkCmdDrawIndexed(state.getCommandBuffer().get()->getCommandBuffer(context), static_cast<uint32_t>(value.size()), state.getNumInstances().get(), 0, 0, 0);
 		}
 	}
 };
@@ -330,7 +335,7 @@ protected:
 		if ((state.getRenderMode().get() & VULKAN_RENDER_COMMAND) == VULKAN_RENDER_COMMAND) {
 			std::cout << "bind index array and draw" << std::endl;
             vkCmdBindIndexBuffer(state.getCommandBuffer().get()->getCommandBuffer(context), getBuffer(context), 0, VK_INDEX_TYPE_UINT32);
-            vkCmdDrawIndexed(state.getCommandBuffer().get()->getCommandBuffer(context), static_cast<uint32_t>(value.size()), 1, 0, 0, 0);
+            vkCmdDrawIndexed(state.getCommandBuffer().get()->getCommandBuffer(context), static_cast<uint32_t>(value.size()), state.getNumInstances().get(), 0, 0, 0);
 		}
 	}
 };
