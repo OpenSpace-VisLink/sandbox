@@ -14,7 +14,7 @@ layout(binding = 0, set = 1) uniform UniformBufferObject2 {
 } ubo2;
 
 layout(location = 0) in vec3 inPosition;
-layout(location = 1) in vec3 inColor;
+layout(location = 1) in vec3 inNormal;
 layout(location = 2) in vec2 inTexCoord;
 
 layout(location = 3) in vec3 location;
@@ -30,7 +30,7 @@ layout(location = 9) in vec4 armLengths[4];
 //layout(location = 25) in mat4 value2
 
 
-layout(location = 0) out vec3 fragColor;
+layout(location = 0) out vec3 fragNorm;
 layout(location = 1) out vec2 fragTexCoord;
 
 float calculateLength(float angle, vec3 pos, int prevArm, int curArm, float oldLen) {
@@ -43,8 +43,10 @@ float calculateLength(float angle, vec3 pos, int prevArm, int curArm, float oldL
 		curAngle += 2.0*3.1459;
 	}
 
-	float curLength = length(pos.xy)*armLengths[curArm/4][curArm - (curArm/4)*4];
-	float prevLength = length(pos.xy)*armLengths[prevArm/4][prevArm - (prevArm/4)*4];
+	//float curLength = length(pos.xy)*armLengths[curArm/4][curArm - (curArm/4)*4];
+	//float prevLength = length(pos.xy)*armLengths[prevArm/4][prevArm - (prevArm/4)*4];
+	float curLength = armLengths[curArm/4][curArm - (curArm/4)*4];
+	float prevLength = armLengths[prevArm/4][prevArm - (prevArm/4)*4];
 
 	float sectionAngle = curAngle-prevAngle;
 	if (sectionAngle >= 3.14159) {
@@ -99,18 +101,23 @@ void main() {
 
 	len = length(pos.xy)*len;
 
+	fragNorm = inNormal;
+
 	pos.x = len*cos(angle);
 	pos.y = len*sin(angle);
 	if (pos.z < 0) {
 		pos.z /= 10.0;
+    	fragNorm.z *= 10;
 	}
 	else {
 		pos.z /= 5.0;
+    	fragNorm.z *= 5;
 	}
 	pos.z += 1.0/10.0/2.0;
 	pos += location;
     gl_Position = ubo.proj * ubo.view * ubo.model * ubo2.transform * vec4(pos, 1.0);
-    fragColor = inColor;
     fragTexCoord = inTexCoord;
+    
+    //fragNorm = normalize(pos);
 }
 

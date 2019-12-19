@@ -33,21 +33,29 @@ class CellApp : public VulkanAppBase {
 
     void initScene() {
 
-        appInfo.sphere = new EntityNode(&graphicsObjects);
-            appInfo.sphere->addComponent(new Mesh());
-            //appInfo.sphere->addComponent(new ShapeLoader(SHAPE_SPHERE, 100));
-            appInfo.sphere->addComponent(new ShapeLoader(SHAPE_CIRCLE, 50));
-            appInfo.sphere->addComponent(new VulkanMeshRenderer());
-            appInfo.sphere->update();
+        EntityNode* sphere = new EntityNode(&graphicsObjects);
+            sphere->addComponent(new Mesh());
+            sphere->addComponent(new ShapeLoader(SHAPE_SPHERE, 200));
+            //appInfo.sphere->addComponent(new ShapeLoader(SHAPE_CIRCLE, 50));
+            sphere->addComponent(new VulkanMeshRenderer());
+            //sphere->update();
+        EntityNode* circle = new EntityNode(&graphicsObjects);
+            circle->addComponent(new Mesh());
+            //sphere->addComponent(new ShapeLoader(SHAPE_SPHERE, 100));
+            circle->addComponent(new ShapeLoader(SHAPE_CIRCLE, 50));
+            circle->addComponent(new VulkanMeshRenderer());
+            //circle->update();
+
+        graphicsObjects.update();
 
         EntityNode* instances = new EntityNode(&graphicsObjects);
             VertexArray<InstanceInfo>* cellArray = new VertexArray<InstanceInfo>(3);
             InstanceInfo cell;
-            cell.location = glm::vec3(3.0,0,0);
+            /*cell.location = glm::vec3(3.0,0,0);
             cell.info.x = 1;
             cell.armAngles[0] = 0.0f;
             cell.armLengths[0] = 1.0f;
-            cellArray->value.push_back(cell);
+            cellArray->value.push_back(cell);*/
             cell.location = glm::vec3(0.0,0,0);
             cell.info.x = 10;
             cell.armAngles[0] = 0.1*2.0*3.1415;
@@ -71,7 +79,7 @@ class CellApp : public VulkanAppBase {
             cell.armLengths[8] = 1.4f;
             cell.armLengths[9] = 1.0f;
             cellArray->value.push_back(cell);
-            cell.location = glm::vec3(0.0,0,0);
+            /*cell.location = glm::vec3(0.0,0,0);
             cell.info.x = 3;
             cell.armAngles[0] = 0.0f;
             cell.armAngles[1] = 2.0*3.1415/3;
@@ -92,7 +100,7 @@ class CellApp : public VulkanAppBase {
             cell.armLengths[2] = 1.0f;
             cell.armLengths[3] = 0.3f;
             cell.armLengths[4] = 1.0f;
-            cellArray->value.push_back(cell);
+            cellArray->value.push_back(cell);*/
             instances->addComponent(cellArray);
             instances->addComponent(new VulkanDrawInstanced());
         instances->update();
@@ -101,13 +109,23 @@ class CellApp : public VulkanAppBase {
             image->addComponent(new Image("examples/Cells/textures/cell_texture.png"));
             image->addComponent(new VulkanImage());
             image->addComponent(new VulkanImageView());
-        image->update();
+        EntityNode* nucleusImage = new EntityNode(&appInfo.images);
+            nucleusImage->addComponent(new Image("examples/Planets/textures/2k_sun.jpg"));
+            nucleusImage->addComponent(new VulkanImage());
+            nucleusImage->addComponent(new VulkanImageView());
+
+        appInfo.images.update();
 
         EntityNode* materialDescriptorSet = new EntityNode(&appInfo.descriptorSetGroup);
             materialDescriptorSet->addComponent(new VulkanDescriptorSetLayout()); 
             materialDescriptorSet->addComponent(new VulkanSwapChainDescriptorPool());
             materialDescriptorSet->addComponent(new VulkanDescriptorSet());
-            materialDescriptorSet->addComponent(new VulkanDescriptor(new VulkanImageViewDecorator(appInfo.shaderObjects.getComponentRecursive<VulkanSampler>(), image->getComponent<VulkanImageView>()), VK_SHADER_STAGE_FRAGMENT_BIT));
+            materialDescriptorSet->addComponent(new VulkanDescriptor(new VulkanImageViewDecorator(appInfo.shaderObjects.getComponentRecursive<VulkanSampler>(), nucleusImage->getComponent<VulkanImageView>()), VK_SHADER_STAGE_FRAGMENT_BIT));
+        EntityNode* nucleusDescriptorSet = new EntityNode(&appInfo.descriptorSetGroup);
+            nucleusDescriptorSet->addComponent(new VulkanDescriptorSetLayout()); 
+            nucleusDescriptorSet->addComponent(new VulkanSwapChainDescriptorPool());
+            nucleusDescriptorSet->addComponent(new VulkanDescriptorSet());
+            nucleusDescriptorSet->addComponent(new VulkanDescriptor(new VulkanImageViewDecorator(appInfo.shaderObjects.getComponentRecursive<VulkanSampler>(), nucleusImage->getComponent<VulkanImageView>()), VK_SHADER_STAGE_FRAGMENT_BIT));
 
         std::vector<VulkanDescriptorSetLayout*> layouts;
             layouts.push_back(appInfo.viewDescriptorSet->getComponent<VulkanDescriptorSetLayout>());
@@ -130,25 +148,58 @@ class CellApp : public VulkanAppBase {
             pipelineFront->addComponent(new VulkanShaderModule("examples/Cells/src/shaders/vert.spv", VK_SHADER_STAGE_VERTEX_BIT));
             pipelineFront->addComponent(new VulkanShaderModule("examples/Cells/src/shaders/frag.spv", VK_SHADER_STAGE_FRAGMENT_BIT));
             VulkanGraphicsPipeline* pipeline = new VulkanGraphicsPipeline(layouts);
-            //pipeline->cullMode = VK_CULL_MODE_FRONT_BIT;
-            //pipeline->depthTestEnable = VK_FALSE;
             pipeline->blendEnable = VK_TRUE;
             pipelineFront->addComponent(pipeline);
             VulkanMeshRenderer::addVertexInput(pipelineFront);
-            /*VulkanVertexInput* vertexInput = new VulkanVertexInput(sizeof(InstanceInfo), 3, VK_VERTEX_INPUT_RATE_INSTANCE);
-            vertexInput->addAttribute(VK_FORMAT_R32G32B32_SFLOAT, offsetof(InstanceInfo, location));
-            pipelineFront->addComponent(vertexInput);*/
             createInstanceInput(pipelineFront);
         }
+        EntityNode* pipelineCircle = new EntityNode(&basicPipelines); {
+            pipelineCircle->addComponent(new VulkanShaderModule("examples/Cells/src/shaders/vert.spv", VK_SHADER_STAGE_VERTEX_BIT));
+            pipelineCircle->addComponent(new VulkanShaderModule("examples/Cells/src/shaders/frag.spv", VK_SHADER_STAGE_FRAGMENT_BIT));
+            VulkanGraphicsPipeline* pipeline = new VulkanGraphicsPipeline(layouts);
+            pipeline->topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_FAN;
+            pipelineCircle->addComponent(pipeline);
+            VulkanMeshRenderer::addVertexInput(pipelineCircle);
+            createInstanceInput(pipelineCircle);
+        }
+        EntityNode* pipelineNucleus = new EntityNode(&basicPipelines); {
+            pipelineNucleus->addComponent(new VulkanShaderModule("examples/Cells/src/shaders/vert.spv", VK_SHADER_STAGE_VERTEX_BIT));
+            pipelineNucleus->addComponent(new VulkanShaderModule("examples/Cells/src/shaders/nucleus_frag.spv", VK_SHADER_STAGE_FRAGMENT_BIT));
+            VulkanGraphicsPipeline* pipeline = new VulkanGraphicsPipeline(layouts);
+            pipeline->cullMode = VK_CULL_MODE_NONE;
+            pipeline->blendEnable = VK_TRUE;
+            pipeline->depthTestEnable = VK_FALSE;
+            pipelineNucleus->addComponent(pipeline);
+            VulkanMeshRenderer::addVertexInput(pipelineNucleus);
+            createInstanceInput(pipelineNucleus);
+        }
+
 
         TransformUniformBuffer* transformUniformBuffer = appInfo.shaderObjects.getComponentRecursive<TransformUniformBuffer>();
 
         sceneGraph = new EntityNode(&graphicsObjects, "SceneGraph"); 
             sceneGraph->addComponent(new TransformRoot());
             sceneGraph->addComponent(new Transform(glm::scale(glm::mat4(1.0f), glm::vec3(1.0f))));
-            sceneGraph->addComponent(new VulkanCmdBindDynamicDescriptorSet2(appInfo.transformDescriptorSet->getComponent<VulkanDescriptorSet>(), transformUniformBuffer, 1)); 
-            sceneGraph->addComponent(new UpdateTransform(transformUniformBuffer)); 
-            sceneGraph->addComponent(new RenderNode(appInfo.sphere));
+            EntityNode* cellModel = new EntityNode(sceneGraph, "cellModel");
+                EntityNode* membrane = new EntityNode(cellModel, "Membrane");
+                    EntityNode* membraneSphere = new EntityNode(membrane); 
+                        membraneSphere->addComponent(new VulkanCmdBindDynamicDescriptorSet2(appInfo.transformDescriptorSet->getComponent<VulkanDescriptorSet>(), transformUniformBuffer, 1)); 
+                        membraneSphere->addComponent(new UpdateTransform(transformUniformBuffer));
+                        membraneSphere->addComponent(new RenderNode(sphere));
+                    EntityNode* membraneCircle = new EntityNode(membrane); 
+                        membraneCircle->addComponent(new VulkanCmdBindDynamicDescriptorSet2(appInfo.transformDescriptorSet->getComponent<VulkanDescriptorSet>(), transformUniformBuffer, 1)); 
+                        membraneCircle->addComponent(new UpdateTransform(transformUniformBuffer));
+                        membraneCircle->addComponent(new RenderNode(circle));
+                EntityNode* nucleus = new EntityNode(cellModel, "Nucleus");
+                    nucleus->addComponent(new Transform(glm::scale(glm::mat4(1.0),glm::vec3(0.5,0.5,1.0))));
+                    EntityNode* nucleusSphere = new EntityNode(nucleus); 
+                        nucleusSphere->addComponent(new VulkanCmdBindDynamicDescriptorSet2(appInfo.transformDescriptorSet->getComponent<VulkanDescriptorSet>(), transformUniformBuffer, 1)); 
+                        nucleusSphere->addComponent(new UpdateTransform(transformUniformBuffer));
+                        nucleusSphere->addComponent(new RenderNode(sphere));
+                    EntityNode* nucleusCircle = new EntityNode(nucleus); 
+                        nucleusCircle->addComponent(new VulkanCmdBindDynamicDescriptorSet2(appInfo.transformDescriptorSet->getComponent<VulkanDescriptorSet>(), transformUniformBuffer, 1)); 
+                        nucleusCircle->addComponent(new UpdateTransform(transformUniformBuffer));
+                        nucleusCircle->addComponent(new RenderNode(circle));
 
         scene.addComponent(new MouseInteraction(&input));
         scene.addComponent(new TouchTranslate(&input));
@@ -156,21 +207,46 @@ class CellApp : public VulkanAppBase {
         EntityNode* drawObject = new EntityNode(&scene);
             drawObject->addComponent(new RenderNode(&basicRenderPass, RENDER_ACTION_START));
 
+            /*drawObject->addComponent(new RenderNode(pipelineCircle, RENDER_ACTION_START));
+            drawObject->addComponent(new VulkanCmdBindDescriptorSet(appInfo.viewDescriptorSet->getComponent<VulkanDescriptorSet>(), 0));
+            drawObject->addComponent(new VulkanCmdBindDescriptorSet(materialDescriptorSet->getComponent<VulkanDescriptorSet>(), 2));
+            drawObject->addComponent(new RenderNode(instances, RENDER_ACTION_START));
+            drawObject->addComponent(new RenderNode(sceneGraph, RENDER_ACTION_RENDER, new RenderAt(membraneCircle)));
+            drawObject->addComponent(new RenderNode(instances, RENDER_ACTION_END));
+            drawObject->addComponent(new RenderNode(pipelineCircle, RENDER_ACTION_END));*/
+
             drawObject->addComponent(new RenderNode(pipelineBack, RENDER_ACTION_START));
             drawObject->addComponent(new VulkanCmdBindDescriptorSet(appInfo.viewDescriptorSet->getComponent<VulkanDescriptorSet>(), 0));
             drawObject->addComponent(new VulkanCmdBindDescriptorSet(materialDescriptorSet->getComponent<VulkanDescriptorSet>(), 2));
             drawObject->addComponent(new RenderNode(instances, RENDER_ACTION_START));
-            drawObject->addComponent(new RenderNode(sceneGraph));
+            drawObject->addComponent(new RenderNode(sceneGraph, RENDER_ACTION_RENDER, new RenderAt(membraneSphere)));
+            drawObject->addComponent(new RenderNode(instances, RENDER_ACTION_END));
+            drawObject->addComponent(new RenderNode(pipelineBack, RENDER_ACTION_END));
+
+            drawObject->addComponent(new RenderNode(pipelineBack, RENDER_ACTION_START));
+            drawObject->addComponent(new VulkanCmdBindDescriptorSet(appInfo.viewDescriptorSet->getComponent<VulkanDescriptorSet>(), 0));
+            drawObject->addComponent(new VulkanCmdBindDescriptorSet(nucleusDescriptorSet->getComponent<VulkanDescriptorSet>(), 2));
+            drawObject->addComponent(new RenderNode(instances, RENDER_ACTION_START));
+            drawObject->addComponent(new RenderNode(sceneGraph, RENDER_ACTION_RENDER, new RenderAt(nucleusSphere)));
             drawObject->addComponent(new RenderNode(instances, RENDER_ACTION_END));
             drawObject->addComponent(new RenderNode(pipelineBack, RENDER_ACTION_END));
 
             drawObject->addComponent(new RenderNode(pipelineFront, RENDER_ACTION_START));
             drawObject->addComponent(new VulkanCmdBindDescriptorSet(appInfo.viewDescriptorSet->getComponent<VulkanDescriptorSet>(), 0));
-            drawObject->addComponent(new VulkanCmdBindDescriptorSet(materialDescriptorSet->getComponent<VulkanDescriptorSet>(), 2));
+            drawObject->addComponent(new VulkanCmdBindDescriptorSet(nucleusDescriptorSet->getComponent<VulkanDescriptorSet>(), 2));
             drawObject->addComponent(new RenderNode(instances, RENDER_ACTION_START));
-            drawObject->addComponent(new RenderNode(sceneGraph));
+            drawObject->addComponent(new RenderNode(sceneGraph, RENDER_ACTION_RENDER, new RenderAt(nucleusSphere)));
             drawObject->addComponent(new RenderNode(instances, RENDER_ACTION_END));
             drawObject->addComponent(new RenderNode(pipelineFront, RENDER_ACTION_END));
+
+            drawObject->addComponent(new RenderNode(pipelineFront, RENDER_ACTION_START));
+            drawObject->addComponent(new VulkanCmdBindDescriptorSet(appInfo.viewDescriptorSet->getComponent<VulkanDescriptorSet>(), 0));
+            drawObject->addComponent(new VulkanCmdBindDescriptorSet(materialDescriptorSet->getComponent<VulkanDescriptorSet>(), 2));
+            drawObject->addComponent(new RenderNode(instances, RENDER_ACTION_START));
+            drawObject->addComponent(new RenderNode(sceneGraph, RENDER_ACTION_RENDER, new RenderAt(membraneSphere)));
+            drawObject->addComponent(new RenderNode(instances, RENDER_ACTION_END));
+            drawObject->addComponent(new RenderNode(pipelineFront, RENDER_ACTION_END));
+
 
             drawObject->addComponent(new RenderNode(&basicRenderPass, RENDER_ACTION_END));
 

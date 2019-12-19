@@ -15,6 +15,7 @@ public:
 		cullMode = VK_CULL_MODE_BACK_BIT;
 		depthTestEnable = VK_TRUE;
 		blendEnable = VK_FALSE;
+		topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
 	}
 	virtual ~VulkanGraphicsPipeline() {}
 
@@ -24,6 +25,7 @@ public:
 	VkCullModeFlagBits cullMode;
 	VkBool32 depthTestEnable;
 	VkBool32 blendEnable;
+	VkPrimitiveTopology topology;
 
 protected:
 	void startRender(const GraphicsContext& context, VulkanDeviceState& state);
