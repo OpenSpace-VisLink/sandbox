@@ -33,6 +33,36 @@ layout(location = 9) in vec4 armLengths[4];
 layout(location = 0) out vec3 fragColor;
 layout(location = 1) out vec2 fragTexCoord;
 
+float calculateLength(float angle, vec3 pos, int prevArm, int curArm, float oldLen) {
+	float curAngle = armAngles[curArm/4][curArm - (curArm/4)*4];;
+	float prevAngle = armAngles[prevArm/4][prevArm - (prevArm/4)*4];
+	if (prevArm > curArm) {
+		if (angle < curAngle) {
+			angle += 2.0*3.1459;
+		}
+		curAngle += 2.0*3.1459;
+	}
+
+	float curLength = length(pos.xy)*armLengths[curArm/4][curArm - (curArm/4)*4];
+	float prevLength = length(pos.xy)*armLengths[prevArm/4][prevArm - (prevArm/4)*4];
+
+	float sectionAngle = curAngle-prevAngle;
+	if (sectionAngle >= 3.14159) {
+		return oldLen;
+	}
+
+	float lerp = (angle-prevAngle)/sectionAngle;
+	float interp = (1.0-sin(lerp*3.14159))/2.0 + 0.5;
+	float stretchFactor = ((1.0-.1) + 0.5)*sectionAngle/(3.14159);
+	interp = pow((lerp-0.5)*2.0,2.0)*stretchFactor + 1.0-stretchFactor;
+
+	float len = interp*((1.0-lerp)*prevLength+lerp*curLength);
+	if (oldLen > len) {
+		len = oldLen;
+	}
+	return len;
+}
+
 void main() {
 	vec3 pos = inPosition;
 	float angle = atan(pos.y, pos.x)+3.14159;
@@ -40,51 +70,34 @@ void main() {
 
 	int prevArm = 0;
 	int curArm = 0;
-	float curAngle = 0;
-	float prevAngle = 0;
+	int step = 1;
 	for (int f = 0; f < 16; f++) {
 		if (f < numArms) {
 			float newAngle = armAngles[f/4][f - (f/4)*4];
 
-			if (newAngle =< angle) {
-				curArm = ((f+1)+numArms)-(((f+1)+numArms)/numArms)*numArms;
-				curAngle = armAngles[curArm/4][curArm - (curArm/4)*4] + 2.0*3.1459*int(curArm/numArms);
+			if (newAngle < angle) {
+				curArm = ((f+1)+numArms)-(((f+step)+numArms)/numArms)*numArms;
 				prevArm = f;
-				prevAngle = newAngle;
 			}
 
 			if (f == 0 && newAngle > angle) {
 				curArm = 0;
-				curAngle = newAngle;
-				prevArm = ((f-1)+numArms)-(((f-1)+numArms)/numArms)*numArms;
-				prevAngle = armAngles[prevArm/4][prevArm - (prevArm/4)*4]-2.0*3.1459;
+				prevArm = numArms-1;
 			}
 		}
 	}
 
-	//float len = length(pos.xy)*angle/(2.0*3.14159);
-	//float len = length(pos.xy)*info.x;
-	int armNum = int(numArms*angle/(2.0*3.14159));
-	float len = length(pos.xy)*float(armNum)/float(numArms);
-	//float a = armLengths[0];
+	
+	float len = calculateLength(angle, pos, prevArm, curArm, 0.0);
+	len = calculateLength(angle, pos, ((prevArm-1)+numArms)-(((prevArm-1)+numArms)/numArms)*numArms, curArm, len);
+	len = calculateLength(angle, pos, prevArm, ((curArm+1)+numArms)-(((curArm+1)+numArms)/numArms)*numArms, len);
+	len = calculateLength(angle, pos, ((prevArm-2)+numArms)-(((prevArm-2)+numArms)/numArms)*numArms, curArm, len);
+	len = calculateLength(angle, pos, prevArm, ((curArm+2)+numArms)-(((curArm+2)+numArms)/numArms)*numArms, len);
 
-	//curArm = armNum;
-	//prevArm = ((curArm-1)+numArms)-(((curArm-1)+numArms)/numArms)*numArms;
+	
 
-	float curLength = length(pos.xy)*armLengths[curArm/4][curArm - (curArm/4)*4];
-	float prevLength = length(pos.xy)*armLengths[prevArm/4][prevArm - (prevArm/4)*4];
-	len = length(pos.xy)*armLengths[armNum/4][armNum - (armNum/4)*4];
 
-	float sectionAngle = 2.0*3.14156/numArms;
-	sectionAngle = curAngle-prevAngle;
-	float lerp = (angle-prevAngle)/sectionAngle;//(angle-sectionAngle*armNum)/sectionAngle;
-	float interp = (1.0-sin(lerp*3.14159))/2.0 + 0.5;
-	float stretchFactor = ((1.0-0.5) + 0.5)*sectionAngle/(3.14159);
-	interp = pow((lerp-0.5)*2.0,2.0)*stretchFactor + 1.0-stretchFactor;
-
-	len = length(pos.xy)*interp*((1.0-lerp)*prevLength+lerp*curLength);
-	//len = length(pos.xy)*armAngles[armNum/4][armNum - (armNum/4)*4];
-	//len = length(pos.xy)*curArm/6.0;
+	len = length(pos.xy)*len;
 
 	pos.x = len*cos(angle);
 	pos.y = len*sin(angle);

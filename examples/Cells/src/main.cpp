@@ -35,7 +35,8 @@ class CellApp : public VulkanAppBase {
 
         appInfo.sphere = new EntityNode(&graphicsObjects);
             appInfo.sphere->addComponent(new Mesh());
-            appInfo.sphere->addComponent(new ShapeLoader(SHAPE_SPHERE, 100));
+            //appInfo.sphere->addComponent(new ShapeLoader(SHAPE_SPHERE, 100));
+            appInfo.sphere->addComponent(new ShapeLoader(SHAPE_CIRCLE, 50));
             appInfo.sphere->addComponent(new VulkanMeshRenderer());
             appInfo.sphere->update();
 
@@ -47,12 +48,28 @@ class CellApp : public VulkanAppBase {
             cell.armAngles[0] = 0.0f;
             cell.armLengths[0] = 1.0f;
             cellArray->value.push_back(cell);
-            cell.location = glm::vec3(-2.0,0,0);
-            cell.info.x = 2;
-            cell.armAngles[0] = 0.0f;
-            cell.armAngles[1] = 3.14159;
+            cell.location = glm::vec3(0.0,0,0);
+            cell.info.x = 10;
+            cell.armAngles[0] = 0.1*2.0*3.1415;
+            cell.armAngles[1] = 0.2*2.0*3.1415;
+            cell.armAngles[2] = 0.4*2.0*3.1415;
+            cell.armAngles[3] = 0.5*2.0*3.1415;
+            cell.armAngles[4] = 0.51*2.0*3.1415;
+            cell.armAngles[5] = 0.6*2.0*3.1415;
+            cell.armAngles[6] = 0.65*2.0*3.1415;
+            cell.armAngles[7] = 0.67*2.0*3.1415;
+            cell.armAngles[8] = 0.7*2.0*3.1415;
+            cell.armAngles[9] = 0.9*2.0*3.1415;
             cell.armLengths[0] = 1.0f;
-            cell.armLengths[1] = 0.5f;
+            cell.armLengths[1] = 0.4f;
+            cell.armLengths[2] = 1.0f;
+            cell.armLengths[3] = 1.3f;
+            cell.armLengths[4] = 1.0f;
+            cell.armLengths[5] = 2.0f;
+            cell.armLengths[6] = 1.0f;
+            cell.armLengths[7] = 1.7f;
+            cell.armLengths[8] = 1.4f;
+            cell.armLengths[9] = 1.0f;
             cellArray->value.push_back(cell);
             cell.location = glm::vec3(0.0,0,0);
             cell.info.x = 3;
@@ -63,17 +80,17 @@ class CellApp : public VulkanAppBase {
             cell.armLengths[1] = 0.5f;
             cell.armLengths[2] = 0.75f;
             cellArray->value.push_back(cell);
-            cell.location = glm::vec3(0.0,2.0,0);
+            cell.location = glm::vec3(0.0,1.0,0);
             cell.info.x = 5;
-            cell.armAngles[0] = 0.0f;
-            cell.armAngles[1] = 1.0*2.0*3.1415/5;
-            cell.armAngles[2] = 2.0*2.0*3.1415/5;
-            cell.armAngles[3] = 3.0*2.0*3.1415/5;
+            cell.armAngles[0] = 0.1*2.0*3.1415/5;
+            cell.armAngles[1] = 0.5*2.0*3.1415/5;
+            cell.armAngles[2] = 1.0*2.0*3.1415/5;
+            cell.armAngles[3] = 2.2*2.0*3.1415/5;
             cell.armAngles[4] = 4.0*2.0*3.1415/5;
             cell.armLengths[0] = 1.0f;
-            cell.armLengths[1] = 0.5f;
+            cell.armLengths[1] = 0.0f;
             cell.armLengths[2] = 1.0f;
-            cell.armLengths[3] = 1.0f;
+            cell.armLengths[3] = 0.3f;
             cell.armLengths[4] = 1.0f;
             cellArray->value.push_back(cell);
             instances->addComponent(cellArray);
@@ -128,7 +145,7 @@ class CellApp : public VulkanAppBase {
 
         sceneGraph = new EntityNode(&graphicsObjects, "SceneGraph"); 
             sceneGraph->addComponent(new TransformRoot());
-            sceneGraph->addComponent(new Transform(glm::scale(glm::mat4(1.0f), glm::vec3(0.5f))));
+            sceneGraph->addComponent(new Transform(glm::scale(glm::mat4(1.0f), glm::vec3(1.0f))));
             sceneGraph->addComponent(new VulkanCmdBindDynamicDescriptorSet2(appInfo.transformDescriptorSet->getComponent<VulkanDescriptorSet>(), transformUniformBuffer, 1)); 
             sceneGraph->addComponent(new UpdateTransform(transformUniformBuffer)); 
             sceneGraph->addComponent(new RenderNode(appInfo.sphere));

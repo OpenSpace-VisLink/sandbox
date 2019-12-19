@@ -73,7 +73,7 @@ void ShapeLoader::load(Mesh* mesh) {
 				//glm::vec3 spherePoint(std::cos(latLong.x)*std::sin(latLong.y), std::sin(latLong.x), std::cos(latLong.x)*std::cos(latLong.y));
 				//glm::vec3 spherePoint(std::sin(latLong.x), std::cos(latLong.x)*std::sin(latLong.y), std::cos(latLong.x)*std::cos(latLong.y));
 				glm::vec3 spherePoint(std::cos(latLong.y)*std::sin(latLong.x), std::sin(latLong.y), std::cos(latLong.x)*std::cos(latLong.y));
-				nodes.push_back(spherePoint);
+				nodes.push_back(spherePoint*0.5f);
 				normals.push_back(glm::vec3(0, 0, 1.0f));
 				coords.push_back(glm::vec2(dx*i, dy*j));
 			}
