@@ -33,7 +33,23 @@ layout(location = 9) in vec4 armLengths[4];
 layout(location = 0) out vec3 fragNorm;
 layout(location = 1) out vec2 fragTexCoord;
 
-float calculateLength(float angle, vec3 pos, int prevArm, int curArm, float oldLen) {
+float fun(float theta, float phi, float gamma) {
+	return 4.0*gamma*pow(theta/phi - 0.5, 2.0) + 1 - gamma;
+}
+
+float dfun(float theta, float phi, float gamma) {
+	return 8.0*gamma*(theta/phi - 0.5)/phi;
+}
+
+float g(float theta, float phi, float a, float b) {
+	return (1.0 - theta/phi)*a + b*theta/phi;
+}
+
+float dg(float theta, float phi, float a, float b) {
+	return b/phi - a/phi;
+}
+
+vec4 calculateLength(float angle, vec3 pos, int prevArm, int curArm, vec4 oldLen) {
 	float curAngle = armAngles[curArm/4][curArm - (curArm/4)*4];;
 	float prevAngle = armAngles[prevArm/4][prevArm - (prevArm/4)*4];
 	if (prevArm > curArm) {
@@ -43,8 +59,6 @@ float calculateLength(float angle, vec3 pos, int prevArm, int curArm, float oldL
 		curAngle += 2.0*3.1459;
 	}
 
-	//float curLength = length(pos.xy)*armLengths[curArm/4][curArm - (curArm/4)*4];
-	//float prevLength = length(pos.xy)*armLengths[prevArm/4][prevArm - (prevArm/4)*4];
 	float curLength = armLengths[curArm/4][curArm - (curArm/4)*4];
 	float prevLength = armLengths[prevArm/4][prevArm - (prevArm/4)*4];
 
@@ -54,14 +68,32 @@ float calculateLength(float angle, vec3 pos, int prevArm, int curArm, float oldL
 	}
 
 	float lerp = (angle-prevAngle)/sectionAngle;
-	//float interp = (1.0-sin(lerp*3.14159))/2.0 + 0.5;
 	float stretchFactor = ((1.0-.1) + 0.5)*sectionAngle/(3.14159);
 	float interp = pow((lerp-0.5)*2.0,2.0)*stretchFactor + 1.0-stretchFactor;
 
-	float len = interp*((1.0-lerp)*prevLength+lerp*curLength);
-	if (oldLen > len) {
-		len = oldLen;
+	vec4 len = vec4(interp*((1.0-lerp)*prevLength+lerp*curLength));
+
+	float gamma = stretchFactor;
+	float theta = angle - prevAngle;
+	float phi = sectionAngle;
+	float d = angle-theta;	
+	float a = prevLength;
+	float b = curLength;
+
+	vec3 deriv = vec3(0,0,0);
+	deriv.x = dfun(theta, phi, gamma)*(g(theta, phi, a, b)*cos(theta + d)) + fun(theta, phi, gamma)*(dg(theta, phi, a, b)*cos(theta + d) - g(theta, phi, a, b)*sin(theta + d));
+	deriv.y = dfun(theta, phi, gamma)*(g(theta, phi, a, b)*sin(theta + d)) + fun(theta, phi, gamma)*(dg(theta, phi, a, b)*sin(theta + d) + g(theta, phi, a, b)*cos(theta + d));
+	deriv = normalize(deriv);
+
+	vec3 norm = normalize(cross(vec3(0,0,1),deriv));
+
+	len.y = norm.x;
+	len.z = norm.y;
+
+	if (oldLen.x > len.x) {
+		return oldLen;
 	}
+
 	return len;
 }
 
@@ -97,36 +129,10 @@ float calculateLength2(float angle, vec3 pos, int prevArm, int curArm, float old
 	float len = t;
 	vec2 newPos = t*r;
 	float interp = length(newPos-q)/length(s);
-
-	float dist = (angle-prevAngle)/sectionAngle;
-
-	//len = len * pow((dist-0.5)*2.0,2.0)/2.0+0.5;
-	//len = len * abs(dist-0.5)*2.0;
-
-	/*vec2 interpP = (1.0-interp)*prevPos;
-	vec2 interpC = interp*(curPos);
-	newPos = interpP + interp*(interpC-interpP);
-	//vec2 interpPoint = interp*(curPos) + (1.0-interp)*prevPos;
-	len = length(newPos);*/
-
-	vec2 midpoint = (prevPos+curPos)/4.0;
-	vec2 lineMidpoint = (prevPos + 0.5*s);
-	vec2 sinDir = midpoint-lineMidpoint;
-	//newPos = newPos+sin(interp*3.14159)*sinDir;
-	//len = length(newPos);
-
 	
-	//len = pow((interp-0.5)*2.0,2.0)/2.0+0.5/len;
 	float stretchFactor = 3.0*(1.0+1.0-sectionAngle/3.14159);
-	float extra = (interp*curLength + (1-interp)*prevLength - t);
-	//extra = pow(extra,stretchFactor/2.0);
-	//extra = abs((interp-0.5)*2.0)/2.0+0.5;
-	len = t-extra;
-	//stretchFactor = t/(interp*curLength + (1-interp)*prevLength);
-	//stretchFactor = pow(2,stretchFactor);//*stretchFactor;
 	len = t*pow(t/(interp*curLength + (1-interp)*prevLength),stretchFactor);
 
-	//len = (pow((dist-0.5)*2.0,2.0)/2.0+0.5)*t/len;
 
 	if (oldLen > len) {
 		len = oldLen;
@@ -160,24 +166,27 @@ void main() {
 	}
 
 	
-	float len = calculateLength(angle, pos, prevArm, curArm, 0.0);
+	vec4 len = calculateLength(angle, pos, prevArm, curArm, vec4(0.0));
 	len = calculateLength(angle, pos, ((prevArm-1)+numArms)-(((prevArm-1)+numArms)/numArms)*numArms, curArm, len);
 	len = calculateLength(angle, pos, prevArm, ((curArm+1)+numArms)-(((curArm+1)+numArms)/numArms)*numArms, len);
 	len = calculateLength(angle, pos, ((prevArm-2)+numArms)-(((prevArm-2)+numArms)/numArms)*numArms, curArm, len);
 	len = calculateLength(angle, pos, prevArm, ((curArm+2)+numArms)-(((curArm+2)+numArms)/numArms)*numArms, len);
 
-	len = calculateLength2(angle, pos, prevArm, curArm, 0.0);
+	/*len = calculateLength2(angle, pos, prevArm, curArm, 0.0);
 	len = calculateLength2(angle, pos, ((prevArm-1)+numArms)-(((prevArm-1)+numArms)/numArms)*numArms, curArm, len);
 	len = calculateLength2(angle, pos, prevArm, ((curArm+1)+numArms)-(((curArm+1)+numArms)/numArms)*numArms, len);
 	len = calculateLength2(angle, pos, ((prevArm-2)+numArms)-(((prevArm-2)+numArms)/numArms)*numArms, curArm, len);
-	len = calculateLength2(angle, pos, prevArm, ((curArm+2)+numArms)-(((curArm+2)+numArms)/numArms)*numArms, len);
+	len = calculateLength2(angle, pos, prevArm, ((curArm+2)+numArms)-(((curArm+2)+numArms)/numArms)*numArms, len);*/
 
-	len = length(pos.xy)*len;
+	float armLen = length(pos.xy)*len.x;
 
 	fragNorm = inNormal;
+	fragNorm.x = len.y;
+	fragNorm.y = len.z;
 
-	pos.x = len*cos(angle);
-	pos.y = len*sin(angle);
+	pos.x = armLen*cos(angle);
+	pos.y = armLen*sin(angle);
+
 	if (pos.z < 0) {
 		pos.z /= 10.0;
     	fragNorm.z *= 10;
@@ -186,11 +195,18 @@ void main() {
 		pos.z /= 5.0;
     	fragNorm.z *= 5;
 	}
+
+	//fragNorm = normalize(inNormal);
+
+	//fragNorm.z = 0.0;
+
+	fragNorm = normalize(fragNorm);
+
 	pos.z += 1.0/10.0/2.0;
 	pos += location;
     gl_Position = ubo.proj * ubo.view * ubo.model * ubo2.transform * vec4(pos, 1.0);
     fragTexCoord = inTexCoord;
     
-    //fragNorm = normalize(pos);
+    //fragNorm = normalize(inNormal);
 }
 
