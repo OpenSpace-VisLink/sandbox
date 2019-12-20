@@ -80,27 +80,27 @@ class CellApp : public VulkanAppBase {
             cell.armLengths[9] = 1.0f;
             cellArray->value.push_back(cell);
             /*cell.location = glm::vec3(0.0,0,0);
-            cell.info.x = 3;
+            cell.info.x = 4;
             cell.armAngles[0] = 0.0f;
-            cell.armAngles[1] = 2.0*3.1415/3;
+            cell.armAngles[1] = 1.0*3.1415/3;
             cell.armAngles[2] = 2.0*2.0*3.1415/3;
             cell.armLengths[0] = 1.0f;
-            cell.armLengths[1] = 0.5f;
-            cell.armLengths[2] = 0.75f;
-            cellArray->value.push_back(cell);
+            cell.armLengths[1] = 1.0f;
+            cell.armLengths[2] = 1.0f;
+            cellArray->value.push_back(cell);*/
             cell.location = glm::vec3(0.0,1.0,0);
             cell.info.x = 5;
-            cell.armAngles[0] = 0.1*2.0*3.1415/5;
-            cell.armAngles[1] = 0.5*2.0*3.1415/5;
-            cell.armAngles[2] = 1.0*2.0*3.1415/5;
-            cell.armAngles[3] = 2.2*2.0*3.1415/5;
+            cell.armAngles[0] = 0.0*2.0*3.1415/5;
+            cell.armAngles[1] = 1.0*2.0*3.1415/5;
+            cell.armAngles[2] = 2.0*2.0*3.1415/5;
+            cell.armAngles[3] = 3.0*2.0*3.1415/5;
             cell.armAngles[4] = 4.0*2.0*3.1415/5;
             cell.armLengths[0] = 1.0f;
-            cell.armLengths[1] = 0.0f;
+            cell.armLengths[1] = 1.0f;
             cell.armLengths[2] = 1.0f;
-            cell.armLengths[3] = 0.3f;
+            cell.armLengths[3] = 1.0f;
             cell.armLengths[4] = 1.0f;
-            cellArray->value.push_back(cell);*/
+            cellArray->value.push_back(cell);
             instances->addComponent(cellArray);
             instances->addComponent(new VulkanDrawInstanced());
         instances->update();
@@ -223,7 +223,7 @@ class CellApp : public VulkanAppBase {
             drawObject->addComponent(new RenderNode(instances, RENDER_ACTION_END));
             drawObject->addComponent(new RenderNode(pipelineBack, RENDER_ACTION_END));
 
-            drawObject->addComponent(new RenderNode(pipelineBack, RENDER_ACTION_START));
+            /*drawObject->addComponent(new RenderNode(pipelineBack, RENDER_ACTION_START));
             drawObject->addComponent(new VulkanCmdBindDescriptorSet(appInfo.viewDescriptorSet->getComponent<VulkanDescriptorSet>(), 0));
             drawObject->addComponent(new VulkanCmdBindDescriptorSet(nucleusDescriptorSet->getComponent<VulkanDescriptorSet>(), 2));
             drawObject->addComponent(new RenderNode(instances, RENDER_ACTION_START));
@@ -237,7 +237,7 @@ class CellApp : public VulkanAppBase {
             drawObject->addComponent(new RenderNode(instances, RENDER_ACTION_START));
             drawObject->addComponent(new RenderNode(sceneGraph, RENDER_ACTION_RENDER, new RenderAt(nucleusSphere)));
             drawObject->addComponent(new RenderNode(instances, RENDER_ACTION_END));
-            drawObject->addComponent(new RenderNode(pipelineFront, RENDER_ACTION_END));
+            drawObject->addComponent(new RenderNode(pipelineFront, RENDER_ACTION_END));*/
 
             drawObject->addComponent(new RenderNode(pipelineFront, RENDER_ACTION_START));
             drawObject->addComponent(new VulkanCmdBindDescriptorSet(appInfo.viewDescriptorSet->getComponent<VulkanDescriptorSet>(), 0));
