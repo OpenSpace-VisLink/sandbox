@@ -72,6 +72,10 @@ vec4 calculateLength(float angle, vec3 pos, int prevArm, int curArm, vec4 oldLen
 	float interp = pow((lerp-0.5)*2.0,2.0)*stretchFactor + 1.0-stretchFactor;
 
 	vec4 len = vec4(interp*((1.0-lerp)*prevLength+lerp*curLength));
+	//len.x = len.x*pow(1.0-abs(pos.z),2.0);
+	//len.x = len.x*sin(pos.z);
+
+
 
 	float gamma = stretchFactor;
 	float theta = angle - prevAngle;
@@ -86,6 +90,19 @@ vec4 calculateLength(float angle, vec3 pos, int prevArm, int curArm, vec4 oldLen
 	deriv = normalize(deriv);
 
 	vec3 norm = normalize(cross(vec3(0,0,1),deriv));
+
+
+	/*float falloff = 0.0;
+	if (lerp < 0.5) {
+		falloff = pow(1.0-lerp, 20);
+	}
+	if (lerp >= 0.5) {
+		falloff = pow(lerp, 20);
+	}
+	norm.x = inNormal.x*(falloff) + norm.x*(1-falloff);
+	norm.y = inNormal.y*(falloff) + norm.y*(1-falloff);*/
+
+	norm = normalize(norm);
 
 	len.y = norm.x;
 	len.z = norm.y;
@@ -179,13 +196,16 @@ void main() {
 	len = calculateLength2(angle, pos, prevArm, ((curArm+2)+numArms)-(((curArm+2)+numArms)/numArms)*numArms, len);*/
 
 	float armLen = length(pos.xy)*len.x;
+	//armLen = len.x;
 
 	fragNorm = inNormal;
-	fragNorm.x = len.y;
-	fragNorm.y = len.z;
+	fragNorm.x = len.y*length(inNormal.xy);
+	fragNorm.y = len.z*length(inNormal.xy);
+	fragNorm = normalize(fragNorm);
 
 	pos.x = armLen*cos(angle);
 	pos.y = armLen*sin(angle);
+	//fragNorm = normalize(fragNorm);
 
 	if (pos.z < 0) {
 		pos.z /= 10.0;

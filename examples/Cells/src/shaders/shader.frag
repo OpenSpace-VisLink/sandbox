@@ -12,7 +12,9 @@ layout(location = 0) out vec4 outColor;
 
 void main() {
     outColor = texture(texSampler, fragTexCoord);
-    outColor = vec4(outColor.xyz, 0.5);
+    //outColor = vec4(vec3(1.0-pow(abs(dot(normalize(fragNorm), vec3(0.1,0.1,1))),2)), 1.0);
     outColor = vec4(normalize(fragNorm), 0.5);
+    //outColor = vec4(normalize(fragNorm), 0.5*(1-dot(normalize(fragNorm), vec3(0,0,1))));//dot(normalize(fragNorm), vec3(0,0,1)
+    //outColor = vec4(outColor.xyz, (1-dot(normalize(fragNorm), vec3(1,0,0)))+0.2);//dot(normalize(fragNorm), vec3(0,0,1)
 }
 

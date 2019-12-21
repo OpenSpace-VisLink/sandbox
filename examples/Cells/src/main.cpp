@@ -148,7 +148,7 @@ class CellApp : public VulkanAppBase {
             pipelineFront->addComponent(new VulkanShaderModule("examples/Cells/src/shaders/vert.spv", VK_SHADER_STAGE_VERTEX_BIT));
             pipelineFront->addComponent(new VulkanShaderModule("examples/Cells/src/shaders/frag.spv", VK_SHADER_STAGE_FRAGMENT_BIT));
             VulkanGraphicsPipeline* pipeline = new VulkanGraphicsPipeline(layouts);
-            //pipeline->blendEnable = VK_TRUE;
+            pipeline->blendEnable = VK_TRUE;
             pipelineFront->addComponent(pipeline);
             VulkanMeshRenderer::addVertexInput(pipelineFront);
             createInstanceInput(pipelineFront);
