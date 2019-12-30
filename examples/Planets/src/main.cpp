@@ -3,22 +3,35 @@
 using namespace sandbox;
 
 class StereoUniformBuffer : public VulkanUniformBufferValue<ViewBufferObject> {
+public:
+    StereoUniformBuffer(const EntityNode& modelNode) : modelNode(modelNode), modelTransform(NULL) {}
+
+    void update() {
+        if (!modelTransform) {
+            modelTransform = modelNode.getComponent<Transform>();
+        }
+    }
+
 protected:
     void updateBuffer(const GraphicsContext& context, VulkanDeviceState& state, VulkanBuffer* buffer) {
         ViewBufferObject ubo = {};
         ubo.view = glm::lookAt(glm::vec3(0.0f, 0.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
         ubo.proj = glm::perspective(glm::radians(45.0f), (float) state.getExtent().width / (float) state.getExtent().height, 0.01f, 100.0f);
-        ubo.model = glm::mat4(1.0f);
+        ubo.model = modelTransform ? modelTransform->getTransform() : glm::mat4(1.0f);
         if (VulkanSwapChainState::get(context).getSwapChain()->getName() == "Vulkan") {
-            ubo.model = glm::translate(ubo.model, glm::vec3(-0.25/2.0,0,0.0));
+            ubo.model = glm::translate(glm::mat4(1.0f), glm::vec3(-0.25/2.0,0,0.0))*ubo.model;
         }
         if (VulkanSwapChainState::get(context).getSwapChain()->getName() == "Vulkan2") {
-            ubo.model = glm::translate(ubo.model, glm::vec3(0.25/2.0,0,0.0));
+            ubo.model = glm::translate(glm::mat4(1.0f), glm::vec3(0.25/2.0,0,0.0))*ubo.model;
         }
         ubo.proj[1][1] *= -1;
 
         buffer->update(&ubo, sizeof(ubo));
     }
+
+private:
+    const EntityNode& modelNode;
+    const Transform* modelTransform;
 };
 
 class PlanetApp : public VulkanAppBase {
@@ -88,7 +101,7 @@ class PlanetApp : public VulkanAppBase {
         Entity* materialDescriptorSet = appInfo.descriptorSetGroup.getChildren()[2];
 
         EntityNode* stereoUniformBuffer = new EntityNode(&appInfo.shaderObjects);
-            stereoUniformBuffer->addComponent(new StereoUniformBuffer());
+            stereoUniformBuffer->addComponent(new StereoUniformBuffer(scene));
 
         appInfo.viewDescriptorSet = new EntityNode(&appInfo.descriptorSetGroup);
             appInfo.viewDescriptorSet->addComponent(new VulkanDescriptorSetLayout()); 
@@ -139,7 +152,6 @@ class PlanetApp : public VulkanAppBase {
             }
             drawObject->addComponent(new RenderNode(planetPipeline, RENDER_ACTION_END));
             drawObject->addComponent(new RenderNode(&basicRenderPass, RENDER_ACTION_END));
-
 
     }
 

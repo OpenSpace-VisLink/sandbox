@@ -53,12 +53,21 @@ struct TransformUniformBufferObject {
 
 
 class ViewUniformBuffer : public VulkanUniformBufferValue<ViewBufferObject> {
+public:
+    ViewUniformBuffer(const EntityNode& modelNode) : modelNode(modelNode), modelTransform(NULL) {}
+
+    void update() {
+        if (!modelTransform) {
+            modelTransform = modelNode.getComponent<Transform>();
+        }
+    }
+
 protected:
     void updateBuffer(const GraphicsContext& context, VulkanDeviceState& state, VulkanBuffer* buffer) {
         ViewBufferObject ubo = {};
         ubo.view = glm::lookAt(glm::vec3(0.0f, 0.0f, 3.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
         ubo.proj = glm::perspective(glm::radians(45.0f), (float) state.getExtent().width / (float) state.getExtent().height, 0.01f, 100.0f);
-        ubo.model = glm::mat4(1.0f);
+        ubo.model = modelTransform ? modelTransform->getTransform() : glm::mat4(1.0f);
         if (VulkanSwapChainState::get(context).getSwapChain()->getName() == "window 2") {
             ubo.model = glm::translate(ubo.model, glm::vec3(0.25,0,0.0));
         }
@@ -66,6 +75,10 @@ protected:
 
         buffer->update(&ubo, sizeof(ubo));
     }
+
+private:
+    const EntityNode& modelNode;
+    const Transform* modelTransform;
 };
 
 class ObjectState : public StateContainerItem {
@@ -225,7 +238,7 @@ protected:
     void initVulkan() {
 
         EntityNode* viewUniformBuffer = new EntityNode(&appInfo.shaderObjects);
-            viewUniformBuffer->addComponent(new ViewUniformBuffer());
+            viewUniformBuffer->addComponent(new ViewUniformBuffer(scene));
         EntityNode* samplerNode = new EntityNode(&appInfo.shaderObjects);
             samplerNode->addComponent(new VulkanSampler());
         EntityNode* transformUniformBuffer = new EntityNode(&appInfo.shaderObjects);
@@ -244,6 +257,7 @@ protected:
             appInfo.transformDescriptorSet->addComponent(new VulkanDescriptor(transformUniformBuffer->getComponent<VulkanUniformBuffer>(), VK_SHADER_STAGE_VERTEX_BIT));
 
         initScene();
+        appInfo.shaderObjects.update();
 
         createVulkanNode();
 
@@ -363,7 +377,8 @@ protected:
             if (frame>=0) {   
                 static GraphicsContext updateContext;
                 TransformState::get(updateContext).calculateTransform = true;
-                static RenderNode sceneUpdate(&scene);
+                static RenderNode sceneUpdate(sceneGraph);
+                //static RenderNode sceneUpdate(&scene);
                 sceneUpdate.render(updateContext);
             }
 

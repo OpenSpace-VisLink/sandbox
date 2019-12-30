@@ -4,8 +4,8 @@
 using namespace sandbox;
 
 struct InstanceInfo {
-    alignas(4) glm::vec3 location;
     alignas(4) glm::vec3 info;
+    alignas(16) glm::mat4 transform;
     float armAngles[16];
     float armLengths[16];
 };
@@ -18,8 +18,11 @@ class CellApp : public VulkanAppBase {
 
     void createInstanceInput(EntityNode* entity) {
         VulkanVertexInput* vertexInput = new VulkanVertexInput(sizeof(InstanceInfo), 3, VK_VERTEX_INPUT_RATE_INSTANCE);
-        vertexInput->addAttribute(VK_FORMAT_R32G32B32_SFLOAT, offsetof(InstanceInfo, location));
         vertexInput->addAttribute(VK_FORMAT_R32G32B32_SFLOAT, offsetof(InstanceInfo, info));
+        vertexInput->addAttribute(VK_FORMAT_R32G32B32A32_SFLOAT, offsetof(InstanceInfo, transform));
+        vertexInput->addAttribute(VK_FORMAT_R32G32B32A32_SFLOAT, offsetof(InstanceInfo, transform)+sizeof(glm::vec4));
+        vertexInput->addAttribute(VK_FORMAT_R32G32B32A32_SFLOAT, offsetof(InstanceInfo, transform)+2*sizeof(glm::vec4));
+        vertexInput->addAttribute(VK_FORMAT_R32G32B32A32_SFLOAT, offsetof(InstanceInfo, transform)+3*sizeof(glm::vec4));
         vertexInput->addAttribute(VK_FORMAT_R32G32B32A32_SFLOAT, offsetof(InstanceInfo, armAngles));
         vertexInput->addAttribute(VK_FORMAT_R32G32B32A32_SFLOAT, offsetof(InstanceInfo, armAngles)+sizeof(glm::vec4));
         vertexInput->addAttribute(VK_FORMAT_R32G32B32A32_SFLOAT, offsetof(InstanceInfo, armAngles)+2*sizeof(glm::vec4));
@@ -56,7 +59,7 @@ class CellApp : public VulkanAppBase {
             cell.armAngles[0] = 0.0f;
             cell.armLengths[0] = 1.0f;
             cellArray->value.push_back(cell);*/
-            cell.location = glm::vec3(0.0,0,0);
+            cell.transform = glm::translate(glm::mat4(1.0f), glm::vec3(0.0,0,0));
             cell.info.x = 10;
             cell.armAngles[0] = 0.1*2.0*3.1415;
             cell.armAngles[1] = 0.2*2.0*3.1415;
@@ -88,7 +91,7 @@ class CellApp : public VulkanAppBase {
             cell.armLengths[1] = 1.0f;
             cell.armLengths[2] = 1.0f;
             cellArray->value.push_back(cell);*/
-            cell.location = glm::vec3(0.0,1.0,0);
+            cell.transform = glm::translate(glm::mat4(1.0f), glm::vec3(0.0,1,0.0));
             cell.info.x = 5;
             cell.armAngles[0] = 0.0*2.0*3.1415/5;
             cell.armAngles[1] = 1.0*2.0*3.1415/5;
@@ -179,9 +182,10 @@ class CellApp : public VulkanAppBase {
 
         sceneGraph = new EntityNode(&graphicsObjects, "SceneGraph"); 
             sceneGraph->addComponent(new TransformRoot());
-            sceneGraph->addComponent(new Transform(glm::scale(glm::mat4(1.0f), glm::vec3(1.0f))));
             EntityNode* cellModel = new EntityNode(sceneGraph, "cellModel");
+                cellModel->addComponent(new Transform(glm::rotate(glm::mat4(1.0f), (float)(3.14159/2.0), glm::vec3(1.0f,0.0f,0.0f))));
                 EntityNode* membrane = new EntityNode(cellModel, "Membrane");
+                    membrane->addComponent(new Transform(glm::scale(glm::mat4(1.0f), glm::vec3(0.5f))));
                     EntityNode* membraneSphere = new EntityNode(membrane); 
                         membraneSphere->addComponent(new VulkanCmdBindDynamicDescriptorSet2(appInfo.transformDescriptorSet->getComponent<VulkanDescriptorSet>(), transformUniformBuffer, 1)); 
                         membraneSphere->addComponent(new UpdateTransform(transformUniformBuffer));

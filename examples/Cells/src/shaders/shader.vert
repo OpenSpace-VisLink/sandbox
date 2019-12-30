@@ -17,17 +17,10 @@ layout(location = 0) in vec3 inPosition;
 layout(location = 1) in vec3 inNormal;
 layout(location = 2) in vec2 inTexCoord;
 
-layout(location = 3) in vec3 location;
-layout(location = 4) in vec3 info;
-layout(location = 5) in vec4 armAngles[4];
-layout(location = 9) in vec4 armLengths[4];
-//layout(location = 4) in vec3 numArms
-//layout(location = 5) in mat4 armAngles
-//layout(location = 9) in mat4 armAngles2
-//layout(location = 13) in mat4 armLengths
-//layout(location = 17) in mat4 armLengths2
-//layout(location = 21) in mat4 value
-//layout(location = 25) in mat4 value2
+layout(location = 3) in vec3 info;
+layout(location = 4) in vec4 transform[4];
+layout(location = 8) in vec4 armAngles[4];
+layout(location = 12) in vec4 armLengths[4];
 
 
 layout(location = 0) out vec3 fragNorm;
@@ -160,7 +153,7 @@ float calculateLength2(float angle, vec3 pos, int prevArm, int curArm, float old
 
 void main() {
 	vec3 pos = inPosition;
-	float angle = atan(pos.y, pos.x)+3.14159;
+	float angle = atan(pos.z, pos.x)+3.14159;
 	int numArms = int(info.x);
 
 	int prevArm = 0;
@@ -195,25 +188,25 @@ void main() {
 	len = calculateLength2(angle, pos, ((prevArm-2)+numArms)-(((prevArm-2)+numArms)/numArms)*numArms, curArm, len);
 	len = calculateLength2(angle, pos, prevArm, ((curArm+2)+numArms)-(((curArm+2)+numArms)/numArms)*numArms, len);*/
 
-	float armLen = length(pos.xy)*len.x;
+	float armLen = length(pos.xz)*len.x;
 	//armLen = len.x;
 
 	fragNorm = inNormal;
-	fragNorm.x = len.y*length(inNormal.xy);
-	fragNorm.y = len.z*length(inNormal.xy);
+	fragNorm.x = len.y*length(inNormal.xz);
+	fragNorm.z = len.z*length(inNormal.xz);
 	fragNorm = normalize(fragNorm);
 
 	pos.x = armLen*cos(angle);
-	pos.y = armLen*sin(angle);
+	pos.z = armLen*sin(angle);
 	//fragNorm = normalize(fragNorm);
 
-	if (pos.z < 0) {
-		pos.z /= 10.0;
-    	fragNorm.z *= 10;
+	if (pos.y < 0) {
+		pos.y /= 10.0;
+    	fragNorm.y *= 10;
 	}
 	else {
-		pos.z /= 5.0;
-    	fragNorm.z *= 5;
+		pos.y /= 5.0;
+    	fragNorm.y *= 5;
 	}
 
 	//fragNorm = normalize(inNormal);
@@ -222,9 +215,16 @@ void main() {
 
 	fragNorm = normalize(fragNorm);
 
-	pos.z += 1.0/10.0/2.0;
-	pos += location;
-    gl_Position = ubo.proj * ubo.view * ubo.model * ubo2.transform * vec4(pos, 1.0);
+	mat4 trans;
+	trans[0] = transform[0];
+	trans[1] = transform[1];
+	trans[2] = transform[2];
+	trans[3] = transform[3];
+
+	pos.y += 1.0/10.0/2.0;
+	//pos += location;
+	//pos = (ubo2.transform * vec4(pos, 1.0)).xyz + location;
+    gl_Position = ubo.proj * ubo.view * ubo.model * trans * ubo2.transform * vec4(pos, 1.0);
     fragTexCoord = inTexCoord;
     
     //fragNorm = normalize(inNormal);
