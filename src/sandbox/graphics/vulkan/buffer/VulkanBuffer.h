@@ -70,6 +70,8 @@ private:
                 return i;
             }
         }
+
+        return 0;
     }
 
 private:

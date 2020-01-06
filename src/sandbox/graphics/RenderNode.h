@@ -19,7 +19,7 @@ public:
 	struct State { virtual ~State() {} };
 
 	virtual ~RenderContextStateModifier() {}
-	virtual bool startRender(Entity* entity, const GraphicsContext& context, State*& modifyState) const {}
+	virtual bool startRender(Entity* entity, const GraphicsContext& context, State*& modifyState) const { return false; }
 	virtual void finishRender(Entity* entity, const GraphicsContext& context, State*& modifyState) const {}
 };
 

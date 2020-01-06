@@ -2,6 +2,7 @@
 #define SANDBOX_GRAPHICS_VULKAN_IMAGE_VULKAN_IMAGE_H_
 
 #include "sandbox/Component.h"
+#include "sandbox/graphics/vulkan/VulkanDeviceState.h"
 #include "sandbox/graphics/vulkan/VulkanDeviceRenderer.h"
 #include "sandbox/graphics/vulkan/buffer/VulkanBuffer.h"
 

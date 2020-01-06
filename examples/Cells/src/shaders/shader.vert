@@ -82,7 +82,7 @@ vec4 calculateLength(float angle, vec3 pos, int prevArm, int curArm, vec4 oldLen
 	deriv.y = dfun(theta, phi, gamma)*(g(theta, phi, a, b)*sin(theta + d)) + fun(theta, phi, gamma)*(dg(theta, phi, a, b)*sin(theta + d) + g(theta, phi, a, b)*cos(theta + d));
 	deriv = normalize(deriv);
 
-	vec3 norm = normalize(cross(vec3(0,0,1),deriv));
+	vec3 norm = normalize(cross(deriv,vec3(0,0,1)));
 
 
 	/*float falloff = 0.0;
@@ -213,7 +213,6 @@ void main() {
 
 	//fragNorm.z = 0.0;
 
-	fragNorm = normalize(fragNorm);
 
 	mat4 trans;
 	trans[0] = transform[0];
@@ -225,6 +224,7 @@ void main() {
 	//pos += location;
 	//pos = (ubo2.transform * vec4(pos, 1.0)).xyz + location;
     gl_Position = ubo.proj * ubo.view * ubo.model * trans * ubo2.transform * vec4(pos, 1.0);
+	fragNorm = normalize(mat3(transpose(inverse(ubo.view*ubo.model*trans * ubo2.transform)))*fragNorm);
     fragTexCoord = inTexCoord;
     
     //fragNorm = normalize(inNormal);
