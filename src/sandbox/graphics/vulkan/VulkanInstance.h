@@ -152,6 +152,17 @@ public:
 	    }
 	}
 
+#ifdef WIN32
+#else
+    VkResult GetMemoryFdKHR(VkDevice device, VkMemoryGetFdInfoKHR* pGetFdInfo, int* handle) const {
+        auto func = (PFN_vkGetMemoryFdKHR) vkGetInstanceProcAddr(instance, "vkGetMemoryFdKHR");
+        if (func != nullptr) {
+            return func(device, pGetFdInfo, handle);
+        }    
+        return VK_SUCCESS;  
+    }
+#endif
+
 	const VkInstance& getInstance() const { return instance; }
 
 	bool validationLayersEnabled() { return enableValidationLayers; }

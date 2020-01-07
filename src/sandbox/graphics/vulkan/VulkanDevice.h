@@ -116,6 +116,11 @@ private:
 
 	const std::vector<const char*> deviceExtensions = {
 	    VK_KHR_SWAPCHAIN_EXTENSION_NAME
+        , "VK_KHR_external_memory"
+#ifdef WIN32
+#else
+        , "VK_KHR_external_memory_fd"
+#endif
 	};
 };
 
