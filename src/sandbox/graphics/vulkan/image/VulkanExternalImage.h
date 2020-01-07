@@ -72,10 +72,10 @@ protected:
                     throw std::runtime_error("failed to vkGetMemoryFdKHR!");
                 }
                 std::cout << "handle memory " << imageState->externalHandle << std::endl;
-                if (state.getDevice()->getInstance().GetMemoryFdKHR(state.getDevice()->getDevice(), &memoryGet, &imageState->externalHandle) != VK_SUCCESS) {
+                /*if (state.getDevice()->getInstance().GetMemoryFdKHR(state.getDevice()->getDevice(), &memoryGet, &imageState->externalHandle) != VK_SUCCESS) {
                     throw std::runtime_error("failed to vkGetMemoryFdKHR!");
                 }
-                std::cout << "handle memory " << imageState->externalHandle << std::endl;
+                std::cout << "handle memory " << imageState->externalHandle << std::endl;*/
 #endif
 
                 transitionImageLayout(imageState->image, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, state.getCommandPool().get(), context);
