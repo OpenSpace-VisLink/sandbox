@@ -47,7 +47,8 @@ public:
 
 	void setPixelValue(int x, int y, int component, unsigned char value) {
 		image[(x + width*y)*components + component] = value;
-		getEntity().incrementVersion();
+		//getEntity().incrementVersion();
+		incrementVersion();
 	}
 
     int getWidth() const { return width; }

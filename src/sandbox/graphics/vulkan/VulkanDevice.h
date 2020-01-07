@@ -7,24 +7,9 @@
 
 namespace sandbox {
 
-class VulkanDevice;
+//class VulkanDevice;
 
-class VulkanDeviceComponent : public VulkanComponent {
-public:
-	VulkanDeviceComponent() { addType<VulkanDeviceComponent>(); }
 
-	void setDevice(VulkanDevice* device) {
-		this->device = device;
-		initDeviceComponent();
-	}
-	VulkanDevice& getDevice() { return *device; }
-
-protected:
-	virtual void initDeviceComponent() {}
-
-private:
-	VulkanDevice* device;
-};
 
 
 
@@ -122,6 +107,23 @@ private:
         , "VK_KHR_external_memory_fd"
 #endif
 	};
+};
+
+class VulkanDeviceComponent : public VulkanComponent {
+public:
+    VulkanDeviceComponent() : VulkanComponent(), device(NULL) { addType<VulkanDeviceComponent>(); }
+
+    void setDevice(VulkanDevice* device) {
+        this->device = device;
+        initDeviceComponent();
+    }
+    VulkanDevice& getDevice() { return *device; }
+
+protected:
+    virtual void initDeviceComponent() {}
+
+private:
+    VulkanDevice* device; 
 };
 
 }

@@ -10,7 +10,6 @@
 
 namespace sandbox {
 
-
 class VulkanExternalImage : public VulkanImage {
 public:
 	VulkanExternalImage(bool external = true) : image(NULL), external(external) { addType<VulkanExternalImage>(); }
@@ -31,69 +30,72 @@ protected:
 
 		if (state.getRenderMode().get() == VULKAN_RENDER_UPDATE_SHARED) {
 			ImageState* imageState = contextHandler.getSharedState(context);
-			int texWidth, texHeight, texChannels;
-	        texHeight = image->getHeight();
-	        texWidth = image->getWidth();
-	        texChannels = image->getComponents();
-	        std::cout << "blah " << texChannels << std::endl;
-	        const unsigned char* pixels = image->getData();
-	        VkDeviceSize imageSize = texWidth * texHeight * texChannels; 
+			if (!imageState->imageDependency.isCurrent(image)) {
 
-	        if (!pixels) {
-	            throw std::runtime_error("failed to load texture image!");
-	        }
+				int texWidth, texHeight, texChannels;
+		        texHeight = image->getHeight();
+		        texWidth = image->getWidth();
+		        texChannels = image->getComponents();
+		        std::cout << "blah " << texChannels << std::endl;
+		        const unsigned char* pixels = image->getData();
+		        VkDeviceSize imageSize = texWidth * texHeight * texChannels; 
 
-	        VulkanBuffer* stagingBuffer = new VulkanBuffer(state.getDevice(), imageSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
-	        //VkBuffer stagingBuffer;
-	        //VkDeviceMemory stagingBufferMemory;
-	        //createBuffer(imageSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, stagingBuffer, stagingBufferMemory);
+		        if (!pixels) {
+		            throw std::runtime_error("failed to load texture image!");
+		        }
 
-	        stagingBuffer->update(pixels, imageSize);
-	        /*void* data;
-	        vkMapMemory(device, stagingBufferMemory, 0, imageSize, 0, &data);
-	            memcpy(data, pixels, static_cast<size_t>(imageSize));
-	        vkUnmapMemory(device, stagingBufferMemory);*/
+		        VulkanBuffer* stagingBuffer = new VulkanBuffer(state.getDevice(), imageSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+		        //VkBuffer stagingBuffer;
+		        //VkDeviceMemory stagingBufferMemory;
+		        //createBuffer(imageSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, stagingBuffer, stagingBufferMemory);
 
-	        //stbi_image_free(pixels);
+		        stagingBuffer->update(pixels, imageSize);
+		        /*void* data;
+		        vkMapMemory(device, stagingBufferMemory, 0, imageSize, 0, &data);
+		            memcpy(data, pixels, static_cast<size_t>(imageSize));
+		        vkUnmapMemory(device, stagingBufferMemory);*/
 
-	        //createImage(state.getDevice(), texWidth, texHeight, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, imageState->image, imageState->imageMemory, external);
+		        //stbi_image_free(pixels);
 
-            if (external) {
-                createImage(state.getDevice(), texWidth, texHeight, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, imageState->image, imageState->imageMemory, external);
+		        //createImage(state.getDevice(), texWidth, texHeight, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, imageState->image, imageState->imageMemory, external);
 
-                VkMemoryGetFdInfoKHR memoryGet;
-                memoryGet.sType = VK_STRUCTURE_TYPE_MEMORY_GET_FD_INFO_KHR;
-                memoryGet.pNext = NULL;
-                memoryGet.memory = imageState->imageMemory;
-                memoryGet.handleType = VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_FD_BIT;
-#ifdef WIN32
-#else
-                if (state.getDevice()->getInstance().GetMemoryFdKHR(state.getDevice()->getDevice(), &memoryGet, &imageState->externalHandle) != VK_SUCCESS) {
-                    throw std::runtime_error("failed to vkGetMemoryFdKHR!");
-                }
-                std::cout << "handle memory " << imageState->externalHandle << std::endl;
-                /*if (state.getDevice()->getInstance().GetMemoryFdKHR(state.getDevice()->getDevice(), &memoryGet, &imageState->externalHandle) != VK_SUCCESS) {
-                    throw std::runtime_error("failed to vkGetMemoryFdKHR!");
-                }
-                std::cout << "handle memory " << imageState->externalHandle << std::endl;*/
-#endif
+		        if (external) {
+		            createImage(state.getDevice(), texWidth, texHeight, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, imageState->image, imageState->imageMemory, external);
 
-                /*transitionImageLayout(imageState->image, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, state.getCommandPool().get(), context);
-                copyBufferToImage(stagingBuffer->getBuffer(), imageState->image, static_cast<uint32_t>(texWidth), static_cast<uint32_t>(texHeight), state.getCommandPool().get(), context);
-                transitionImageLayout(imageState->image, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, state.getCommandPool().get(), context);*/
+		            VkMemoryGetFdInfoKHR memoryGet;
+		            memoryGet.sType = VK_STRUCTURE_TYPE_MEMORY_GET_FD_INFO_KHR;
+		            memoryGet.pNext = NULL;
+		            memoryGet.memory = imageState->imageMemory;
+		            memoryGet.handleType = VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_FD_BIT;
+		#ifdef WIN32
+		#else
+		            if (state.getDevice()->getInstance().GetMemoryFdKHR(state.getDevice()->getDevice(), &memoryGet, &imageState->externalHandle) != VK_SUCCESS) {
+		                throw std::runtime_error("failed to vkGetMemoryFdKHR!");
+		            }
+		            std::cout << "handle memory " << imageState->externalHandle << std::endl;
+		            /*if (state.getDevice()->getInstance().GetMemoryFdKHR(state.getDevice()->getDevice(), &memoryGet, &imageState->externalHandle) != VK_SUCCESS) {
+		                throw std::runtime_error("failed to vkGetMemoryFdKHR!");
+		            }
+		            std::cout << "handle memory " << imageState->externalHandle << std::endl;*/
+		#endif
 
-            }
-            else {
-                createImage(state.getDevice(), texWidth, texHeight, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, imageState->image, imageState->imageMemory, external);
+		            /*transitionImageLayout(imageState->image, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, state.getCommandPool().get(), context);
+		            copyBufferToImage(stagingBuffer->getBuffer(), imageState->image, static_cast<uint32_t>(texWidth), static_cast<uint32_t>(texHeight), state.getCommandPool().get(), context);
+		            transitionImageLayout(imageState->image, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, state.getCommandPool().get(), context);*/
 
-                transitionImageLayout(imageState->image, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, state.getCommandPool().get(), context);
-                copyBufferToImage(stagingBuffer->getBuffer(), imageState->image, static_cast<uint32_t>(texWidth), static_cast<uint32_t>(texHeight), state.getCommandPool().get(), context);
-                transitionImageLayout(imageState->image, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, state.getCommandPool().get(), context);
-            }
+		        }
+		        else {
+		            createImage(state.getDevice(), texWidth, texHeight, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, imageState->image, imageState->imageMemory, external);
 
-	        //vkDestroyBuffer(state.getDevice()->getDevice(), stagingBuffer, nullptr);
-	        //vkFreeMemory(state.getDevice()->getDevice(), stagingBufferMemory, nullptr);
-	        delete stagingBuffer;
+		            transitionImageLayout(imageState->image, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, state.getCommandPool().get(), context);
+		            copyBufferToImage(stagingBuffer->getBuffer(), imageState->image, static_cast<uint32_t>(texWidth), static_cast<uint32_t>(texHeight), state.getCommandPool().get(), context);
+		            transitionImageLayout(imageState->image, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, state.getCommandPool().get(), context);
+		        }
+
+		        //vkDestroyBuffer(state.getDevice()->getDevice(), stagingBuffer, nullptr);
+		        //vkFreeMemory(state.getDevice()->getDevice(), stagingBufferMemory, nullptr);
+		        delete stagingBuffer;
+			}
 
 
 		}
@@ -109,10 +111,12 @@ protected:
 			ImageState* imageState = contextHandler.getSharedState(context);
 			vkDestroyImage(state.getDevice()->getDevice(), imageState->image, nullptr);
 			vkFreeMemory(state.getDevice()->getDevice(), imageState->imageMemory, nullptr);
+			imageState->imageDependency.reset(NULL);
 		}
 	}
 
     static void createImage(const VulkanDevice* device, uint32_t width, uint32_t height, VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage, VkMemoryPropertyFlags properties, VkImage& image, VkDeviceMemory& imageMemory, bool external = true) {
+        std::cout << "create image" << std::endl;
         VkImageCreateInfo imageInfo = {};
         imageInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
         imageInfo.imageType = VK_IMAGE_TYPE_2D;
@@ -162,6 +166,7 @@ private:
 		VkImage image;
     	VkDeviceMemory imageMemory;
         int externalHandle;
+        ComponentDependency imageDependency;
 	};
     
     /*external
