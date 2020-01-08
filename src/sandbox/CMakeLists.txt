@@ -98,8 +98,17 @@ message("vk Found" ${Vulkan_FOUND} ${Vulkan_INCLUDE_DIRS} ${Vulkan_LIBRARIES})
 include_directories(${Vulkan_INCLUDE_DIRS})
 set(DEP_LIBS ${DEP_LIBS} ${Vulkan_LIBRARIES})
 
-find_package(glfw3 REQUIRED)
-set(DEP_LIBS ${DEP_LIBS} glfw)
+#find_package(glfw3 REQUIRED)
+#set(DEP_LIBS ${DEP_LIBS} glfw)
+
+set(glfwArgs -DCMAKE_INSTALL_PREFIX=${glfw_INSTALL_DIR} -DUSE_MSVC_RUNTIME_LIBRARY_DLL=ON -DGLFW_BUILD_DOCS=OFF -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}  -DCMAKE_DEBUG_POSTFIX=d)
+add_external(glfw3
+  GIT_REPOSITORY https://github.com/glfw/glfw.git
+  CMAKE_ARGS glfwArgs
+  LIB_NAME glfw3
+  DEBUG_POSTFIX d
+)
+include_directories(${CMAKE_FRAMEWORK_DIR}/external/glfw3/build/install/include)
 
 include(${external_dir}/OpenGL/OpenGL.cmake)
 useOpenGL()

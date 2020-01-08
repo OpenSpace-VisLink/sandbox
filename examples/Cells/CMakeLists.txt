@@ -37,8 +37,9 @@ message("vk Found" ${Vulkan_FOUND} ${Vulkan_INCLUDE_DIRS} ${Vulkan_LIBRARIES})
 include_directories(${Vulkan_INCLUDE_DIRS})
 set(DEP_LIBS ${DEP_LIBS} ${Vulkan_LIBRARIES})
 
-find_package(glfw3 REQUIRED)
-set(DEP_LIBS ${DEP_LIBS} glfw)
+#find_package(glfw3 REQUIRED)
+#set(DEP_LIBS ${DEP_LIBS} glfw)
+link_directories(${CMAKE_FRAMEWORK_DIR}/external/glfw3/build/install/lib)
 
 set(PROJECT_DEPS ${PROJECT_DEPS} sandbox)
 set(DEP_LIBS ${DEP_LIBS} sandbox)
