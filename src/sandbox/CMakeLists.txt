@@ -112,6 +112,7 @@ include_directories(${CMAKE_FRAMEWORK_DIR}/external/glfw3/build/install/include)
 
 include(${external_dir}/OpenGL/OpenGL.cmake)
 useOpenGL()
+useGLEW()
 
 # --------------------- Executable -----------------------
 
