@@ -32,7 +32,7 @@ public:
 	VulkanGraphicsQueue() { addType<VulkanGraphicsQueue>(); }
 	virtual ~VulkanGraphicsQueue() {}
 
-	VulkanPhysicalDeviceCriteria* createPhysicalCriteria() const { return new DeviceGraphicsSupport(); }
+	VulkanPhysicalDeviceCriteria* createPhysicalCriteria() const { std::cout << "Againnnnnnnnnnnnnnnnnnnnnnnnnnnnn" << std::endl; return new DeviceGraphicsSupport(); }
 
 protected:
 	virtual bool isQueueFamily(VkPhysicalDevice device, const VkQueueFamilyProperties& queueFamily, int index) const {
@@ -50,12 +50,16 @@ public:
 	virtual ~VulkanPresentQueue() {}
 
 	VulkanPhysicalDeviceCriteria* createPhysicalCriteria() const { 
+		PhysicalDeviceCriteriaComposite* composite = new PhysicalDeviceCriteriaComposite();
+
 		VulkanSurface* surface = surfaceEntity->getComponent<VulkanSurface>();
 		if (surface) {
-			return new DevicePresentSupport(surface->getSurface()); 
+			composite->add(new DevicePresentSupport(surface->getSurface()));
+			composite->add(new DeviceExtensionSupport(deviceExtensions));
 		}
+		std::cout << "dsfffffffffffffffffffffffffffffff" << std::endl;
 
-		return NULL;
+		return composite;
 	}
 
 protected:
@@ -69,6 +73,10 @@ protected:
 
 		return false;
 	}
+
+	const std::vector<const char*> deviceExtensions = {
+		VK_KHR_SWAPCHAIN_EXTENSION_NAME
+	};
 
 private:
 	Entity* surfaceEntity;

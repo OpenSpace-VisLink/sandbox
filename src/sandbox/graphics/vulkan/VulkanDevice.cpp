@@ -18,6 +18,7 @@ void VulkanDevice::update() {
 		PhysicalDeviceCriteriaComposite composite;
 		std::vector<VulkanComponent*> criteria = getEntity().getComponentsRecursive<VulkanComponent>();
 		for (int f = 0; f < criteria.size(); f++) {
+			std::cout << f << std::endl;
 			VulkanPhysicalDeviceCriteria* physicalCriteria = criteria[f]->createPhysicalCriteria();
 			if (physicalCriteria) {
 				composite.add(physicalCriteria);
