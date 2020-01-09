@@ -18,6 +18,9 @@ add_external(tuio
 	LIB_NAME TUIO
 	DEBUG_POSTFIX d
 )
+if(MSVC)
+	set(DEP_LIBS ${DEP_LIBS}  winmm.lib wininet.lib ws2_32.lib)
+endif()
 
 add_external(glm 
 	GIT_REPOSITORY https://github.com/g-truc/glm.git
@@ -40,12 +43,14 @@ set(DEP_LIBS ${DEP_LIBS} ${Vulkan_LIBRARIES})
 #find_package(glfw3 REQUIRED)
 #set(DEP_LIBS ${DEP_LIBS} glfw)
 link_directories(${CMAKE_FRAMEWORK_DIR}/external/glfw3/build/install/lib)
+include_directories(${CMAKE_FRAMEWORK_DIR}/external/glfw3/build/install/include)
 
 set(PROJECT_DEPS ${PROJECT_DEPS} sandbox)
 set(DEP_LIBS ${DEP_LIBS} sandbox)
 
 include(${external_dir}/OpenGL/OpenGL.cmake)
 useOpenGL()
+
 
 #/home/dan/lib/1.1.114.0/x86_64/bin/glslc examples/Cells/src/shaders/shader.vert -o examples/Cells/src/shaders/vert.spv
 #/home/dan/lib/1.1.114.0/x86_64/bin/glslc examples/Cells/src/shaders/shader.frag -o examples/Cells/src/shaders/frag.spv

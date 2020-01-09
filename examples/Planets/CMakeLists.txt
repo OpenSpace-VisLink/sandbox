@@ -18,6 +18,9 @@ add_external(tuio
 	LIB_NAME TUIO
 	DEBUG_POSTFIX d
 )
+if(MSVC)
+	set(DEP_LIBS ${DEP_LIBS}  winmm.lib wininet.lib ws2_32.lib)
+endif()
 
 add_external(glm 
 	GIT_REPOSITORY https://github.com/g-truc/glm.git
