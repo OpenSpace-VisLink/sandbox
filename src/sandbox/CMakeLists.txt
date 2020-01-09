@@ -68,6 +68,10 @@ set (HEADERFILES
   graphics/render/shaders/MaterialShader.h
   graphics/render/shaders/ShaderParameterTypes.h
   graphics/view/Camera.h
+  graphics/vulkan/VulkanDevice.h
+  graphics/vulkan/VulkanInstance.h
+  graphics/vulkan/image/VulkanImage.h
+  graphics/vulkan/image/VulkanExternalImage.h
   image/Image.h
   input/MouseInput.h
   input/interaction/ArcBall.h

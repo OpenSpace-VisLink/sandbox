@@ -22,7 +22,11 @@ public:
 	}
 
 	VkImage getImage(const GraphicsContext& context) const { return contextHandler.getSharedState(context)->image; }
-    int getExternalHandle(const GraphicsContext& context) const { return contextHandler.getSharedState(context)->externalHandle; }
+#ifdef WIN32
+	HANDLE getExternalHandle(const GraphicsContext& context) const { return contextHandler.getSharedState(context)->externalHandle; }
+#else
+	int getExternalHandle(const GraphicsContext& context) const { return contextHandler.getSharedState(context)->externalHandle; }
+#endif
 
 protected:
 	void startRender(const GraphicsContext& context, VulkanDeviceState& state) {
@@ -62,13 +66,24 @@ protected:
 		        if (external) {
 		            createImage(state.getDevice(), texWidth, texHeight, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, imageState->image, imageState->imageMemory, external);
 
-		            VkMemoryGetFdInfoKHR memoryGet;
-		            memoryGet.sType = VK_STRUCTURE_TYPE_MEMORY_GET_FD_INFO_KHR;
-		            memoryGet.pNext = NULL;
-		            memoryGet.memory = imageState->imageMemory;
-		            memoryGet.handleType = VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_FD_BIT;
+		      
 		#ifdef WIN32
+					VkMemoryGetWin32HandleInfoKHR memoryGet;
+					memoryGet.sType = VK_STRUCTURE_TYPE_MEMORY_GET_WIN32_HANDLE_INFO_KHR;
+					memoryGet.pNext = NULL;
+					memoryGet.memory = imageState->imageMemory;
+					memoryGet.handleType = VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_WIN32_BIT;
+					//getMemoryWin32HandleKHR()
+					if (state.getDevice()->getInstance().GetMemoryWin32HandleKHR(state.getDevice()->getDevice(), &memoryGet, &imageState->externalHandle) != VK_SUCCESS) {
+						throw std::runtime_error("failed to vkGetMemoryFdKHR!");
+					}
+					std::cout << "handle memory " << imageState->externalHandle << std::endl;
 		#else
+					VkMemoryGetFdInfoKHR memoryGet;
+					memoryGet.sType = VK_STRUCTURE_TYPE_MEMORY_GET_FD_INFO_KHR;
+					memoryGet.pNext = NULL;
+					memoryGet.memory = imageState->imageMemory;
+					memoryGet.handleType = VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_FD_BIT;
 		            if (state.getDevice()->getInstance().GetMemoryFdKHR(state.getDevice()->getDevice(), &memoryGet, &imageState->externalHandle) != VK_SUCCESS) {
 		                throw std::runtime_error("failed to vkGetMemoryFdKHR!");
 		            }
@@ -142,7 +157,11 @@ protected:
         VkExportMemoryAllocateInfo exportMemAlloc;
         exportMemAlloc.sType = VK_STRUCTURE_TYPE_EXPORT_MEMORY_ALLOCATE_INFO;
         exportMemAlloc.pNext = NULL;
+#ifdef WIN32
+		exportMemAlloc.handleTypes = VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_WIN32_BIT;
+#else
         exportMemAlloc.handleTypes = VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_FD_BIT;
+#endif
 
         VkMemoryAllocateInfo allocInfo = {};
         allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
@@ -165,8 +184,12 @@ private:
 	struct ImageState : public ContextState {
 		VkImage image;
     	VkDeviceMemory imageMemory;
+#ifdef WIN32
+		HANDLE externalHandle;
+#else
         int externalHandle;
-        ComponentDependency imageDependency;
+#endif
+		ComponentDependency imageDependency;
 	};
     
     /*external

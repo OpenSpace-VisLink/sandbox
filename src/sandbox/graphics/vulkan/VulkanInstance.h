@@ -1,6 +1,11 @@
 #ifndef SANDBOX_GRAPHICS_VULKAN_VULKAN_INSTANCE_H_
 #define SANDBOX_GRAPHICS_VULKAN_VULKAN_INSTANCE_H_
 
+#ifdef WIN32
+#include <Windows.h>
+#include <vulkan/vulkan_win32.h>
+#endif
+
 #include "sandbox/Component.h"
 
 #include <iostream>
@@ -157,6 +162,21 @@ public:
 	}
 
 #ifdef WIN32
+	VkResult GetMemoryWin32HandleKHR(VkDevice device, const VkMemoryGetWin32HandleInfoKHR* pGetWin32HandleInfo, HANDLE* pHandle) const {
+		auto func = (PFN_vkGetMemoryWin32HandleKHR) vkGetInstanceProcAddr(instance, "vkGetMemoryWin32HandleKHR");//VkDevice device, const VkMemoryGetWin32HandleInfoKHR* pGetWin32HandleInfo, HANDLE* pHandle
+		if (func != nullptr) {
+			return func(device, pGetWin32HandleInfo, pHandle);
+		}
+		return VK_SUCCESS;
+
+		/*typedef struct VkImportMemoryWin32HandleInfoKHR {
+			VkStructureType                       sType;
+			const void*                           pNext;
+			VkExternalMemoryHandleTypeFlagBits    handleType;
+			HANDLE                                handle;
+			LPCWSTR                               name;
+		} VkImportMemoryWin32HandleInfoKHR;*/
+	}
 #else
     VkResult GetMemoryFdKHR(VkDevice device, VkMemoryGetFdInfoKHR* pGetFdInfo, int* handle) const {
         auto func = (PFN_vkGetMemoryFdKHR) vkGetInstanceProcAddr(instance, "vkGetMemoryFdKHR");

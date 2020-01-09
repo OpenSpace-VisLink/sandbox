@@ -90,6 +90,7 @@ public:
         return imageView;
     }
 
+
 private:
 	bool initialized;
 	Entity* instanceEntity;
@@ -103,6 +104,7 @@ private:
 	    VK_KHR_SWAPCHAIN_EXTENSION_NAME ,
 		"VK_KHR_external_memory"
 #ifdef WIN32
+		, VK_KHR_EXTERNAL_MEMORY_WIN32_EXTENSION_NAME
 #else
         , "VK_KHR_external_memory_fd"
 #endif
