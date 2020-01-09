@@ -214,11 +214,11 @@ public:
         return VK_PRESENT_MODE_FIFO_KHR;
     }
 
-	bool getMin(int x, int y) {
+	int getMin(int x, int y) {
 		return x < y ? x : y;
 	}
 
-	bool getMax(int x, int y) {
+	int getMax(int x, int y) {
 		return x > y ? x : y;
 	}
 
