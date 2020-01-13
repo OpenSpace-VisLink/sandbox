@@ -15,7 +15,7 @@ namespace sandbox {
 
 class VulkanDevice : public VulkanComponent {
 public:
-	VulkanDevice(Entity* instanceEntity) : instanceEntity(instanceEntity), instance(NULL), initialized(false) { addType<VulkanDevice>(); }
+	VulkanDevice(Entity* instanceEntity, VkPhysicalDevice physicalDevice = VK_NULL_HANDLE) : instanceEntity(instanceEntity), instance(NULL), initialized(false), physicalDevice(physicalDevice) { addType<VulkanDevice>(); }
 	virtual ~VulkanDevice() {
 		vkDestroyDevice(device, nullptr);
 	}

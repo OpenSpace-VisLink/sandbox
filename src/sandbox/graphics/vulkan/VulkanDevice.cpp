@@ -24,7 +24,15 @@ void VulkanDevice::update() {
 				composite.add(physicalCriteria);
 			}
 		}
-		physicalDevice = vulkanInstance->pickPhysicalDevice(composite);
+
+		if (physicalDevice == VK_NULL_HANDLE) {
+			physicalDevice = vulkanInstance->pickPhysicalDevice(composite);
+		}
+		else {
+			if (!composite.isDeviceSuitable(*vulkanInstance, device)) {
+				physicalDevice = VK_NULL_HANDLE;
+			}
+		}
 
 
 		if (physicalDevice != VK_NULL_HANDLE) {

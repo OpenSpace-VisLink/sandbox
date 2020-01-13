@@ -192,6 +192,22 @@ public:
 	bool validationLayersEnabled() { return enableValidationLayers; }
 	const std::vector<const char*>& getValidationLayers() { return validationLayers; }
 
+    std::vector<VkPhysicalDevice> getPhysicalDevices() {
+
+        uint32_t deviceCount = 0;
+        vkEnumeratePhysicalDevices(instance, &deviceCount, nullptr);
+
+        if (deviceCount == 0) {
+            //throw std::runtime_error("failed to find GPUs with Vulkan support!");
+            return std::vector<VkPhysicalDevice>();
+        }
+
+        std::vector<VkPhysicalDevice> devices(deviceCount);
+        vkEnumeratePhysicalDevices(instance, &deviceCount, devices.data());
+
+        return devices;
+    }
+
 	VkPhysicalDevice pickPhysicalDevice(const VulkanPhysicalDeviceCriteria& criteria) {
 		VkPhysicalDevice physicalDevice = VK_NULL_HANDLE;
 
