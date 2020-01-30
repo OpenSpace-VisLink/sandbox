@@ -20,7 +20,7 @@
 #include <cstdlib>
 #include <cstdint>
 #include <array>
-#include <optional>
+//#include <optional>
 #include <set>
 
 const int WIDTH = 800;
@@ -58,14 +58,14 @@ void DestroyDebugUtilsMessengerEXT(VkInstance instance, VkDebugUtilsMessengerEXT
     }
 }
 
-struct QueueFamilyIndices {
+/*struct QueueFamilyIndices {
     std::optional<uint32_t> graphicsFamily;
     std::optional<uint32_t> presentFamily;
 
     bool isComplete() {
         return graphicsFamily.has_value() && presentFamily.has_value();
     }
-};
+};*/
 
 struct SwapChainSupportDetails {
     VkSurfaceCapabilitiesKHR capabilities;
