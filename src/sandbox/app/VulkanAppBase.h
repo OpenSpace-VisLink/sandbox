@@ -24,7 +24,6 @@
 #include <cstdlib>
 #include <cstdint>
 #include <array>
-#include <optional>
 #include <set>
 
 #include <sandbox/image/Image.h>
