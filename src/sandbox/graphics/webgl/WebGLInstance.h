@@ -12,12 +12,14 @@ public:
 
 	void update();
 
+	void addVariable(const std::string objectName, const std::string& impl);
 	void addFunction(const std::string objectName, const std::string& functionName, const std::string& impl);
+	void addCode(const std::string& impl);
 
 	const std::string& getImplementation() const;
 
 private:
-	std::map<std::string, std::string> functions;
+	std::map<std::string, std::string> uniqueCode;
 	std::string impl;
 };
 
