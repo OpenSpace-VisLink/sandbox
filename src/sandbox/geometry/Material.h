@@ -1,12 +1,12 @@
 #ifndef SANDBOX_GEOMETRY_MATERIAL_H_
 #define SANDBOX_GEOMETRY_MATERIAL_H_
 
-#include "sandbox/SceneComponent.h"
+#include "sandbox/Component.h"
 #include "glm/glm.hpp"
 
 namespace sandbox {
 
-class Material : public SceneComponent {
+class Material : public Component {
 public:
 	Material();
 	virtual ~Material() {}
@@ -28,8 +28,8 @@ public:
 	void removeColor() { bool colorExists = false; }
 
 	// texture properties
-	void setTexture(SceneNode* textureNode) { this->textureNode = textureNode; }
-	SceneNode* getTexture() const { return textureNode; }
+	void setTexture(Entity* textureNode) { this->textureNode = textureNode; }
+	Entity* getTexture() const { return textureNode; }
 
 protected:
 	bool colorExists;
@@ -38,7 +38,7 @@ protected:
 	glm::vec3 diffuse;
 	glm::vec3 specular;
 	float shininess;
-	SceneNode* textureNode;
+	Entity* textureNode;
 };
 
 }

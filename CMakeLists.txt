@@ -13,7 +13,15 @@ endif()
 
 include(${CMAKE_FRAMEWORK_DIR}/project/MainProject.cmake)
 
+option(WITH_APPS "If enabled, includes apps in the build." ON)
+
 add_subdirectory(src/sandbox)
-add_subdirectory(app)
-add_subdirectory(examples/ScatterPlot)
-add_subdirectory(examples/FunctionView)
+if(${WITH_APPS})
+	#add_subdirectory(app)
+endif()
+#add_subdirectory(examples/ScatterPlot)
+#add_subdirectory(examples/FunctionView)
+#add_subdirectory(examples/VulkanExample)
+add_subdirectory(examples/VulkanSandbox)
+add_subdirectory(examples/Planets)
+add_subdirectory(examples/Cells)

@@ -1,26 +1,23 @@
 #include "sandbox/geometry/MeshLoader.h"
-#include <iostream>
-#include <assimp/Importer.hpp>
-#include <assimp/scene.h>
-#include <assimp/postprocess.h>
+#include "sandbox/base/Object.h"
 
 namespace sandbox {
 
-MeshLoader::MeshLoader(const std::string& path) : path(path), isLoaded(false) {
+MeshLoader::MeshLoader() : isLoaded(false) {
 	addType<MeshLoader>();
 }
 
-void MeshLoader::updateModel() {
+void MeshLoader::update() {
 	if (!isLoaded) {
-		Mesh* mesh = getSceneNode().getComponent<Mesh>();
+		Mesh* mesh = getEntity().getComponent<Mesh>();
 		if (mesh) {
-			load(path, mesh);
+			load(mesh);
 			isLoaded = true;
 		}
 	}
 }
 
-void MeshLoader::load(const std::string& path, Mesh* mesh) {
+/*void MeshLoader::load(const std::string& path, Mesh* mesh) {
 	Assimp::Importer importer;
 	unsigned int flags = aiProcess_Triangulate | aiProcess_FlipUVs | aiProcess_GenSmoothNormals;
 	const aiScene *scene = importer.ReadFile(path, flags);
@@ -68,6 +65,6 @@ void MeshLoader::load(const std::string& path, Mesh* mesh) {
 
 	glm::vec3 diag = mesh->max-mesh->min;
 	mesh->scale = 2.0f/glm::max(diag.x, glm::max(diag.y, diag.z));*/
-}
+//}
 
 }

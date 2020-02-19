@@ -1,22 +1,20 @@
-#ifndef SANDBOX_GEOMETRY_MESH_LOADER_COMPONENT_H_
-#define SANDBOX_GEOMETRY_MESH_LOADER_COMPONENT_H_
+#ifndef SANDBOX_GEOMETRY_SHAPES_MESH_LOADER_H_
+#define SANDBOX_GEOMETRY_SHAPES_MESH_LOADER_H_
 
-#include "sandbox/SceneComponent.h"
-#include <string>
 #include "sandbox/geometry/Mesh.h"
+#include "sandbox/Component.h"
 
 namespace sandbox {
 
-class MeshLoader : public SceneComponent {
+class MeshLoader : public Component {
 public:
-	MeshLoader(const std::string& path);
+	MeshLoader();
 	virtual ~MeshLoader() {}
 
-	void updateModel();
-	virtual void load(const std::string& path, Mesh* mesh);
+	void update();
+	virtual void load(Mesh* mesh) = 0;
 
 private:
-	std::string path;
 	bool isLoaded;
 };
 
