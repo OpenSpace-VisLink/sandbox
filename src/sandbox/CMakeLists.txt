@@ -40,6 +40,7 @@ set (SOURCEFILES
   graphics/vulkan/shader/VulkanDescriptor.cpp
   graphics/vulkan/shader/VulkanShaderModule.cpp
   graphics/vulkan/VulkanDeviceRenderer.cpp
+  graphics/webgl/WebGLInstance.cpp
 )
 
 set (HEADERFILES
