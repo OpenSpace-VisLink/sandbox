@@ -42,6 +42,7 @@ set (SOURCEFILES
   graphics/vulkan/VulkanDeviceRenderer.cpp
   graphics/webgl/WebGLInstance.cpp
   graphics/webgl/WebGLCanvas.cpp
+  graphics/webgl/WebGLCode.cpp
 )
 
 set (HEADERFILES

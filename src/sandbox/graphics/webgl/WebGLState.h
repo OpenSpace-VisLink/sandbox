@@ -9,8 +9,10 @@ namespace sandbox {
 
 enum WebGLRenderMode {
 	WEBGL_RENDER_NONE,
-	WEBGL_RENDER_CONTEXT,
-	WEBGL_RENDER_SCENE
+	WEBGL_RENDER_UPDATE,
+	WEBGL_RENDER_SCENE,
+	WEBGL_UPDATE,
+	WEBGL_RENDER
 };
 
 class WebGLState : public StateContainerItem {
