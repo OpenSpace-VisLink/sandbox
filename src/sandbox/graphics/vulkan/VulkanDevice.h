@@ -102,11 +102,14 @@ private:
 
 	const std::vector<const char*> deviceExtensions = {
 	    VK_KHR_SWAPCHAIN_EXTENSION_NAME ,
-		"VK_KHR_external_memory"
+		VK_KHR_EXTERNAL_MEMORY_EXTENSION_NAME ,
+        VK_KHR_EXTERNAL_SEMAPHORE_EXTENSION_NAME
 #ifdef WIN32
 		, VK_KHR_EXTERNAL_MEMORY_WIN32_EXTENSION_NAME
+        , VK_KHR_EXTERNAL_SEMAPHORE_WIN32_EXTENSION_NAME
 #else
-        , "VK_KHR_external_memory_fd"
+        , VK_KHR_EXTERNAL_MEMORY_FD_EXTENSION_NAME
+        , VK_KHR_EXTERNAL_SEMAPHORE_FD_EXTENSION_NAME
 #endif
 	};
 };
@@ -119,7 +122,12 @@ public:
         this->device = device;
         initDeviceComponent();
     }
-    VulkanDevice& getDevice() { return *device; }
+    VulkanDevice& getDevice() { 
+        if (!device) {
+            setDevice(getEntity().getComponentRecursive<VulkanDevice>(false));
+        }
+        return *device; 
+    }
 
 protected:
     virtual void initDeviceComponent() {}

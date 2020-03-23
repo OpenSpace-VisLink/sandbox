@@ -147,8 +147,10 @@ public:
             extensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
 			
         }
-		extensions.push_back("VK_KHR_external_memory_capabilities");
-		extensions.push_back("VK_KHR_get_physical_device_properties2");
+		extensions.push_back(VK_KHR_EXTERNAL_MEMORY_CAPABILITIES_EXTENSION_NAME);
+        extensions.push_back("VK_KHR_get_physical_device_properties2");
+        extensions.push_back(VK_KHR_EXTERNAL_SEMAPHORE_CAPABILITIES_EXTENSION_NAME);
+
 		
 
         return extensions;

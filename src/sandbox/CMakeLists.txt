@@ -72,6 +72,7 @@ set (HEADERFILES
   graphics/vulkan/VulkanInstance.h
   graphics/vulkan/image/VulkanImage.h
   graphics/vulkan/image/VulkanExternalImage.h
+  graphics/vulkan/sync/VulkanSemaphore.h
   image/Image.h
   input/MouseInput.h
   input/interaction/ArcBall.h
