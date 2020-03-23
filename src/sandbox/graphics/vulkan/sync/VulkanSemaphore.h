@@ -8,18 +8,58 @@ namespace sandbox {
 
 class VulkanSemaphore : public VulkanDeviceComponent {
 public:
-	VulkanSemaphore() : initialized(false) { addType<VulkanSemaphore>(); }
+	VulkanSemaphore(bool isExternal = false) : isExternal(isExternal), initialized(false), externalHandle(0) { addType<VulkanSemaphore>(); }
 	virtual ~VulkanSemaphore() {
         vkDestroySemaphore(getDevice().getDevice(), semaphore, nullptr);
 	}
 
     void update() {
     	if (!initialized) {
+            //std::cout << "isExternal " << isExternal << " " << externalHandle << std::endl;
+
             VkSemaphoreCreateInfo semaphoreInfo = {};
             semaphoreInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
 
+            if (isExternal) {
+                VkExportSemaphoreCreateInfo externalSemaphoreInfo{};
+                externalSemaphoreInfo.sType = VK_STRUCTURE_TYPE_EXPORT_SEMAPHORE_CREATE_INFO;
+#ifdef WIN32
+                externalSemaphoreInfo.handleTypes = VK_EXTERNAL_SEMAPHORE_HANDLE_TYPE_OPAQUE_WIN32_BIT;
+#else 
+                externalSemaphoreInfo.handleTypes = VK_EXTERNAL_SEMAPHORE_HANDLE_TYPE_OPAQUE_FD_BIT;
+#endif
+                semaphoreInfo.pNext = NULL;
+                semaphoreInfo.pNext = &externalSemaphoreInfo;
+            }
+            else {
+                semaphoreInfo.pNext = NULL;
+            }
+
             if (vkCreateSemaphore(getDevice().getDevice(), &semaphoreInfo, nullptr, &semaphore) != VK_SUCCESS) {
-                throw std::runtime_error("failed to create synchronization objects for a frame!");
+                throw std::runtime_error("failed to create semaphore");
+            }
+
+            if (isExternal) {
+#ifdef WIN32
+                VkSemaphoreGetWin32InfoKHR semaphoreGet;
+                semaphoreGet.sType = VK_STRUCTURE_TYPE_SEMAPHORE_GET_WIN32_INFO_KHR;
+                semaphoreGet.pNext = NULL;
+                semaphoreGet.semaphore = semaphore;
+                semaphoreGet.handleType = VK_EXTERNAL_SEMAPHORE_HANDLE_TYPE_OPAQUE_WIN32_BIT;
+                if (getDevice().getInstance().getSemaphoreWin32KHR(getDevice().getDevice(), &semaphoreGet, &externalHandle) != VK_SUCCESS) {
+                    throw std::runtime_error("failed to getSemaphoreWin32KHR!");
+                }
+#else 
+                VkSemaphoreGetFdInfoKHR semaphoreGet;
+                semaphoreGet.sType = VK_STRUCTURE_TYPE_SEMAPHORE_GET_FD_INFO_KHR;
+                semaphoreGet.pNext = NULL;
+                semaphoreGet.semaphore = semaphore;
+                semaphoreGet.handleType = VK_EXTERNAL_SEMAPHORE_HANDLE_TYPE_OPAQUE_FD_BIT;
+
+                if (getDevice().getInstance().getSemaphoreFdKHR(getDevice().getDevice(), &semaphoreGet, &externalHandle) != VK_SUCCESS) {
+                    throw std::runtime_error("failed to vkGetSemaphoreFdKHR!");
+                }
+#endif
             }
 
     		initialized = true;
@@ -29,25 +69,11 @@ public:
     VkSemaphore getSemaphore() const { return semaphore; }
 
 #ifdef WIN32
-    HANDLE getExternalHandle() {
-        HANDLE externalHandle;
-        VkSemaphoreGetWin32InfoKHR semaphoreGet;
-        semaphoreGet.sType = VK_STRUCTURE_TYPE_SEMAPHORE_GET_WIN32_INFO_KHR;
-        semaphoreGet.pNext = NULL;
-        semaphoreGet.semaphore = semaphore;
-        semaphoreGet.handleType = VK_EXTERNAL_SEMAPHORE_HANDLE_TYPE_OPAQUE_WIN32_BIT;
-        getSemaphoreFdKHR(getDevice().getDevice(), &semaphoreGet, &externalHandle);
+    HANDLE getExternalHandle() const {
         return externalHandle;
     }
 #else 
-    int getExternalHandle() {
-        int externalHandle;
-        VkSemaphoreGetFdInfoKHR semaphoreGet;
-        semaphoreGet.sType = VK_STRUCTURE_TYPE_SEMAPHORE_GET_FD_INFO_KHR;
-        semaphoreGet.pNext = NULL;
-        semaphoreGet.semaphore = semaphore;
-        semaphoreGet.handleType = VK_EXTERNAL_SEMAPHORE_HANDLE_TYPE_OPAQUE_FD_BIT;
-        getSemaphoreFdKHR(getDevice().getDevice(), &semaphoreGet, &externalHandle);
+    int getExternalHandle() const {
         return externalHandle;
     }
 #endif
@@ -55,27 +81,15 @@ public:
 private:
 
 #ifdef WIN32
-    VkResult getSemaphoreWin32HandleKHR (const VkSemaphoreGetWin32HandleInfoKHR* pGetWin32HandleInfo, HANDLE* pHandle) {
-        auto func = (PFN_vkGetSemaphoreWin32HandleKHR) vkGetInstanceProcAddr(getDevice().getInstance().getInstance(), "vkGetSemaphoreWin32HandleKHR");//VkDevice device, const VkMemoryGetWin32HandleInfoKHR* pGetWin32HandleInfo, HANDLE* pHandle
-        if (func != nullptr) {
-            return func(device, pGetWin32HandleInfo, pHandle);
-        }
-        return VK_SUCCESS;
-    }
+    HANDLE externalHandle;
 #else 
-    VkResult getSemaphoreFdKHR(VkDevice device, VkSemaphoreGetFdInfoKHR* pGetFdInfo, int* handle) {
-        auto func = (PFN_vkGetSemaphoreFdKHR) vkGetInstanceProcAddr(getDevice().getInstance().getInstance(), "vkGetSemaphoreFdKHR");
-        if (func != nullptr) {
-            return func(device, pGetFdInfo, handle);
-        }    
-        return VK_SUCCESS;  
-    }
-
+    int externalHandle;
 #endif
 
 
     VkSemaphore semaphore;
     bool initialized;
+    bool isExternal;
 };
 
 }
