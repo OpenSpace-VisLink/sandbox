@@ -15,21 +15,29 @@ public:
 
     void update() {
     	if (!initialized) {
-            //std::cout << "isExternal " << isExternal << " " << externalHandle << std::endl;
+
+
+            VkPhysicalDeviceExternalSemaphoreInfo info;
+            info.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTERNAL_SEMAPHORE_INFO;
+            info.handleType = VK_EXTERNAL_SEMAPHORE_HANDLE_TYPE_OPAQUE_WIN32_BIT;
+            info.pNext = NULL;
+            VkExternalSemaphoreProperties prop;
+            vkGetPhysicalDeviceExternalSemaphoreProperties(getDevice().getPhysicalDevice(), &info, &prop);
+            std::cout << prop.compatibleHandleTypes << " " << prop.exportFromImportedHandleTypes << " " << prop.externalSemaphoreFeatures << std::endl;
 
             VkSemaphoreCreateInfo semaphoreInfo = {};
             semaphoreInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
+            VkExportSemaphoreCreateInfo externalSemaphoreInfo{};
 
             if (isExternal) {
-                VkExportSemaphoreCreateInfo externalSemaphoreInfo{};
                 externalSemaphoreInfo.sType = VK_STRUCTURE_TYPE_EXPORT_SEMAPHORE_CREATE_INFO;
 #ifdef WIN32
                 externalSemaphoreInfo.handleTypes = VK_EXTERNAL_SEMAPHORE_HANDLE_TYPE_OPAQUE_WIN32_BIT;
 #else 
                 externalSemaphoreInfo.handleTypes = VK_EXTERNAL_SEMAPHORE_HANDLE_TYPE_OPAQUE_FD_BIT;
 #endif
-                semaphoreInfo.pNext = NULL;
                 semaphoreInfo.pNext = &externalSemaphoreInfo;
+                externalSemaphoreInfo.pNext = NULL;
             }
             else {
                 semaphoreInfo.pNext = NULL;
@@ -39,6 +47,8 @@ public:
                 throw std::runtime_error("failed to create semaphore");
             }
 
+            std::cout << semaphore << std::endl;
+
             if (isExternal) {
 #ifdef WIN32
                 VkSemaphoreGetWin32HandleInfoKHR semaphoreGet;
@@ -46,7 +56,7 @@ public:
                 semaphoreGet.pNext = NULL;
                 semaphoreGet.semaphore = semaphore;
                 semaphoreGet.handleType = VK_EXTERNAL_SEMAPHORE_HANDLE_TYPE_OPAQUE_WIN32_BIT;
-                if (getDevice().getInstance().getSemaphoreWin32KHR(getDevice().getDevice(), &semaphoreGet, &externalHandle) != VK_SUCCESS) {
+                if (getDevice().getInstance().getSemaphoreWin32HandleKHR(getDevice().getDevice(), &semaphoreGet, &externalHandle) != VK_SUCCESS) {
                     throw std::runtime_error("failed to getSemaphoreWin32KHR!");
                 }
 #else 
@@ -61,6 +71,7 @@ public:
                 }
 #endif
             }
+            std::cout << "isExternal " << isExternal << " " << externalHandle << std::endl;
 
     		initialized = true;
     	}

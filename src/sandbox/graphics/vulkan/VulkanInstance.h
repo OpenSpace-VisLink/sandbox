@@ -195,6 +195,7 @@ public:
         if (func != nullptr) {
             return func(device, pGetWin32HandleInfo, pHandle);
         }
+        std::cout << "success default" << std::endl;
         return VK_SUCCESS;
     }
 
