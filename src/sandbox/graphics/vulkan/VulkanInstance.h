@@ -190,7 +190,7 @@ public:
 #endif
 
 #ifdef WIN32
-    VkResult getSemaphoreWin32HandleKHR (const VkSemaphoreGetWin32HandleInfoKHR* pGetWin32HandleInfo, HANDLE* pHandle) const {
+    VkResult getSemaphoreWin32HandleKHR (VkDevice device, const VkSemaphoreGetWin32HandleInfoKHR* pGetWin32HandleInfo, HANDLE* pHandle) const {
         auto func = (PFN_vkGetSemaphoreWin32HandleKHR) vkGetInstanceProcAddr(instance, "vkGetSemaphoreWin32HandleKHR");//VkDevice device, const VkMemoryGetWin32HandleInfoKHR* pGetWin32HandleInfo, HANDLE* pHandle
         if (func != nullptr) {
             return func(device, pGetWin32HandleInfo, pHandle);
