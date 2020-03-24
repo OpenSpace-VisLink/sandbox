@@ -41,8 +41,8 @@ public:
 
             if (isExternal) {
 #ifdef WIN32
-                VkSemaphoreGetWin32InfoKHR semaphoreGet;
-                semaphoreGet.sType = VK_STRUCTURE_TYPE_SEMAPHORE_GET_WIN32_INFO_KHR;
+                VkSemaphoreGetWin32HandleInfoKHR semaphoreGet;
+                semaphoreGet.sType = VK_STRUCTURE_TYPE_SEMAPHORE_GET_WIN32_HANDLE_INFO_KHR;
                 semaphoreGet.pNext = NULL;
                 semaphoreGet.semaphore = semaphore;
                 semaphoreGet.handleType = VK_EXTERNAL_SEMAPHORE_HANDLE_TYPE_OPAQUE_WIN32_BIT;
