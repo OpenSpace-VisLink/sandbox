@@ -12,7 +12,7 @@ namespace sandbox {
 
 class VulkanExternalImage : public VulkanImage {
 public:
-	VulkanExternalImage(bool external = true) : image(NULL), external(external) { addType<VulkanExternalImage>(); }
+	VulkanExternalImage(bool external = true, VkFormat imageFormat = VK_FORMAT_R8G8B8A8_UNORM, VkImageUsageFlags imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT) : image(NULL), external(external), imageFormat(imageFormat), imageUsage(imageUsage) { addType<VulkanExternalImage>(); }
 	virtual ~VulkanExternalImage() {}
 
 	void update() {
@@ -64,8 +64,8 @@ protected:
 		        //createImage(state.getDevice(), texWidth, texHeight, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, imageState->image, imageState->imageMemory, external);
 
 		        if (external) {
-		            createImage(state.getDevice(), texWidth, texHeight, VK_FORMAT_R16G16B16A16_UNORM, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, imageState->image, imageState->imageMemory, external);
-
+		            createImage(state.getDevice(), texWidth, texHeight, imageFormat, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT | imageUsage, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, imageState->image, imageState->imageMemory, external);
+//VK_FORMAT_D32_SFLOAT, VK_FORMAT_D32_SFLOAT_S8_UINT, VK_FORMAT_D24_UNORM_S8_UINT
 		      
 		#ifdef WIN32
 					VkMemoryGetWin32HandleInfoKHR memoryGet;
@@ -100,11 +100,11 @@ protected:
 
 		        }
 		        else {
-		            createImage(state.getDevice(), texWidth, texHeight, VK_FORMAT_R16G16B16A16_UNORM, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, imageState->image, imageState->imageMemory, external);
+		            createImage(state.getDevice(), texWidth, texHeight, imageFormat, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, imageState->image, imageState->imageMemory, external);
 
-		            transitionImageLayout(imageState->image, VK_FORMAT_R16G16B16A16_UNORM, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, state.getCommandPool().get(), context);
+		            transitionImageLayout(imageState->image, imageFormat, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, state.getCommandPool().get(), context);
 		            copyBufferToImage(stagingBuffer->getBuffer(), imageState->image, static_cast<uint32_t>(texWidth), static_cast<uint32_t>(texHeight), state.getCommandPool().get(), context);
-		            transitionImageLayout(imageState->image, VK_FORMAT_R16G16B16A16_UNORM, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, state.getCommandPool().get(), context);
+		            transitionImageLayout(imageState->image, imageFormat, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, state.getCommandPool().get(), context);
 		        }
 
 		        //vkDestroyBuffer(state.getDevice()->getDevice(), stagingBuffer, nullptr);
@@ -280,6 +280,8 @@ private:
 	GraphicsContextHandler<ImageState,ContextState> contextHandler;
 	sandbox::Image* image;
     bool external;
+    VkFormat imageFormat;
+    VkImageUsageFlags imageUsage;
 
 };
 
